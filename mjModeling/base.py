@@ -30,7 +30,7 @@ class Robot:
         blade_geom = blade_body.add_geom(
             name="blade_geom",
             type=mujoco.mjtGeom.mjGEOM_BOX,
-            size=[0.01, 0.05, 0.1],  # [width, depth, length]
+            size=[0.001, 0.005, 0.1],  # [width, depth, length]
             rgba=[0.8, 0.8, 0.8, 1]   # Metallic grey
         )
 
