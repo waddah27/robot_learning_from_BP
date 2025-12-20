@@ -8,8 +8,7 @@ class Robot:
     def model(self):
         return self._model
     
-    @model.setter
-    def model(self, xml_path):
+    def create(self, xml_path):
         if os.path.exists(xml_path):
             # self._model = mujoco.MjModel.from_xml_path(xml_path)
             spec = mujoco.MjSpec.from_file(xml_path)

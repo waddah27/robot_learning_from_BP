@@ -5,10 +5,9 @@ from base import Robot
 if CONF["use_iiwa14"]:
   kuka_iiwa_14 = os.path.join(os.path.dirname(__file__), 'kuka_iiwa_14')
   iiwa14_xml = os.path.join(kuka_iiwa_14, 'scene.xml')
-  xml_string = None
   
   robot = Robot()
-  robot.model = iiwa14_xml
+  robot.create(iiwa14_xml)
   
   print(robot.model.opt.gravity)
  
