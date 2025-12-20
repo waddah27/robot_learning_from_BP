@@ -6,3 +6,4 @@ gmr
 scikit-learn
 tqdm
 cvxpy
+mujoco
