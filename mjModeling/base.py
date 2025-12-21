@@ -20,15 +20,13 @@ class Robot:
 
         # 1. Load the existing model into a spec
         spec = mujoco.MjSpec.from_file(xml_path)
-        # 1. Register the Meshes in Assets
-        # 'file' should be the path to your STL files
+        # 1. Register the Meshes  for scalpel handler in Assets
         scalpel_handler_mesh = spec.add_mesh(name="handler_mesh", file=stl_abs_path)
+        # rotate it by 90
         scalpel_handler_mesh.refquat = [0.707, -0.707, 0, 0]
+        # scale it 
         scalpel_handler_mesh.scale = [0.001, 0.001, 0.001] 
-        # scalpel_mesh = spec.add_mesh(name="scalpel_mesh", file="scalpel.stl")
- 
         # 2. Find the robot's end-effector body (usually 'link7')
-        # You may need to verify the name in your specific XML
         ee_body = spec.body("link7")
         if ee_body is None:
             raise ValueError("Could not find 'link7' in the model. Check your XML body names.")
@@ -37,9 +35,14 @@ class Robot:
         handler = ee_body.add_body(name="3d_printed_handler")
         # Visual: Add the complex STL mesh
         handler.add_geom(name="handler_visual", type=mujoco.mjtGeom.mjGEOM_MESH, 
-                     meshname="handler_mesh", rgba=[0.9, 0.9, 0.9, 1]) # White plastic
-    
-        handler.pos = [-0.05, 0.05, 0.0] 
+                     meshname="handler_mesh", rgba=[0.9, 0.9, 0.0, 1]) # White plastic
+        
+        attach_site = spec.site("attachment_site")
+        
+        if attach_site is None:
+            raise ValueError("Could not find 'attachment_site' in the model.")
+        
+        handler.pos = [-0.045, 0.045, 0.0] 
         if False:
             blade_body = ee_body.add_body(name="blade_attachment")
             blade_body.pos = [0, 0, 0.05]  # Offset from the end of link7

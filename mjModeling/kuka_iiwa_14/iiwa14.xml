@@ -135,7 +135,9 @@
                   <body name="link7" pos="0 0.081 0" quat="0 0 1 1">
                     <inertial mass="1.2" pos="0 0 0.02" diaginertia="0.001 0.001 0.001"/>
                     <joint name="joint7" class="joint3"/>
-                    <geom class="visual" mesh="link_7"/>
+                    <!-- Removed this interface cuz I removed it in real scenario to
+                    make the handler fit to the pure ee  -->
+                    <!-- <geom class="visual" mesh="link_7"/> -->
                     <geom class="collision" size="0.06" pos="0 0 0.001"/>
                     <site pos="0 0 0.045" name="attachment_site"/>
                   </body>

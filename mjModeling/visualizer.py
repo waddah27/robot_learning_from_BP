@@ -13,7 +13,7 @@ class Visualize:
         with mujoco.viewer.launch_passive(self.model, self.data) as viewer:
             # --- Enable joint visualization *after* the viewer starts ---
             with viewer.lock():
-                viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_JOINT] = True
+                viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_JOINT] = False
                 # You can add other flags here too, e.g.:
                 # viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
             # Loop as long as the user has not closed the viewer window.
