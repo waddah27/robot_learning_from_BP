@@ -3,8 +3,10 @@ from startup import mujoco, os
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Construct the full absolute path to the STL
-stl_rel_path = "scalpel_model/scalpel/scalpelHandler1.STL"
-stl_abs_path = os.path.join(base_dir, stl_rel_path)
+scalpelHadnler1_dirname = "scalpel_model/scalpel/scalpelHandler1.STL"
+scalpelHandler1_path = os.path.join(base_dir, scalpelHadnler1_dirname)
+scalpelHadnler2_dirname = "scalpel_model/scalpel/scalpelHandler2.STL"
+scalpelHandler2_path = os.path.join(base_dir, scalpelHadnler2_dirname)
 class Robot:
     def __init__(self):
         self._model = None
@@ -18,53 +20,51 @@ class Robot:
         if not os.path.exists(xml_path):
             raise FileNotFoundError(f"XML not found at {xml_path}")
 
-        # 1. Load the existing model into a spec
         spec = mujoco.MjSpec.from_file(xml_path)
-        # 1. Register the Meshes  for scalpel handler in Assets
-        scalpel_handler_mesh = spec.add_mesh(name="handler_mesh", file=stl_abs_path)
-        # rotate it by 90
-        scalpel_handler_mesh.refquat = [0.707, -0.707, 0, 0]
-        # scale it 
-        scalpel_handler_mesh.scale = [0.001, 0.001, 0.001] 
-        # 2. Find the robot's end-effector body (usually 'link7')
-        ee_body = spec.body("link7")
-        if ee_body is None:
-            raise ValueError("Could not find 'link7' in the model. Check your XML body names.")
 
-        # 3. Add a new child body for the blade
-        handler = ee_body.add_body(name="3d_printed_handler")
-        # Visual: Add the complex STL mesh
-        handler.add_geom(name="handler_visual", type=mujoco.mjtGeom.mjGEOM_MESH, 
-                     meshname="handler_mesh", rgba=[0.9, 0.9, 0.0, 1]) # White plastic
-        
+        # 1. Register Mesh 1
+        mesh1 = spec.add_mesh(name="mesh1", file=scalpelHandler1_path)
+        mesh1.refquat = [0.707, -0.707, 0, 0]
+        mesh1.scale = [0.001, 0.001, 0.001] 
+
+        # 2. Register Mesh 2
+        mesh2 = spec.add_mesh(name="mesh2", file=scalpelHandler2_path)
+        mesh2.refquat = [0.0, 1.0, 0, 0] # Match the orientation of part 1
+        mesh2.scale = [0.001, 0.001, 0.001]
+
+        # 3. Setup Body Hierarchy
+        ee_body = spec.body("link7")
         attach_site = spec.site("attachment_site")
         
-        if attach_site is None:
-            raise ValueError("Could not find 'attachment_site' in the model.")
-        
-        handler.pos = [-0.045, 0.045, 0.0] 
-        if False:
-            blade_body = ee_body.add_body(name="blade_attachment")
-            blade_body.pos = [0, 0, 0.05]  # Offset from the end of link7
+        handler = ee_body.add_body(name="3d_printed_handler")
+        # Align handler origin to the attachment site
+        handler.pos =  attach_site.pos
+        handler.quat = attach_site.quat
+        handler_depth = -0.09
+        # 4. Add Part 1 (First half of handler)
+        handler.add_geom(
+            name="handler_part1_visual", 
+            type=mujoco.mjtGeom.mjGEOM_MESH, 
+            meshname="mesh1", 
+            rgba=[0.9, 0.9, 0.0, 1], # Orange
+            pos = attach_site.pos + [-0.045 ,0.045, handler_depth]
+        )
 
-            # 4. Add the actual geometry (the blade)
-            # Using a thin box as a placeholder for a blade
-            blade_geom = blade_body.add_geom(
-            name="blade_geom",
-            type=mujoco.mjtGeom.mjGEOM_BOX,
-            size=[0.001, 0.005, 0.1],  # [width, depth, length]
-            rgba=[0.8, 0.8, 0.8, 1]   # Metallic grey
-            )
+        # 5. Part 2 (Second half of handler)
+        # We add this to the SAME body so they are fixed together.
+        handler.add_geom(
+            name="handler_part2_visual", 
+            type=mujoco.mjtGeom.mjGEOM_MESH, 
+            meshname="mesh2", 
+            rgba=[0.8, 0.8, 0.8, 1], # Grey to distinguish
+            pos=attach_site.pos + [-0.0175, -0.002, 0.025] 
+        )
 
-        # 5. Compile the modified spec into the simulation model
+        # 6. Compile
         self._model = spec.compile()
         self._data = mujoco.MjData(self._model)
-        
-        # Initial physics forward pass
-        mujoco.mj_kinematics(self._model, self._data)    
         mujoco.mj_forward(self._model, self._data)
-
-        print(f"Blade successfully attached to {ee_body.name}")
+ 
  
     @property
     def data(self):
