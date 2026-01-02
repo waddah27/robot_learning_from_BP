@@ -73,8 +73,7 @@ class Robot:
             rgba=[0.8, 0.8, 0.8, 1], # Grey to distinguish
             pos=attach_site.pos #+ [-0.0175, -0.002, 0.025] 
         )
-        # NEW: Define the TCP at the tip of mesh3
-        # Note: You must adjust 'tip_offset' based on the physical length of Scalpel.STL.
+        # 8. TCP defined at the tip of scalpel
         tip_offset = [0, 0, 0.113] 
         tcp_site = handler.add_site(
         name="scalpel_tip",
@@ -83,8 +82,16 @@ class Robot:
         rgba=[1, 0, 0, 1], # Red tip
         group=1  # Ensure group 1 is enabled in your viewer
         )
-
-        # 8. Compile model, forward it with data
+        
+        # 9. Cutting material definition
+        material = spec.worldbody.add_body(name="cutting_material")
+        material.add_geom(
+        type=mujoco.mjtGeom.mjGEOM_BOX,
+        size=[0.3, 0.3, 0.02],  # Adjust dimensions
+        pos=[0.5, 0, 0.02],      # Position under scalpel
+        rgba=[0.2, 0.8, 0.2, 0.7]
+        )
+        # 10. Compile model, forward it with data
         self._model = spec.compile()
         self._data = mujoco.MjData(self._model)
         mujoco.mj_forward(self._model, self._data)
