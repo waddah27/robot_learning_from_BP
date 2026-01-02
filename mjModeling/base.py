@@ -73,6 +73,16 @@ class Robot:
             rgba=[0.8, 0.8, 0.8, 1], # Grey to distinguish
             pos=attach_site.pos #+ [-0.0175, -0.002, 0.025] 
         )
+        # NEW: Define the TCP at the tip of mesh3
+        # Note: You must adjust 'tip_offset' based on the physical length of Scalpel.STL.
+        tip_offset = [0, 0, 0.113] 
+        tcp_site = handler.add_site(
+        name="scalpel_tip",
+        pos=attach_site.pos + tip_offset,
+        size=[0.002, 0.002, 0.002], # Small visual marker
+        rgba=[1, 0, 0, 1], # Red tip
+        group=1  # Ensure group 1 is enabled in your viewer
+        )
 
         # 8. Compile model, forward it with data
         self._model = spec.compile()
