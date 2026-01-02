@@ -3,11 +3,11 @@ from visualizer import Visualize
 from base import Robot
 # 1 - MjModel (mjModel)
 if CONF["use_iiwa14"]:
-  kuka_iiwa_14 = os.path.join(os.path.dirname(__file__), 'kuka_iiwa_14')
-  iiwa14_xml = os.path.join(kuka_iiwa_14, 'scene.xml')
+  robot_env_dir = os.path.join(os.path.dirname(__file__), 'kuka_iiwa_14')
+  robot_scene_xml = os.path.join(robot_env_dir, 'scene.xml')
   
   robot = Robot()
-  robot.create(iiwa14_xml)
+  robot.create(robot_scene_xml)
   
   print(robot.model.opt.gravity)
  
