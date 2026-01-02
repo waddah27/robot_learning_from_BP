@@ -1,4 +1,4 @@
-from startup import *
+from mjModeling import *
 from base import Robot
 class Visualize:
     def __init__(self, robot: Robot):

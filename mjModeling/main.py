@@ -1,7 +1,6 @@
-from mjModeling.iiwa14 import iiwa14
-from startup import *
+from mjModeling.iiwa14_model import iiwa14
+from mjModeling import *
 from visualizer import Visualize
-from pathes import robot_scene_xml
 
 # 1 - build experiment env
 robot = iiwa14()

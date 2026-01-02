@@ -1,24 +1,4 @@
-# Other imports and helper functions
-import os
-import time
-import mujoco
-import itertools
-import numpy as np
-from PIL import Image
-from mujoco import viewer
-import json
-# Graphics and plotting.
-import matplotlib.pyplot as plt
-from dotenv import load_dotenv
-import distutils.util
-import subprocess
-
-# load configs 
-root_dir = os.path.dirname(__file__)
-CONF = None
-with open(os.path.join(root_dir,'configs.json')) as f:
-  CONF = json.load(f)
-
+from mjModeling import load_dotenv, os, subprocess, np
 def config_gpu():
   # Configure MuJoCo to use the EGL rendering backend (requires GPU)
   print('Setting environment variable to use GPU rendering:')
@@ -67,6 +47,3 @@ def config_gpu():
         'by going to the Runtime menu and selecting "Choose runtime type".')
 
   print('Installation successful.')
-
-if __name__=='__main__':
-  config_gpu()

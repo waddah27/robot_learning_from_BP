@@ -1,7 +1,6 @@
 from mjModeling.base import Robot
-from startup import CONF, mujoco, os
+from mjModeling import *
 import numpy as np
-from pathes import *
 
 class iiwa14(Robot):
     def __init__(self):
