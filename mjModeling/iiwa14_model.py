@@ -246,67 +246,60 @@ class iiwa14(Robot):
         
         return stiffness, damping
 
-# ========== MAIN EXPERIMENT ==========
+    # ========== MAIN EXPERIMENT ==========
 
-def run_cutting_experiment():
-    """ TODO refactor this later
-    """
-    robot_env_dir = os.path.join(os.path.dirname(__file__), 'kuka_iiwa_14')
-    robot_scene_xml = os.path.join(robot_env_dir, 'scene.xml')
+    def run_cutting_experiment(self, xml_path):
+        """ TODO refactor this later
+        """
+        self.create(xml_path)
 
-    robot = Robot()
-    robot.create(robot_scene_xml)
-
-    print(robot.model.opt.gravity)
-    
-    
-    print("\n" + "="*60)
-    print("CUTTING EXPERIMENT STARTING")
-    print("="*60)
-    
-    # 1. Move robot to starting position above material
-    # (You need to implement this based on your robot)
-    print("\n1. Positioning robot...")
-    # position_robot_above_material(robot)
-    
-    # 2. Measure initial impedance (no contact)
-    print("\n2. Measuring initial impedance...")
-    initial_stiffness, initial_damping = robot.estimate_impedance()
-    
-    # 3. Perform cutting stroke
-    print("\n3. Performing cutting stroke...")
-    force_data = robot.perform_cutting_stroke(depth=0.02, steps=300)
-    
-    # 4. Measure impedance after cutting
-    print("\n4. Measuring impedance after cutting...")
-    final_stiffness, final_damping = robot.estimate_impedance()
-    
-    # 5. Analyze results
-    print("\n" + "="*60)
-    print("EXPERIMENT RESULTS")
-    print("="*60)
-    
-    force_magnitudes = [np.linalg.norm(f) for f in force_data]
-    
-    print(f"Cutting duration: {len(force_data)} steps")
-    print(f"Max cutting force: {np.max(force_magnitudes):.2f} N")
-    print(f"Avg cutting force: {np.mean(force_magnitudes):.2f} N")
-    print(f"Stiffness change: {final_stiffness - initial_stiffness:.2f} N/m")
-    print(f"Damping change: {final_damping - initial_damping:.2f} N·s/m")
-    
-    # Save data
-    import matplotlib.pyplot as plt
-    
-    plt.figure(figsize=(10, 6))
-    plt.plot(force_magnitudes)
-    plt.xlabel('Time Step')
-    plt.ylabel('Cutting Force (N)')
-    plt.title('Cutting Force Profile')
-    plt.grid(True)
-    plt.savefig('cutting_force_profile.png')
-    plt.show()
-    
-    print("\n✓ Experiment complete. Data saved.")
+        print("\n" + "="*60)
+        print("CUTTING EXPERIMENT STARTING")
+        print("="*60)
+        
+        # 1. Move robot to starting position above material
+        # (You need to implement this based on your robot)
+        print("\n1. Positioning robot...")
+        # position_robot_above_material(robot)
+        
+        # 2. Measure initial impedance (no contact)
+        print("\n2. Measuring initial impedance...")
+        initial_stiffness, initial_damping = self.estimate_impedance()
+        
+        # 3. Perform cutting stroke
+        print("\n3. Performing cutting stroke...")
+        force_data = self.perform_cutting_stroke(depth=0.02, steps=300)
+        
+        # 4. Measure impedance after cutting
+        print("\n4. Measuring impedance after cutting...")
+        final_stiffness, final_damping = self.estimate_impedance()
+        
+        # 5. Analyze results
+        print("\n" + "="*60)
+        print("EXPERIMENT RESULTS")
+        print("="*60)
+        
+        force_magnitudes = [np.linalg.norm(f) for f in force_data]
+        
+        print(f"Cutting duration: {len(force_data)} steps")
+        print(f"Max cutting force: {np.max(force_magnitudes):.2f} N")
+        print(f"Avg cutting force: {np.mean(force_magnitudes):.2f} N")
+        print(f"Stiffness change: {final_stiffness - initial_stiffness:.2f} N/m")
+        print(f"Damping change: {final_damping - initial_damping:.2f} N·s/m")
+        
+        # Save data
+        import matplotlib.pyplot as plt
+        
+        plt.figure(figsize=(10, 6))
+        plt.plot(force_magnitudes)
+        plt.xlabel('Time Step')
+        plt.ylabel('Cutting Force (N)')
+        plt.title('Cutting Force Profile')
+        plt.grid(True)
+        plt.savefig('cutting_force_profile.png')
+        plt.show()
+        
+        print("\n✓ Experiment complete. Data saved.")
 
 # Run the experiment
 if __name__ == "__main__":
