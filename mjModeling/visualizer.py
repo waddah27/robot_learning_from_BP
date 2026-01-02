@@ -28,6 +28,7 @@ class Visualize:
             while viewer.is_running():
                 step_start = time.time()
                 
+                self.robot.run_cutting_experiment()
                 # Step the simulation forward
                 mujoco.mj_step(self.robot.model, self.robot.data)  
                 # Sync the viewer display with the current data state and options

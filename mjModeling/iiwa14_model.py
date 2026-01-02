@@ -248,10 +248,9 @@ class iiwa14(Robot):
 
     # ========== MAIN EXPERIMENT ==========
 
-    def run_cutting_experiment(self, xml_path):
+    def run_cutting_experiment(self):
         """ TODO refactor this later
         """
-        self.create(xml_path)
 
         print("\n" + "="*60)
         print("CUTTING EXPERIMENT STARTING")
@@ -286,21 +285,21 @@ class iiwa14(Robot):
         print(f"Avg cutting force: {np.mean(force_magnitudes):.2f} N")
         print(f"Stiffness change: {final_stiffness - initial_stiffness:.2f} N/m")
         print(f"Damping change: {final_damping - initial_damping:.2f} N·s/m")
-        
-        # Save data
-        import matplotlib.pyplot as plt
-        
-        plt.figure(figsize=(10, 6))
-        plt.plot(force_magnitudes)
-        plt.xlabel('Time Step')
-        plt.ylabel('Cutting Force (N)')
-        plt.title('Cutting Force Profile')
-        plt.grid(True)
-        plt.savefig('cutting_force_profile.png')
-        plt.show()
+        if False:
+            # Save data
+            import matplotlib.pyplot as plt
+            
+            plt.figure(figsize=(10, 6))
+            plt.plot(force_magnitudes)
+            plt.xlabel('Time Step')
+            plt.ylabel('Cutting Force (N)')
+            plt.title('Cutting Force Profile')
+            plt.grid(True)
+            plt.savefig('cutting_force_profile.png')
+            plt.show()
         
         print("\n✓ Experiment complete. Data saved.")
 
 # Run the experiment
 if __name__ == "__main__":
-    run_cutting_experiment()
+    pass

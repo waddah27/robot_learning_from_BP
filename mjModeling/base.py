@@ -16,6 +16,9 @@ class Robot:
     
     def add_material(self):
         raise NotImplementedError()
+    
+    def run_cutting_experiment(self):
+        raise NotImplementedError()
  
  
     @property
