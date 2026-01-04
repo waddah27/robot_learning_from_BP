@@ -12,7 +12,10 @@
     "vis_joints":false,
     // visualize label name
     "vis_label_name":true,
-    "run_one_frame": false
+    "run_one_frame": false,
+
+    // register state parameters
+    "force_history":"force_history"
 
 
 }

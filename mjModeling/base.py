@@ -3,6 +3,10 @@ class Robot:
     def __init__(self):
         self._model = None
         self._data = None
+        self.state = {}
+        
+    def reset_state(self):
+        raise NotImplementedError()
     
     @property
     def model(self):

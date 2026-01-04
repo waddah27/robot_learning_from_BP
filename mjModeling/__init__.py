@@ -27,6 +27,9 @@ SCALPEL_DIRNAME = CONF["scalpel_dir"]
 VIS_SITE_FRAME = CONF["vis_site_frame"]
 VIS_VIRTUAL_JOINTS = CONF["vis_joints"]
 VIS_LABEL_NAME = CONF["vis_label_name"]
+
+# get state parameters names
+force_history = CONF["force_history"]
 scalpelHandler1_path = os.path.join(root_dir, SCALPEL_HANDLER_PART1)
 scalpelHandler2_path = os.path.join(root_dir, SCALPEL_HANDLER_PART2)
 scalpel_path = os.path.join(root_dir, SCALPEL_DIRNAME)

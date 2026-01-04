@@ -6,7 +6,15 @@ class iiwa14(Robot):
     def __init__(self):
         self._model = None
         self._data = None
-        self.force_history = []  # Store cutting forces
+        self.state = {}
+        self.reset_state()
+        
+    def reset_state(self):
+        """Reset the state dictionary"""
+        if not self.state.get(force_history):
+            self.state[force_history] = []  # Store cutting forces
+        else:
+            self.state.get(force_history).clear()
     
     @property
     def model(self):
@@ -145,7 +153,7 @@ class iiwa14(Robot):
     def record_force_step(self):
         """Record current cutting force for history"""
         force = self.get_total_cutting_force()
-        self.force_history.append(force.copy())
+        self.state.get(force_history).append(force.copy())
         return force
     
     def get_force_magnitude(self):
@@ -160,17 +168,46 @@ class iiwa14(Robot):
         print(f"\nStarting cutting stroke: depth={depth}m, steps={steps}")
         
         # Reset force history
-        self.force_history = []
+        self.reset_state()
         
         # Get initial TCP position
         tcp_id = self._model.site("scalpel_tip").id
         start_pos = self._data.site_xpos[tcp_id].copy()
+        print(f"start pos = {start_pos}")
+        
+        # ==== ADD CONTROL COMMANDS HERE ====
+        print(f"Applying control to {self._model.nu} actuators")
+        print(f"Control vector shape: {self._data.ctrl.shape}")
         
         # Simple downward motion
         for step in range(steps):
-            # Apply downward force/position (adjust based on your robot control)
-            # This depends on your robot's control interface
-            # Example: self._data.ctrl[2] = -0.01  # Z-axis control
+            # ==== THIS IS WHERE CONTROL THE ROBOT ====
+            # Try different control indices:
+            
+            # OPTION 1: Try position control on joint 6 (usually last joint)
+            # self._data.ctrl[5] = -0.01  # Negative = move down
+            
+            # OPTION 2: Try all joints small negative
+            # for i in range(min(6, self._model.nu)):
+            #     self._data.ctrl[i] = -0.005
+            
+            # OPTION 3: Direct Cartesian control (if your robot supports it)
+            # current_z = self._data.site_xpos[tcp_id][2]
+            # target_z = start_pos[2] - depth
+            # error = target_z - current_z
+            # self._data.ctrl[2] = error * 10.0  # P-control on Z
+            
+            # OPTION 4: Find which control moves Z - try each
+            if step < 50:
+                # Test control 0
+                self._data.ctrl[0] = -0.01
+            elif step < 100:
+                # Test control 1  
+                self._data.ctrl[1] = -0.01
+            elif step < 150:
+                # Test control 2
+                self._data.ctrl[2] = -0.01
+            # Continue for all controls...
             
             # Step simulation
             mujoco.mj_step(self._model, self._data)
@@ -182,18 +219,19 @@ class iiwa14(Robot):
             # Get current depth
             current_depth = start_pos[2] - self._data.site_xpos[tcp_id][2]
             
-            # Print progress every 50 steps
+            # Print progress
             if step % 50 == 0:
                 print(f"  Step {step:3d}: Depth={current_depth:.4f}m, Force={force_mag:.2f}N")
+                print(f"    TCP Z position: {self._data.site_xpos[tcp_id][2]:.4f}")
+                print(f"    Control values: {self._data.ctrl[:min(6, len(self._data.ctrl))]}")
             
             # Stop if reached target depth
             if current_depth >= depth:
                 print(f"  ✓ Reached target depth at step {step}")
                 break
         
-        print(f"Cutting completed. Max force: {np.max([np.linalg.norm(f) for f in self.force_history]):.2f}N")
-        return self.force_history
-    
+        print(f"Cutting completed. Max force: {np.max([np.linalg.norm(f) for f in self.state.get(force_history)]):.2f}N")
+        return self.state.get(force_history)   
     # ========== IMPEDANCE ESTIMATION ==========
     
     def estimate_impedance(self, displacement=0.001, steps=100):
