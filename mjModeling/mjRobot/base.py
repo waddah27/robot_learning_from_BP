@@ -8,9 +8,6 @@ class Robot:
     def reset_state(self):
         raise NotImplementedError()
     
-    @property
-    def model(self):
-        return self._model
     
     def create(self, xml_path):
         raise NotImplementedError()
@@ -24,6 +21,9 @@ class Robot:
     def run_cutting_experiment(self):
         raise NotImplementedError()
  
+    @property
+    def model(self):
+        return self._model
  
     @property
     def data(self):

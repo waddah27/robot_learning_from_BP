@@ -1,5 +1,5 @@
 from mjModeling import *
-from base import Robot
+from mjModeling.mjRobot.base import Robot
 class Visualize:
     def __init__(self, robot: Robot):
         self.robot = robot

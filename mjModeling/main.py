@@ -1,7 +1,7 @@
-from mjModeling.iiwa14_model import iiwa14
+from mjModeling.kuka_iiwa_14.iiwa14_model import iiwa14
 from mjModeling import *
-from visualizer import Visualize
-from kinematics import JacobianIK
+from mjModeling.visualization.visualizer import Visualize
+from kinematics import JacobianIK, quat_to_mat
 
 # 1 - build experiment env
 robot = iiwa14()

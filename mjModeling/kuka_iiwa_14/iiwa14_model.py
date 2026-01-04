@@ -1,4 +1,4 @@
-from mjModeling.base import Robot
+from mjModeling.mjRobot.base import Robot
 from mjModeling import *
 import numpy as np
 

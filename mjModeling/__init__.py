@@ -33,5 +33,7 @@ force_history = CONF["force_history"]
 scalpelHandler1_path = os.path.join(root_dir, SCALPEL_HANDLER_PART1)
 scalpelHandler2_path = os.path.join(root_dir, SCALPEL_HANDLER_PART2)
 scalpel_path = os.path.join(root_dir, SCALPEL_DIRNAME)
-robot_env_dir = os.path.join(os.path.dirname(__file__), CONF['robot_name'])
+
+robot_xml_dir = os.path.join(os.path.dirname(__file__), CONF['robot_name'])
+robot_env_dir = os.path.join(robot_xml_dir, 'xml')
 robot_scene_xml = os.path.join(robot_env_dir, 'scene.xml')
