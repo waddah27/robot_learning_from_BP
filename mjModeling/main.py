@@ -4,8 +4,7 @@ from visualization.visualizer import Visualize
 from kinematics import JacobianIK, quat_to_mat
 
 # 1 - build experiment env
-robot = iiwa14()
-robot.create(robot_scene_xml)
+robot = iiwa14().create(robot_scene_xml)
   
 print(robot.model.opt.gravity)
  

@@ -19,8 +19,9 @@ class iiwa14(Robot):
     @property
     def model(self):
         return self._model
-    
-    def create(self, xml_path):
+    @classmethod
+    def create(cls, xml_path):
+        self = cls()
         if not os.path.exists(xml_path):
             raise FileNotFoundError(f"XML not found at {xml_path}")
 
@@ -106,6 +107,7 @@ class iiwa14(Robot):
         print("✓ Model created")
         print(f"Scalpel geom ID: {self._model.geom('Scalpel_geom').id}")
         print(f"Material geom ID: {self._model.geom('material_geom').id}")
+        return self
         
     @property
     def data(self):

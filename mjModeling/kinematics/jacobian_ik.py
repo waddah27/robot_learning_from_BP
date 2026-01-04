@@ -5,7 +5,109 @@ class JacobianIK:
         self.robot = robot
         self.model = robot.model
         self.data = robot.data
+    
+    def move_to_position_with_viewer(self, target_pos, viewer, max_steps=500, tolerance=0.001, kp=5.0):
+        """Jacobian IK with visualization"""
         
+        tcp_id = self.model.site("scalpel_tip").id
+        nv = self.model.nv
+        
+        print(f"  Moving to: {target_pos}")
+        
+        for step in range(max_steps):
+            # Current TCP position
+            current_pos = self.data.site_xpos[tcp_id].copy()
+            
+            # Position error
+            error = target_pos - current_pos
+            error_norm = np.linalg.norm(error)
+            
+            # Print progress every 50 steps
+            if step % 50 == 0:
+                print(f"    Step {step}: error = {error_norm:.6f}")
+            
+            # Check if converged
+            if error_norm < tolerance:
+                print(f"    ✓ Converged in {step} steps")
+                return True
+            
+            # Get Jacobian
+            jac_pos = np.zeros((3, nv))
+            mujoco.mj_jacSite(self.model, self.data, jac_pos, None, tcp_id)
+            
+            # Damped pseudo-inverse (more stable)
+            damping = 0.1
+            jac_pinv = jac_pos.T @ np.linalg.inv(jac_pos @ jac_pos.T + damping * np.eye(3))
+            
+            # Desired velocity
+            desired_velocity = kp * error
+            
+            # Joint velocity
+            dq = jac_pinv @ desired_velocity
+            
+            # Update joint positions
+            dt = self.model.opt.timestep
+            self.data.qpos[:nv] += dq * dt
+            
+            # Forward kinematics
+            mujoco.mj_forward(self.model, self.data)
+            
+            # Sync viewer EVERY STEP
+            viewer.sync()
+            
+            # Optional: small delay to see movement
+            # time.sleep(0.001)
+        
+        print(f"    ✗ Failed after {max_steps} steps, error: {error_norm:.6f}")
+        return False    
+    
+    # def move_to_position(self, target_pos, viewer=None, max_steps=500, kp=10.0):
+    #     """Move TCP to target using Jacobian IK"""
+        
+    #     tcp_id = self.model.site("scalpel_tip").id
+    #     nv = self.model.nv
+        
+    #     print(f"Moving TCP from {self.data.site_xpos[tcp_id]} to {target_pos}")
+        
+    #     for step in range(max_steps):
+    #         # Current position
+    #         current = self.data.site_xpos[tcp_id].copy()
+    #         error = target_pos - current
+    #         error_norm = np.linalg.norm(error)
+            
+    #         if step % 10 == 0:
+    #             print(f"  Step {step}: error={error_norm:.6f}")
+            
+    #         if error_norm < 0.001:
+    #             print(f"  ✓ Converged in {step} steps")
+    #             break
+            
+    #         # Get Jacobian
+    #         jac = np.zeros((3, nv))
+    #         mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
+            
+    #         # Damped pseudo-inverse
+    #         damping = 0.01
+    #         jac_pinv = jac.T @ np.linalg.inv(jac @ jac.T + damping * np.eye(3))
+            
+    #         # Desired velocity
+    #         v_desired = kp * error
+            
+    #         # Joint velocity
+    #         dq = jac_pinv @ v_desired
+            
+    #         # Update: q = q + dq * dt
+    #         dt = self.model.opt.timestep
+    #         self.data.qpos[:nv] += dq * dt
+            
+    #         # Update
+    #         mujoco.mj_forward(self.model, self.data)
+            
+    #         # Sync viewer if provided
+    #         if viewer:
+    #             viewer.sync()
+        
+    #     return self.data.qpos[:nv].copy()
     def move_to_position(self, target_pos, max_steps=500, tolerance=0.001, kp=5.0):
         """
         Move TCP to target position using Jacobian IK

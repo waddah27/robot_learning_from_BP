@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 class Robot(ABC):
     def __init__(self):
         self._model = None
@@ -6,7 +6,7 @@ class Robot(ABC):
         self.state = {}
     @abstractmethod
     def reset_state(self):...
-    @abstractmethod
+    @classmethod
     def create(self, xml_path):...
     @abstractmethod
     # def add_scalpel(self):...
@@ -14,9 +14,9 @@ class Robot(ABC):
     # def add_material(self): ...
     @abstractmethod
     def run_experiment(self): ...
-    @abstractproperty
+    @property
     def model(self):...
-    @abstractproperty
+    @property
     def data(self):...
         
             
