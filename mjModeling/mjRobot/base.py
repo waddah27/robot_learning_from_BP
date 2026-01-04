@@ -1,32 +1,22 @@
-
-class Robot:
+from abc import ABC, abstractmethod, abstractproperty
+class Robot(ABC):
     def __init__(self):
         self._model = None
         self._data = None
         self.state = {}
-        
-    def reset_state(self):
-        raise NotImplementedError()
-    
-    
-    def create(self, xml_path):
-        raise NotImplementedError()
-    
-    def add_scalpel(self):
-        raise NotImplementedError()
-    
-    def add_material(self):
-        raise NotImplementedError()
-    
-    def run_cutting_experiment(self):
-        raise NotImplementedError()
- 
-    @property
-    def model(self):
-        return self._model
- 
-    @property
-    def data(self):
-        return self._data
+    @abstractmethod
+    def reset_state(self):...
+    @abstractmethod
+    def create(self, xml_path):...
+    @abstractmethod
+    # def add_scalpel(self):...
+    # @abstractmethod
+    # def add_material(self): ...
+    @abstractmethod
+    def run_experiment(self): ...
+    @abstractproperty
+    def model(self):...
+    @abstractproperty
+    def data(self):...
         
             

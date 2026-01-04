@@ -286,7 +286,7 @@ class iiwa14(Robot):
 
     # ========== MAIN EXPERIMENT ==========
 
-    def run_cutting_experiment(self):
+    def run_experiment(self):
         """ TODO refactor this later
         """
 
