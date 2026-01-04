@@ -5,7 +5,13 @@
         "part2" :  "scalpel_model/scalpel/scalpelHandler2.STL"
     },
     "scalpel_dir" :  "scalpel_model/scalpel/Scalpel.stl",
-
+    
+    // visualize site frame for TCP and ee
+    "vis_site_frame":false,
+    // visualize virtual joints between model components 
+    "vis_joints":false,
+    // visualize label name
+    "vis_label_name":true,
     "run_one_frame": false
 
 

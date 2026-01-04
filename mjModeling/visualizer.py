@@ -12,12 +12,15 @@ class Visualize:
         with mujoco.viewer.launch_passive(self.robot.model, self.robot.data) as viewer:
             # --- Enable joint visualization *after* the viewer starts ---
             with viewer.lock():
-                viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_JOINT] = False
-                # 1. Show the Site Label (displays the name "scalpel_tip" in the 3D view)
-                viewer.opt.label = mujoco.mjtLabel.mjLABEL_SITE
+                # Show virtual joints between componnets 
+                viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_JOINT] = VIS_VIRTUAL_JOINTS
+                # Show the Site Label (displays the name "scalpel_tip" in the 3D view)
+                if VIS_LABEL_NAME:
+                    viewer.opt.label = mujoco.mjtLabel.mjLABEL_SITE
             
-            # 2. Show the Site Frame (displays RGB axes at the TCP)
-                # viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
+                # Show the Site Frame (displays RGB axes at the TCP)
+                if VIS_SITE_FRAME:
+                    viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
             
             # 3. Ensure the group site belongs to is visible (default is Group 0)
             # This bitmask enables groups 0, 1, and 2
