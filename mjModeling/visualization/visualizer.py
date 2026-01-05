@@ -7,7 +7,7 @@ class Visualize:
     def __init__(self, robot: Robot):
         self.robot = robot
 
-    def run(self):
+    def run(self, callback):
         # Simulate and display video.
         # Reset state and time.
         mujoco.mj_resetData(self.robot.model, self.robot.data)
@@ -35,7 +35,7 @@ class Visualize:
             # Loop as long as the user has not closed the viewer window.
             while viewer.is_running():
                 step_start = time.time()
-                self.robot.run_experiment()
+                self.robot.run_experiment(callback)
                 # Step the simulation forward
                 mujoco.mj_step(self.robot.model, self.robot.data)  
                 # Sync the viewer display with the current data 
