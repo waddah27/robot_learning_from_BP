@@ -4,18 +4,25 @@ class Robot(ABC):
         self._model = None
         self._data = None
         self.state = {}
-    @abstractmethod
-    def reset_state(self):...
+    
     @classmethod
     def create(self, xml_path):...
+    
     @abstractmethod
+    def reset_state(self):...
+    
+    # @abstractmethod
     # def add_scalpel(self):...
+    
     # @abstractmethod
     # def add_material(self): ...
+    
     @abstractmethod
     def run_experiment(self): ...
+    
     @property
     def model(self):...
+    
     @property
     def data(self):...
         

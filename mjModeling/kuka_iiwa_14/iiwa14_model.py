@@ -8,17 +8,7 @@ class iiwa14(Robot):
         self._data = None
         self.state = {}
         self.reset_state()
-        
-    def reset_state(self):
-        """Reset the state dictionary"""
-        if not self.state.get(force_history):
-            self.state[force_history] = []  # Store cutting forces
-        else:
-            self.state.get(force_history).clear()
     
-    @property
-    def model(self):
-        return self._model
     @classmethod
     def create(cls, xml_path):
         self = cls()
@@ -108,11 +98,21 @@ class iiwa14(Robot):
         print(f"Scalpel geom ID: {self._model.geom('Scalpel_geom').id}")
         print(f"Material geom ID: {self._model.geom('material_geom').id}")
         return self
+
+    @property
+    def model(self):
+        return self._model
         
     @property
     def data(self):
         return self._data
-    
+
+    def reset_state(self):
+        """Reset the state dictionary"""
+        if not self.state.get(force_history):
+            self.state[force_history] = []  # Store cutting forces
+        else:
+            self.state.get(force_history).clear()
     # ========== CONTACT FORCE MEASUREMENT METHODS ==========
     
     def get_scalpel_contact_forces(self):
