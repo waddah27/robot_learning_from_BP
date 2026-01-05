@@ -1,6 +1,6 @@
 from mjModeling import robot_scene_xml
 from kuka_iiwa_14.iiwa14_model import iiwa14
-from mjModeling.impedance import ImpedanceEstimator
+from mjModeling.experiments import ImpedanceEstimator
 from visualization.visualizer import Visualize
 from kinematics import JacobianIK, quat_to_mat
 
@@ -12,4 +12,4 @@ print(robot.model.opt.gravity)
 visualizer = Visualize(robot)
 
 if __name__ == '__main__':
-    visualizer.run(callback=lambda: impedanceEstimator.run_experiment())
+    visualizer.run(callback=lambda: impedanceEstimator.execute())

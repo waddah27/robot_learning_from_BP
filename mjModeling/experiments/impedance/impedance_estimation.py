@@ -183,7 +183,7 @@ class ImpedanceEstimator:
 
     # ========== MAIN EXPERIMENT ==========
 
-    def run_experiment(self):
+    def execute(self):
         """ TODO refactor this later
         """
 
