@@ -1,11 +1,15 @@
-from ctypes import Array
+import mujoco
 import numpy as np
-from mjModeling import mujoco
-from mjModeling.kinematics.utils import mat_to_axisangle, quat_to_mat, getMatPinv
+from mjModeling.kinematics.utils import (
+    mat_to_axisangle,
+    quat_to_mat,
+    getMatPinv
+    )
+from mjModeling.mjRobot.base import Robot
 
 
 class JacobianIK:
-    def __init__(self, robot):
+    def __init__(self, robot: Robot):
         self.robot = robot
         self.model = robot.model
         self.data = robot.data
