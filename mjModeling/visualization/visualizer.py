@@ -31,7 +31,6 @@ class Visualize:
                 # (default is Group 0)
                 # This bitmask enables groups 0, 1, and 2
                 viewer.opt.sitegroup = 3
-                # You can add other flags here too, e.g.:
                 # viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
             # Loop as long as the user has not closed the viewer window.
             while viewer.is_running():

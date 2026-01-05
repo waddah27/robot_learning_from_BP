@@ -73,7 +73,7 @@ class iiwa14(Robot):
         pos=attach_site.pos + tip_offset,
         size=[0.002, 0.002, 0.002], # Small visual marker
         rgba=[1, 0, 0, 1], # Red tip
-        group=1  # Ensure group 1 is enabled in your viewer
+        group=1  # Ensure group 1 is enabled in viewer
         )
         
         # 9. Cutting material definition - MAKE IT SOFTER for cutting
@@ -193,7 +193,7 @@ class iiwa14(Robot):
             # for i in range(min(6, self._model.nu)):
             #     self._data.ctrl[i] = -0.005
             
-            # OPTION 3: Direct Cartesian control (if your robot supports it)
+            # OPTION 3: Direct Cartesian control (if robot supports it)
             # current_z = self._data.site_xpos[tcp_id][2]
             # target_z = start_pos[2] - depth
             # error = target_z - current_z
@@ -249,7 +249,7 @@ class iiwa14(Robot):
         # Apply small downward displacement
         displacement_forces = []
         for step in range(steps):
-            # Apply small control (adjust for your robot)
+            # Apply small control (adjust for robot)
             # self._data.ctrl[2] = -0.001
             
             mujoco.mj_step(self._model, self._data)
@@ -297,7 +297,6 @@ class iiwa14(Robot):
         print("="*60)
         
         # 1. Move robot to starting position above material
-        # (You need to implement this based on your robot)
         print("\n1. Positioning robot...")
         # position_robot_above_material(robot)
         

@@ -123,7 +123,7 @@ class JacobianIK:
     
     def move_with_orientation(self, target_pos, target_quat=None, max_steps=500, kp_pos=5.0, kp_ori=1.0):
         """
-        Move to position AND orientation (if you need to control rotation)
+        Move to position AND orientation 
         target_quat: [w, x, y, z] quaternion
         """
         

@@ -180,7 +180,7 @@ def position_for_cutting_manual_viewer():
             if step_count % 100 == 0:
                 print(f"\rTCP: [{current_pos[0]:.3f}, {current_pos[1]:.3f}, {current_pos[2]:.3f}]", end="")
             
-            # Just step simulation (no movement unless you add control)
+            # Just step simulation (no movement unless if add control)
             mujoco.mj_step(robot.model, robot.data)
             viewer.sync()
             
@@ -193,7 +193,7 @@ def quick_visual_test():
     """Just open viewer and show robot"""
     
     print("Opening viewer...")
-    print("You should see:")
+    print("We should see:")
     print("1. Robot with scalpel")
     print("2. Green material block")
     print("3. Red TCP site at scalpel tip")
