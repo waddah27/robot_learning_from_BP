@@ -1,3 +1,4 @@
+from typing import Callable
 from mjModeling.mjRobot.base import Robot
 from mjModeling import *
 import numpy as np
@@ -114,8 +115,11 @@ class iiwa14(Robot):
         else:
             self.state.get(force_history).clear()
     
-    def run_experiment(self, callback):
-        callback()
+    def run_experiment(self, callback: Callable[[], None]):
+        if callable(callback):
+            callback()
+        else:
+            print("callback must be a Callable")
     
 
 # Run the experiment
