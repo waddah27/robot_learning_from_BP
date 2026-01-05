@@ -110,7 +110,7 @@ def position_for_cutting_with_viewer():
         print(f"\n1. Moving to approach position: {approach_pos}")
         
         # Visualized move
-        success1 = ik.move_to_position_with_viewer(approach_pos, viewer, max_steps=400)
+        success1 = ik.move_to_position(approach_pos, viewer, max_steps=400)
         
         if success1:
             print("✓ Approach position reached")
@@ -123,7 +123,7 @@ def position_for_cutting_with_viewer():
         print(f"\n2. Moving to cutting height: {cut_pos}")
         
         # Visualized move
-        success2 = ik.move_to_position_with_viewer(cut_pos, viewer, max_steps=200)
+        success2 = ik.move_to_position(cut_pos, viewer, max_steps=200)
         
         if success2:
             print("✓ Cutting height reached")
