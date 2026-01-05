@@ -25,7 +25,7 @@ SCALPEL_HANDLER_PART1 = CONF["scalpel_handler"]["part1"]
 SCALPEL_HANDLER_PART2 = CONF["scalpel_handler"]["part2"]
 SCALPEL_DIRNAME = CONF["scalpel_dir"]
 VIS_SITE_FRAME = CONF["vis_site_frame"]
-VIS_VIRTUAL_JOINTS = CONF["vis_joints"]
+VIS_JOINTS = CONF["vis_joints"]
 VIS_LABEL_NAME = CONF["vis_label_name"]
 
 # get state parameters names
