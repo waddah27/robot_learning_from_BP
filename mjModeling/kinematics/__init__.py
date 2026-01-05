@@ -1,2 +1,2 @@
-from .jacobian_ik import JacobianIK
+from .jacobian_ik import *
 from .utils import *
