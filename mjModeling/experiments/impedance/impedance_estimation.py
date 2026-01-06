@@ -7,9 +7,10 @@ from mjModeling.conf import (
     FORCE_HISTORY,
     SCALPEL_GEOM
     )
+from mjModeling.experiments import Experiment
 
 
-class ImpedanceEstimator:
+class ImpedanceEstimator(Experiment):
     def __init__(self, robot: Robot):
         self.robot = robot
 
