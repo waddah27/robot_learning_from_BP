@@ -1,4 +1,6 @@
-from mjModeling import mujoco, time
+import time
+import mujoco
+import mujoco.viewer as mjViewer
 from mjModeling import VIS_SITE_FRAME, VIS_LABEL_NAME, VIS_JOINTS
 from mjModeling.mjRobot.base import Robot
 
@@ -12,7 +14,7 @@ class Visualize:
         # Reset state and time.
         mujoco.mj_resetData(self.robot.model, self.robot.data)
         # Launch the viewer
-        passive_viewer = mujoco.viewer.launch_passive(
+        passive_viewer = mjViewer.launch_passive(
             self.robot.model, self.robot.data
             )
         with passive_viewer as viewer:

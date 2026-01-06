@@ -1,4 +1,11 @@
-from mjModeling import load_dotenv, os, subprocess, np
+# Other imports and helper functions
+import os
+import mujoco
+import numpy as np
+from dotenv import load_dotenv
+import subprocess
+
+
 def config_gpu():
   # Configure MuJoCo to use the EGL rendering backend (requires GPU)
   print('Setting environment variable to use GPU rendering:')
