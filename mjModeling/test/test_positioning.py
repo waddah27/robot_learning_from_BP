@@ -1,9 +1,9 @@
 import numpy as np
 import mujoco
-from mjModeling import MATERIAL_GEOM, robot_scene_xml
+from mjModeling import MATERIAL_GEOM, ROBOT_SCENE
 from mjModeling.kuka_iiwa_14 import iiwa14
 from mjModeling.kinematics import JacobianIK
-robot = iiwa14().create(robot_scene_xml)
+robot = iiwa14().create(ROBOT_SCENE)
 
 
 def test_positioning():

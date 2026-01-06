@@ -4,10 +4,10 @@ from mjModeling.mjRobot.base import Robot
 from mjModeling import (
     MATERIAL_GEOM,
     SCALPEL_GEOM,
-    scalpelHandler1_path,
-    scalpelHandler2_path,
-    scalpel_path,
-    force_history
+    SCALPEL_HANDLER_1_PATH,
+    SCALPEL_HANDLER_2_PATH,
+    SCALPEL_PATH,
+    FORCE_HISTORY
 )
 import mujoco
 
@@ -28,16 +28,16 @@ class iiwa14(Robot):
         spec = mujoco.MjSpec.from_file(xml_path)
 
         # 1. Register Mesh 1
-        mesh1 = spec.add_mesh(name="mesh1", file=scalpelHandler1_path)
+        mesh1 = spec.add_mesh(name="mesh1", file=SCALPEL_HANDLER_1_PATH)
         mesh1.refquat = [0.707, -0.707, 0, 0]
         mesh1.scale = [0.001, 0.001, 0.001] 
 
         # 2. Register Mesh 2
-        mesh2 = spec.add_mesh(name="mesh2", file=scalpelHandler2_path)
+        mesh2 = spec.add_mesh(name="mesh2", file=SCALPEL_HANDLER_2_PATH)
         mesh2.refquat = [0.0, 1.0, 0, 0] # Match the orientation of part 1
         mesh2.scale = [0.001, 0.001, 0.001]
         # 3. Register the scalpel mesh
-        mesh3 = spec.add_mesh(name="mesh3", file=scalpel_path)
+        mesh3 = spec.add_mesh(name="mesh3", file=SCALPEL_PATH)
         #  Rotate 60 degrees To mach scalpel being perpendicular to ee  
         mesh3.refquat = [0, 0.5, 0, 0.866] 
         mesh3.scale = [0.0001, 0.0001, 0.0001]
@@ -117,10 +117,10 @@ class iiwa14(Robot):
 
     def reset_state(self):
         """Reset the state dictionary"""
-        if not self.state.get(force_history):
-            self.state[force_history] = []  # Store cutting forces
+        if not self.state.get(FORCE_HISTORY):
+            self.state[FORCE_HISTORY] = []  # Store cutting forces
         else:
-            self.state.get(force_history).clear()
+            self.state.get(FORCE_HISTORY).clear()
 
     def run_experiment(self, callback: Callable[[], None]):
         if callable(callback):

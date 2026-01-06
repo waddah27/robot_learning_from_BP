@@ -1,4 +1,4 @@
-from mjModeling import robot_scene_xml
+from mjModeling import ROBOT_SCENE
 from kuka_iiwa_14.iiwa14_model import iiwa14
 from mjModeling.experiments import (
     ImpedanceEstimator,
@@ -7,7 +7,7 @@ from mjModeling.experiments import (
 from visualization.visualizer import Visualize
 
 # 1 - build experiment env
-robot = iiwa14().create(robot_scene_xml)
+robot = iiwa14().create(ROBOT_SCENE)
 impedanceEstimator = ImpedanceEstimator(robot)
 init_pos = InitPos(robot)
 print(robot.model.opt.gravity)

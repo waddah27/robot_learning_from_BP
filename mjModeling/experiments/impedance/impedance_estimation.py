@@ -4,7 +4,7 @@ import mujoco
 import numpy as np
 from mjModeling.mjRobot.base import Robot
 from mjModeling import (
-    force_history,
+    FORCE_HISTORY,
     SCALPEL_GEOM
     )
 
@@ -53,7 +53,7 @@ class ImpedanceEstimator:
     def record_force_step(self):
         """Record current cutting force for history"""
         force = self.get_total_cutting_force()
-        self.robot.state.get(force_history).append(force.copy())
+        self.robot.state.get(FORCE_HISTORY).append(force.copy())
         return force
     
     def get_force_magnitude(self):
@@ -130,8 +130,8 @@ class ImpedanceEstimator:
                 print(f"  ✓ Reached target depth at step {step}")
                 break
         
-        print(f"Cutting completed. Max force: {np.max([np.linalg.norm(f) for f in self.robot.state.get(force_history)]):.2f}N")
-        return self.robot.state.get(force_history)   
+        print(f"Cutting completed. Max force: {np.max([np.linalg.norm(f) for f in self.robot.state.get(FORCE_HISTORY)]):.2f}N")
+        return self.robot.state.get(FORCE_HISTORY)   
     # ========== IMPEDANCE ESTIMATION ==========
     
     def estimate_impedance(self, displacement=0.001, steps=100):

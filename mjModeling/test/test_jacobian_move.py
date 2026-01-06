@@ -1,10 +1,10 @@
 from mjModeling.kuka_iiwa_14 import iiwa14
 import mujoco
 from mjModeling.kinematics import JacobianIK
-from mjModeling import robot_scene_xml
+from mjModeling import ROBOT_SCENE
 
 
-robot = iiwa14().create(robot_scene_xml)
+robot = iiwa14().create(ROBOT_SCENE)
 
 
 def test_jacobian_movement():
