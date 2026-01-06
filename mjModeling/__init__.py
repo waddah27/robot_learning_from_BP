@@ -1,1 +1,1 @@
-from .conf import *
+from .mjRobot import Robot

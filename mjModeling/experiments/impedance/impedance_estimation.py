@@ -2,8 +2,8 @@
 
 import mujoco
 import numpy as np
-from mjModeling.mjRobot.base import Robot
-from mjModeling import (
+from mjModeling import Robot
+from mjModeling.conf import (
     FORCE_HISTORY,
     SCALPEL_GEOM
     )

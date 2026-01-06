@@ -1,7 +1,7 @@
 import numpy as np
 from mjModeling.kinematics import JacobianIK
-from mjModeling.mjRobot import Robot
-from mjModeling import MATERIAL_GEOM
+from mjModeling import Robot
+from mjModeling.conf import MATERIAL_GEOM
 
 
 class InitPos:

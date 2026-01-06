@@ -5,7 +5,7 @@ from mjModeling.kinematics.utils import (
     quat_to_mat,
     getMatPinv
     )
-from mjModeling.mjRobot.base import Robot
+from mjModeling import Robot
 
 
 class JacobianIK:

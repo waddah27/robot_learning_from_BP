@@ -1,8 +1,8 @@
 import time
 import mujoco
 import mujoco.viewer as mjViewer
-from mjModeling import VIS_SITE_FRAME, VIS_LABEL_NAME, VIS_JOINTS
-from mjModeling.mjRobot.base import Robot
+from mjModeling.conf import VIS_SITE_FRAME, VIS_LABEL_NAME, VIS_JOINTS
+from mjModeling import Robot
 
 
 class Visualize:

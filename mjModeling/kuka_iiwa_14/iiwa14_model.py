@@ -1,7 +1,7 @@
 import os
 from typing import Callable
-from mjModeling.mjRobot.base import Robot
-from mjModeling import (
+from mjModeling import Robot
+from mjModeling.conf import (
     MATERIAL_GEOM,
     SCALPEL_GEOM,
     SCALPEL_HANDLER_1_PATH,

@@ -1,4 +1,4 @@
-from mjModeling import ROBOT_SCENE
+from mjModeling.conf import ROBOT_SCENE
 from kuka_iiwa_14.iiwa14_model import iiwa14
 from mjModeling.experiments import (
     ImpedanceEstimator,
