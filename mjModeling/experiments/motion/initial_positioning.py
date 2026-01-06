@@ -2,10 +2,7 @@ import numpy as np
 from mjModeling.experiments import Experiment
 from mjModeling.kinematics import JacobianIK
 from mjModeling import Robot
-from mjModeling.conf import (
-    MATERIAL_GEOM,
-    IK_MAX_STEPS
-    )
+from mjModeling.conf import MATERIAL_GEOM
 
 
 class InitPos(Experiment):
@@ -29,7 +26,7 @@ class InitPos(Experiment):
         approach_pos[2] = mat_center[2] + mat_size[2] + 0.3  # Top + 30cm
         print(f"\n1. Moving to approach position: {approach_pos}")
         # Visualized move
-        success1 = ik.move_to_position(approach_pos, max_steps=IK_MAX_STEPS)
+        success1 = ik.move_to_position(approach_pos)
         if success1:
             print("✓ Approach position reached")
         else:
@@ -39,7 +36,7 @@ class InitPos(Experiment):
         cut_pos[2] = mat_center[2] #+ mat_size[2] + 0.05  # Top + 5cm
         print(f"\n2. Moving to cutting height: {cut_pos}")
         # Visualized move
-        success2 = ik.move_to_position(cut_pos, max_steps=IK_MAX_STEPS)
+        success2 = ik.move_to_position(cut_pos)
         if success2:
             print("✓ Cutting height reached")
         else:

@@ -1,12 +1,21 @@
 import os
 import re
 import json
+from enum import Enum
 # load configs 
 file_dir = os.path.dirname(__file__)
 root_dir = os.path.dirname(file_dir)
 
 # Load configs from json igonring comments
 configs = json.loads(re.sub(r'//.*|/\*[\s\S]*?\*/', '', open(os.path.join(file_dir,'configs.json')).read()))
+
+
+# IK parameters
+class paramIK(Enum):
+    IK_MAX_STEPS = configs["IK_params"]["ik_max_steps"]
+    IK_KP = configs["IK_params"]["kp"]
+    IK_KD = configs["IK_params"]["kd"]
+    IK_TOL = configs["IK_params"]["tolerance"] 
 
 # Construct the full absolute path to the STL
 SCALPEL_HANDLER_PART1 = configs["scalpel_handler_dir"]["part1"]
@@ -30,5 +39,5 @@ MATERIAL_GEOM = configs["material_geom_name"]
 SCALPEL_GEOM = configs["scalpel_geom_name"]
 # get robot state dict keys
 FORCE_HISTORY = configs["force_history"]
-# IK parameters
-IK_MAX_STEPS = configs["ik_max_steps"]
+
+

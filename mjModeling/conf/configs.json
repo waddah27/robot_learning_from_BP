@@ -20,7 +20,14 @@
     // register robot state dict keys
     "force_history":"force_history",
     // IK algorithm parameters
-    "ik_max_steps": 500
+    "IK_params": {
+
+        "ik_max_steps": 500,
+        "tolerance": 0.001,
+        "kp": 50,
+        "kd": 0.1
+    }
+
 
 
 }

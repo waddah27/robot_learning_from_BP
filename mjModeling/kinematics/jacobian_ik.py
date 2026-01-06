@@ -1,5 +1,6 @@
 import mujoco
 import numpy as np
+from mjModeling.conf import paramIK
 from mjModeling.kinematics.utils import (
     mat_to_axisangle,
     quat_to_mat,
@@ -15,7 +16,8 @@ class JacobianIK:
         self.data = robot.data
 
     def move_to_position(self, target_pos, viewer=None, max_steps=500,
-                         tolerance=0.001, kp=5.0, kd=0.1):
+                         tolerance=paramIK.IK_TOL.value, kp=paramIK.IK_KP.value, 
+                         kd=paramIK.IK_KD.value):
         """
         Move TCP to target position using Jacobian IK
         target_pos: [x, y, z] in world coordinates

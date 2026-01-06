@@ -19,7 +19,7 @@ class iiwa14(Robot):
         self._data = None
         self.state = {}
         self.reset_state()
-    
+
     @classmethod
     def create(cls, xml_path):
         self = cls()
@@ -86,7 +86,6 @@ class iiwa14(Robot):
             rgba=[1, 0, 0, 1],  # Red tip
             group=1  # Ensure group 1 is enabled in viewer
         )
-        
         # 9. Cutting material definition - MAKE IT SOFTER for cutting
         material = spec.worldbody.add_body(name=MATERIAL_NAME)
         material.add_geom(
