@@ -7,6 +7,7 @@
     },
     "scalpel_dir" :  "scalpel_model/scalpel/Scalpel.stl",
     "material_geom_name":"material_geom",
+    "scalpel_geom_name":"scalpel_geom",
     
     // visualize site frame for TCP and ee
     "vis_site_frame":false,

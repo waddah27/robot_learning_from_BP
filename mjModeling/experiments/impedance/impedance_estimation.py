@@ -3,7 +3,10 @@
 import mujoco
 import numpy as np
 from mjModeling.mjRobot.base import Robot
-from mjModeling import force_history
+from mjModeling import (
+    force_history,
+    SCALPEL_GEOM
+    )
 
 
 class ImpedanceEstimator:
@@ -13,7 +16,7 @@ class ImpedanceEstimator:
     def get_scalpel_contact_forces(self):
         """Get all contact forces on the scalpel"""
         scalpel_forces = []
-        scalpel_geom_id = self.robot.model.geom("Scalpel_geom").id
+        scalpel_geom_id = self.robot.model.geom(SCALPEL_GEOM).id
         
         for i in range(self.robot.data.ncon):
             contact = self.robot.data.contact[i]

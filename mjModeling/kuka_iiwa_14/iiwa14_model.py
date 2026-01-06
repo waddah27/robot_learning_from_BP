@@ -3,6 +3,7 @@ from typing import Callable
 from mjModeling.mjRobot.base import Robot
 from mjModeling import (
     MATERIAL_GEOM,
+    SCALPEL_GEOM,
     scalpelHandler1_path,
     scalpelHandler2_path,
     scalpel_path,
@@ -69,14 +70,14 @@ class iiwa14(Robot):
         )
         # 7. Scalpel geometry from registered scalpel mesh
         handler.add_geom(
-            name="Scalpel_geom", 
+            name=SCALPEL_GEOM,
             type=mujoco.mjtGeom.mjGEOM_MESH,
-            meshname="mesh3", 
+            meshname="mesh3",
             rgba=[0.8, 0.8, 0.8, 1],  # Grey to distinguish
             pos=attach_site.pos
         )
         # 8. TCP defined at the tip of scalpel
-        tip_offset = [0, 0, 0.113] 
+        tip_offset = [0, 0, 0.113]
         tcp_site = handler.add_site(
             name="scalpel_tip",
             pos=attach_site.pos + tip_offset,
@@ -102,7 +103,7 @@ class iiwa14(Robot):
         self._data = mujoco.MjData(self._model)
         mujoco.mj_forward(self._model, self._data)
         print("✓ Model created")
-        print(f"Scalpel geom ID: {self._model.geom('Scalpel_geom').id}")
+        print(f"Scalpel geom ID: {self._model.geom(SCALPEL_GEOM).id}")
         print(f"Material geom ID: {self._model.geom(MATERIAL_GEOM).id}")
         return self
 
