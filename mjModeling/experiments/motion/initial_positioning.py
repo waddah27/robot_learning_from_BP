@@ -2,7 +2,10 @@ import numpy as np
 from mjModeling.experiments import Experiment
 from mjModeling.kinematics import JacobianIK
 from mjModeling import Robot
-from mjModeling.conf import MATERIAL_GEOM
+from mjModeling.conf import (
+    MATERIAL_GEOM,
+    IK_MAX_STEPS
+    )
 
 
 class InitPos(Experiment):
@@ -10,7 +13,7 @@ class InitPos(Experiment):
         self.robot = robot
 
     def execute(self):
-        self._init_position_for_cutting()
+        return self._init_position_for_cutting()
 
     def _init_position_for_cutting(self):
         """Position robot for cutting WITH VISUALIZATION"""
@@ -26,17 +29,17 @@ class InitPos(Experiment):
         approach_pos[2] = mat_center[2] + mat_size[2] + 0.3  # Top + 30cm
         print(f"\n1. Moving to approach position: {approach_pos}")
         # Visualized move
-        success1 = ik.move_to_position(approach_pos, max_steps=400)
+        success1 = ik.move_to_position(approach_pos, max_steps=IK_MAX_STEPS)
         if success1:
             print("✓ Approach position reached")
         else:
             print("✗ Failed to reach approach position")
         # Position 2: Cutting height (5cm above)
         cut_pos = mat_center.copy()
-        cut_pos[2] = mat_center[2] + mat_size[2] + 0.05  # Top + 5cm
+        cut_pos[2] = mat_center[2] #+ mat_size[2] + 0.05  # Top + 5cm
         print(f"\n2. Moving to cutting height: {cut_pos}")
         # Visualized move
-        success2 = ik.move_to_position(cut_pos, max_steps=200)
+        success2 = ik.move_to_position(cut_pos, max_steps=IK_MAX_STEPS)
         if success2:
             print("✓ Cutting height reached")
         else:
@@ -47,3 +50,4 @@ class InitPos(Experiment):
         print(f"\n✓ Final TCP: {final_pos}")
         print(f"  Desired: {cut_pos}")
         print(f"  Error: {np.linalg.norm(final_pos - cut_pos):.6f}m")
+        return 0

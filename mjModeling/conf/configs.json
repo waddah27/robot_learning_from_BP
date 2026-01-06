@@ -6,6 +6,7 @@
         "part2" :  "scalpel_model/scalpel/scalpelHandler2.STL"
     },
     "scalpel_dir" :  "scalpel_model/scalpel/Scalpel.stl",
+    "material_name": "cutting_material",
     "material_geom_name":"material_geom",
     "scalpel_geom_name":"scalpel_geom",
     
@@ -17,7 +18,9 @@
     "vis_label_name":true,
 
     // register robot state dict keys
-    "force_history":"force_history"
+    "force_history":"force_history",
+    // IK algorithm parameters
+    "ik_max_steps": 500
 
 
 }

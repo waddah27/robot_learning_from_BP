@@ -24,8 +24,11 @@ ROBOT_DIR = os.path.join(root_dir, configs['robot_name'])
 ROBOT_XML_DIR = os.path.join(ROBOT_DIR, 'xml')
 ROBOT_SCENE = os.path.join(ROBOT_XML_DIR, 'scene.xml')
 
-# added geometries parameters
+# attached assets parameters
+MATERIAL_NAME = configs["material_name"]
 MATERIAL_GEOM = configs["material_geom_name"]
 SCALPEL_GEOM = configs["scalpel_geom_name"]
 # get robot state dict keys
 FORCE_HISTORY = configs["force_history"]
+# IK parameters
+IK_MAX_STEPS = configs["ik_max_steps"]

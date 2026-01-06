@@ -7,7 +7,8 @@ from mjModeling.conf import (
     SCALPEL_HANDLER_1_PATH,
     SCALPEL_HANDLER_2_PATH,
     SCALPEL_PATH,
-    FORCE_HISTORY
+    FORCE_HISTORY,
+    MATERIAL_NAME
 )
 import mujoco
 
@@ -87,7 +88,7 @@ class iiwa14(Robot):
         )
         
         # 9. Cutting material definition - MAKE IT SOFTER for cutting
-        material = spec.worldbody.add_body(name="cutting_material")
+        material = spec.worldbody.add_body(name=MATERIAL_NAME)
         material.add_geom(
             name=MATERIAL_GEOM,
             type=mujoco.mjtGeom.mjGEOM_BOX,
@@ -124,9 +125,10 @@ class iiwa14(Robot):
 
     def run_experiment(self, callback: Callable[[], None]):
         if callable(callback):
-            callback()
+            return callback()
         else:
             print("callback must be a Callable")
+            return 1
 
 
 # Run the experiment
