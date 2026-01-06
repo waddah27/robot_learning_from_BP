@@ -19,4 +19,4 @@ if __name__ == '__main__':
         "motion": init_pos,
         "impedance": impedanceEstimator
         }
-    visualizer.run(callback=lambda: experiments["motion"].execute())
+    visualizer.run(callback=lambda x: experiments["motion"].execute(x))

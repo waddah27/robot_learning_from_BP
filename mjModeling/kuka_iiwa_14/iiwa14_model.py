@@ -122,9 +122,9 @@ class iiwa14(Robot):
         else:
             self.state.get(FORCE_HISTORY).clear()
 
-    def run_experiment(self, callback: Callable[[], None]):
+    def run_experiment(self, callback: Callable[[], None], *args):
         if callable(callback):
-            return callback()
+            return callback(*args)
         else:
             print("callback must be a Callable")
             return 1

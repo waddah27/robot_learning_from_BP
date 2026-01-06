@@ -9,10 +9,10 @@ class InitPos(Experiment):
     def __init__(self, robot: Robot):
         self.robot = robot
 
-    def execute(self):
-        return self._init_position_for_cutting()
+    def execute(self, viewer):
+        return self._init_position_for_cutting(viewer)
 
-    def _init_position_for_cutting(self):
+    def _init_position_for_cutting(self, viewer):
         """Position robot for cutting WITH VISUALIZATION"""
 
         ik = JacobianIK(self.robot)
@@ -26,7 +26,7 @@ class InitPos(Experiment):
         approach_pos[2] = mat_center[2] + mat_size[2] + 0.3  # Top + 30cm
         print(f"\n1. Moving to approach position: {approach_pos}")
         # Visualized move
-        success1 = ik.move_to_position(approach_pos)
+        success1 = ik.move_to_position(target_pos=approach_pos, viewer=viewer)
         if success1:
             print("✓ Approach position reached")
         else:
@@ -36,7 +36,7 @@ class InitPos(Experiment):
         cut_pos[2] = mat_center[2] #+ mat_size[2] + 0.05  # Top + 5cm
         print(f"\n2. Moving to cutting height: {cut_pos}")
         # Visualized move
-        success2 = ik.move_to_position(cut_pos)
+        success2 = ik.move_to_position(target_pos=cut_pos, viewer=viewer)
         if success2:
             print("✓ Cutting height reached")
         else:

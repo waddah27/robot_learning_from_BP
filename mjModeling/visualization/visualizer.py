@@ -8,16 +8,17 @@ from mjModeling import Robot
 class Visualize:
     def __init__(self, robot: Robot):
         self.robot = robot
+        self.viewer = None
 
     def run(self, callback):
         # Simulate and display video.
         # Reset state and time.
         mujoco.mj_resetData(self.robot.model, self.robot.data)
         # Launch the viewer
-        passive_viewer = mjViewer.launch_passive(
+        self.viewer = mjViewer.launch_passive(
             self.robot.model, self.robot.data
             )
-        with passive_viewer as viewer:
+        with self.viewer as viewer:
             # --- Enable joint visualization *after* the viewer starts ---
             with viewer.lock():
                 # Show virtual joints between componnets
@@ -37,7 +38,7 @@ class Visualize:
             # Loop as long as the user has not closed the viewer window.
             while viewer.is_running():
                 step_start = time.time()
-                self.robot.run_experiment(callback)
+                self.robot.run_experiment(callback, viewer)
                 # Step the simulation forward
                 mujoco.mj_step(self.robot.model, self.robot.data)  
                 # Sync the viewer display with the current data 
