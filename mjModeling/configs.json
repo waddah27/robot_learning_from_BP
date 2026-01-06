@@ -1,10 +1,12 @@
 {
+    // Rigester robot and experiment related assets
     "robot_name": "kuka_iiwa_14",
     "scalpel_handler":{
         "part1" : "scalpel_model/scalpel/scalpelHandler1.STL",
         "part2" :  "scalpel_model/scalpel/scalpelHandler2.STL"
     },
     "scalpel_dir" :  "scalpel_model/scalpel/Scalpel.stl",
+    "material_geom_name":"material_geom",
     
     // visualize site frame for TCP and ee
     "vis_site_frame":false,
@@ -12,7 +14,6 @@
     "vis_joints":false,
     // visualize label name
     "vis_label_name":true,
-    "run_one_frame": false,
 
     // register state parameters
     "force_history":"force_history"

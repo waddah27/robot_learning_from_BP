@@ -1,7 +1,15 @@
+import os
 from typing import Callable
 from mjModeling.mjRobot.base import Robot
-from mjModeling import *
-import numpy as np
+from mjModeling import (
+    MATERIAL_GEOM,
+    scalpelHandler1_path,
+    scalpelHandler2_path,
+    scalpel_path,
+    force_history
+)
+import mujoco
+
 
 class iiwa14(Robot):
     def __init__(self):
@@ -38,7 +46,7 @@ class iiwa14(Robot):
         
         handler = ee_body.add_body(name="3d_printed_handler")
         # Align handler origin to the attachment site
-        handler.pos =  attach_site.pos
+        handler.pos = attach_site.pos
         handler.quat = attach_site.quat
         handler_depth = -0.09
         # 5. Add Part 1 (First half of handler)
@@ -46,41 +54,41 @@ class iiwa14(Robot):
             name="handler_part1_geom", 
             type=mujoco.mjtGeom.mjGEOM_MESH, 
             meshname="mesh1", 
-            rgba=[0.9, 0.9, 0.0, 1], # Orange
-            pos = attach_site.pos + [-0.045 ,0.045, handler_depth]
+            rgba=[0.9, 0.9, 0.0, 1],  # Orange
+            pos=attach_site.pos + [-0.045, 0.045, handler_depth]
         )
 
         # 6. Part 2 (Second half of handler)
         # We add this to the SAME body so they are fixed together.
         handler.add_geom(
-            name="handler_part2_geom", 
-            type=mujoco.mjtGeom.mjGEOM_MESH, 
-            meshname="mesh2", 
-            rgba=[0.8, 0.8, 0.8, 1], # Grey to distinguish
-            pos=attach_site.pos + [-0.0175, -0.002, 0.025] 
+            name="handler_part2_geom",
+            type=mujoco.mjtGeom.mjGEOM_MESH,
+            meshname="mesh2",
+            rgba=[0.8, 0.8, 0.8, 1],  # Grey to distinguish
+            pos=attach_site.pos + [-0.0175, -0.002, 0.025]
         )
         # 7. Scalpel geometry from registered scalpel mesh
         handler.add_geom(
             name="Scalpel_geom", 
-            type=mujoco.mjtGeom.mjGEOM_MESH, 
+            type=mujoco.mjtGeom.mjGEOM_MESH,
             meshname="mesh3", 
-            rgba=[0.8, 0.8, 0.8, 1], # Grey to distinguish
+            rgba=[0.8, 0.8, 0.8, 1],  # Grey to distinguish
             pos=attach_site.pos
         )
         # 8. TCP defined at the tip of scalpel
         tip_offset = [0, 0, 0.113] 
         tcp_site = handler.add_site(
-        name="scalpel_tip",
-        pos=attach_site.pos + tip_offset,
-        size=[0.002, 0.002, 0.002], # Small visual marker
-        rgba=[1, 0, 0, 1], # Red tip
-        group=1  # Ensure group 1 is enabled in viewer
+            name="scalpel_tip",
+            pos=attach_site.pos + tip_offset,
+            size=[0.002, 0.002, 0.002],  # Small visual marker
+            rgba=[1, 0, 0, 1],  # Red tip
+            group=1  # Ensure group 1 is enabled in viewer
         )
         
         # 9. Cutting material definition - MAKE IT SOFTER for cutting
         material = spec.worldbody.add_body(name="cutting_material")
         material.add_geom(
-            name="material_geom",
+            name=MATERIAL_GEOM,
             type=mujoco.mjtGeom.mjGEOM_BOX,
             size=[0.3, 0.3, 0.02],  # Adjust dimensions
             pos=[0.5, 0, 0.02],      # Position under scalpel
@@ -89,21 +97,19 @@ class iiwa14(Robot):
             # solimp=[0.9, 0.95, 0.001,2],
             margin=0.001
         )
-        
         # 10. Compile model, forward it with data
         self._model = spec.compile()
         self._data = mujoco.MjData(self._model)
         mujoco.mj_forward(self._model, self._data)
-        
         print("✓ Model created")
         print(f"Scalpel geom ID: {self._model.geom('Scalpel_geom').id}")
-        print(f"Material geom ID: {self._model.geom('material_geom').id}")
+        print(f"Material geom ID: {self._model.geom(MATERIAL_GEOM).id}")
         return self
 
     @property
     def model(self):
         return self._model
-        
+
     @property
     def data(self):
         return self._data
@@ -114,13 +120,13 @@ class iiwa14(Robot):
             self.state[force_history] = []  # Store cutting forces
         else:
             self.state.get(force_history).clear()
-    
+
     def run_experiment(self, callback: Callable[[], None]):
         if callable(callback):
             callback()
         else:
             print("callback must be a Callable")
-    
+
 
 # Run the experiment
 if __name__ == "__main__":

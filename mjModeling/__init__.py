@@ -27,6 +27,7 @@ SCALPEL_DIRNAME = CONF["scalpel_dir"]
 VIS_SITE_FRAME = CONF["vis_site_frame"]
 VIS_JOINTS = CONF["vis_joints"]
 VIS_LABEL_NAME = CONF["vis_label_name"]
+MATERIAL_GEOM = CONF["material_geom_name"]
 
 # get state parameters names
 force_history = CONF["force_history"]

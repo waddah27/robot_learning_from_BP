@@ -1,6 +1,7 @@
 import numpy as np
 from mjModeling.kinematics import JacobianIK
 from mjModeling.mjRobot import Robot
+from mjModeling import MATERIAL_GEOM
 
 
 class InitPos:
@@ -15,7 +16,7 @@ class InitPos:
 
         ik = JacobianIK(self.robot)
         # Get material position
-        mat_id = self.robot.model.geom("material_geom").id
+        mat_id = self.robot.model.geom(MATERIAL_GEOM).id
         mat_center = self.robot.model.geom_pos[mat_id].copy()
         mat_size = self.robot.model.geom_size[mat_id]
         print(f"Material: center={mat_center}, size={mat_size}")

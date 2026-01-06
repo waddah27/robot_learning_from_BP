@@ -1,6 +1,6 @@
 import numpy as np
 import mujoco
-from mjModeling import robot_scene_xml
+from mjModeling import MATERIAL_GEOM, robot_scene_xml
 from mjModeling.kuka_iiwa_14 import iiwa14
 from mjModeling.kinematics import JacobianIK
 robot = iiwa14().create(robot_scene_xml)
@@ -61,7 +61,7 @@ def position_for_cutting_no_viewer():
     ik = JacobianIK(robot)
 
     # Get material position
-    mat_id = robot.model.geom("material_geom").id
+    mat_id = robot.model.geom(MATERIAL_GEOM).id
     mat_center = robot.model.geom_pos[mat_id].copy()
     mat_size = robot.model.geom_size[mat_id]
 
@@ -103,7 +103,7 @@ def position_for_cutting_with_viewer():
         ik = JacobianIK(robot)
 
         # Get material position
-        mat_id = robot.model.geom("material_geom").id
+        mat_id = robot.model.geom(MATERIAL_GEOM).id
         mat_center = robot.model.geom_pos[mat_id].copy()
         mat_size = robot.model.geom_size[mat_id]
 
@@ -160,7 +160,7 @@ def position_for_cutting_manual_viewer():
         ik = JacobianIK(robot)
 
         # Get positions
-        mat_id = robot.model.geom("material_geom").id
+        mat_id = robot.model.geom(MATERIAL_GEOM).id
         mat_center = robot.model.geom_pos[mat_id].copy()
         mat_size = robot.model.geom_size[mat_id]
 
