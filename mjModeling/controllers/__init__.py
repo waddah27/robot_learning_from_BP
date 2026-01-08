@@ -1,3 +1,3 @@
 from .utils import *
-from .kinematics import *
+from .ik_controller import *
 from .vic_controller import *

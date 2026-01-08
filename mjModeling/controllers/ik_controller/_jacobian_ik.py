@@ -1,6 +1,7 @@
 import mujoco
 import numpy as np
 from mjModeling.conf import paramIK
+from mjModeling.controllers.controller_api import Controller
 from mjModeling.controllers.utils import (
     mat_to_axisangle,
     quat_to_mat,
@@ -9,7 +10,7 @@ from mjModeling.controllers.utils import (
 from mjModeling import Robot
 
 
-class JacobianIK:
+class JacobianIK(Controller):
     def __init__(self, robot: Robot):
         self.robot = robot
         self.model = robot.model

@@ -1,11 +1,12 @@
 import numpy as np
 import mujoco
 
+from mjModeling.controllers.controller_api import Controller
 from mjModeling.mjRobot import Robot
 __all__ = ["VariableImpedanceControl"]
 
 
-class VariableImpedanceControl:
+class VariableImpedanceControl(Controller):
     def __init__(self, robot: Robot):
         self.robot = robot
         self.model = robot.model
