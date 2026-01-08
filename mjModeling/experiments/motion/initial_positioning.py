@@ -14,7 +14,6 @@ class InitPos(Experiment):
     def _init_position_for_cutting(self, viewer):
         """Position robot for cutting WITH VISUALIZATION"""
 
-        # ik = JacobianIK(self.robot)
         # Get material position
         mat_id = self.robot.model.geom(MATERIAL_GEOM).id
         mat_center = self.robot.model.geom_pos[mat_id].copy()
@@ -51,12 +50,6 @@ class InitPos(Experiment):
     def execute(self, viewer):
         return self._init_position_for_cutting(viewer)
 
-    @property
-    def controller(self):
-        return self._controller
-
-    @controller.setter
-    def controller(self, controller: Controller):
-        self._controller = controller
+    
 
     
