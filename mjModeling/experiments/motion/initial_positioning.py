@@ -1,6 +1,6 @@
 import numpy as np
 from mjModeling.experiments import Experiment
-from mjModeling.kinematics import JacobianIK
+from mjModeling.controllers import JacobianIK
 from mjModeling import Robot
 from mjModeling.conf import MATERIAL_GEOM
 

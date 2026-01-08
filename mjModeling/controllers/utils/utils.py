@@ -26,17 +26,19 @@ def mat_to_axisangle(R):
     return axis * angle
 
 
-def getMatPinv(m: Array, kd: float = 0.1):
+def getMatPinv(J: Array, kd: float = 0.1):
     """calculates the psudo-inverse of a matrix
         :param m(Array): the original matrix
-        :param kd(float): damping ratio
+        :param kd(float): same as \lambda damping ratio
+        but here we prefer kd as long as lambda is a python keyword
+        J^(+) = J.J^T.J^-1
     """
     # Pseudo-inverse of Jacobian
     # J.J^T
-    mmT = m @ m.T
-    # J.J^T + kd * I(3)
-    regularized = mmT + kd * np.eye(3)
+    JJT = J @ J.T
+    # J.J^T + \lambda * I(3)
+    J_reg = JJT + kd * np.eye(3)
     # J^-1
-    m_inv = np.linalg.inv(regularized)
-    m_pinv = m.T @ m_inv
-    return m_pinv
+    J_inv = np.linalg.inv(J_reg)
+    J_pinv = J.T @ J_inv
+    return J_pinv

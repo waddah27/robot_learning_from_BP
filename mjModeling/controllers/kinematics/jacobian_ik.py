@@ -1,7 +1,7 @@
 import mujoco
 import numpy as np
 from mjModeling.conf import paramIK
-from mjModeling.kinematics.utils import (
+from mjModeling.controllers.utils import (
     mat_to_axisangle,
     quat_to_mat,
     getMatPinv
