@@ -2,6 +2,7 @@ import numpy as np
 import mujoco
 
 from mjModeling.mjRobot import Robot
+__all__ = ["VariableImpedanceControl"]
 
 
 class VariableImpedanceControl:
