@@ -7,12 +7,15 @@ from mjModeling.conf import MATERIAL_GEOM
 
 
 class InitPos(Experiment):
-    def __init__(self, robot: Robot, controller: Controller = JacobianIK):
+    def __init__(self, robot: Robot):
         self.robot = robot
-        self.controller = controller(self.robot)
+        self.controller = None
 
     def _init_position_for_cutting(self, viewer):
         """Position robot for cutting WITH VISUALIZATION"""
+        if not self.controller:
+            print("self.controller was not set ... No controller was found!")
+            return
 
         # Get material position
         mat_id = self.robot.model.geom(MATERIAL_GEOM).id
