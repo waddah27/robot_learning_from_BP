@@ -65,8 +65,9 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
             self.data.ctrl[:nv] = tau_total[:nv]
             
             mujoco.mj_step(self.model, self.data)
+            sync_rate = max_steps/10
 
-            if viewer and step % 5000 == 0:
+            if viewer and step % sync_rate == 0:
                 viewer.sync()
         return False
  
