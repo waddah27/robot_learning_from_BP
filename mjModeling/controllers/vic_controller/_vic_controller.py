@@ -1,73 +1,72 @@
 import numpy as np
 import mujoco
-
+from mjModeling.conf import paramVIC
 from mjModeling.controllers.controller_api import Controller
 from mjModeling.mjRobot import Robot
 __all__ = ["VariableImpedanceControl"]
 
 
-class VariableImpedanceControl(Controller):
-    def __init__(self, robot: Robot):
+class VariableImpedanceControl(Controller): # Removed parent for standalone clarity
+    def __init__(self, robot):
         self.robot = robot
         self.model = robot.model
         self.data = robot.data
 
+    def get_const_gains(self, kp, m):
+        kd = 2 * 0.7 * np.sqrt(kp*m)
+        return (kp, kd, m)
+
     def get_variable_gains(self, error_norm):
-        """
-        Logic for 'Variable' impedance: 
-        Higher stiffness when far, lower/compliant when close.
-        """
-        # Example: Linear scaling of stiffness based on distance
-        k_min, k_max = 50.0, 500.0
-        # High stiffness far away, lower stiffness as we approach
-        kp = np.clip(k_max * (error_norm / 0.1), k_min, k_max)
-        # Critical damping: d = 2 * sqrt(m * k). Simplified here as a ratio.
-        kd = 2 * np.sqrt(kp)
+        # Scale these down significantly for stability
+        k_min, k_max = paramVIC.VIC_KP_MIN.value, paramVIC.VIC_KP_MAX.value
+        # Smoothly interpolate stiffness
+        kp = np.clip(k_max * (error_norm / 0.2), k_min, k_max)
+        # Damping ratio (0.7 to 1.0 is "critical" and smooth)
+        kd = 2 * 0.7 * np.sqrt(kp) 
         return kp, kd
 
-    def move_to_position(self, target_pos, viewer=None, max_steps=1000):
+    def move_to_position(self, target_pos, viewer=None, max_steps=paramVIC.VIC_MAX_STEPS.value,
+                         tolerance=paramVIC.VIC_TOL.value):
         tcp_id = self.model.site("scalpel_tip").id
         nv = self.model.nv
         
         for step in range(max_steps):
-            # 1. Get current state in Operational Space
-            current_pos = self.data.site_xpos[tcp_id].copy()
-            current_vel = np.zeros(6)  # Site velocity
-            mujoco.mj_objectVelocity(self.model, self.data, mujoco.mjtObj.mjOBJ_SITE, tcp_id, current_vel, 0)
-            lin_vel = current_vel[3:]  # Linear part
+            mujoco.mj_forward(self.model, self.data)
 
-            # 2. Calculate Errors
+            current_pos = self.data.site_xpos[tcp_id].copy()
             error = target_pos - current_pos
             error_norm = np.linalg.norm(error)
             
-            if error_norm < 0.001:  # Tolerance
+            if error_norm < tolerance:
                 return True
 
-            # 3. Dynamic Gain Scheduling (The "Variable" part)
-            kp_val, kd_val = self.get_variable_gains(error_norm)
-            
-            # 4. Define Virtual Force (Impedance Law: F = K*e - B*v)
-            # This makes the TCP behave like a spring-damper system
-            f_virtual = kp_val * error - kd_val * lin_vel
-
-            # 5. Map Virtual Force to Joint Torques (Generalized Forces)
-            # Use Jacobian Transpose: tau = J^T * F
+            # 1. Jacobian for Transpose mapping
             jac_pos = np.zeros((3, nv))
             mujoco.mj_jacSite(self.model, self.data, jac_pos, None, tcp_id)
+            
+            # 2. Linear velocity in Task Space
+            lin_vel = jac_pos @ self.data.qvel
+
+            # 3. Virtual Force Calculation
+            # kp_val, kd_val = self.get_variable_gains(error_norm)
+            kp_val, kd_val, _ = self.get_const_gains(paramVIC.VIC_KP_MAX.value,
+                                                     paramVIC.VIC_M.value)
+            f_virtual = (kp_val * error) - (kd_val * lin_vel)
+
+            # 4. Jacobian Transpose: tau = J^T * F
+            # This is significantly more stable than the DLS solve for VIC
             tau = jac_pos.T @ f_virtual
 
-            # 6. Gravity Compensation (Optional but recommended)
-            # mj_forward must be called to update qfrc_bias (gravity/coriolis)
-            mujoco.mj_forward(self.model, self.data)
-            tau += self.data.qfrc_bias[:nv]
-
-            # 7. Apply to Robot
-            self.data.ctrl[:nv] = tau
+            # 5. Gravity/Coriolis Compensation
+            # Map full bias forces to only the actuated degrees of freedom
+            tau_total = tau + self.data.qfrc_bias
             
-            # Step the actual physics engine
+            # 6. Apply to actuators (ensuring index match)
+            self.data.ctrl[:nv] = tau_total[:nv]
+            
             mujoco.mj_step(self.model, self.data)
 
-            if viewer and step % 10 == 0:
+            if viewer and step % 5000 == 0:
                 viewer.sync()
-                
         return False
+ 

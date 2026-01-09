@@ -17,6 +17,15 @@ class paramIK(Enum):
     IK_KD = configs["IK_params"]["kd"]
     IK_TOL = configs["IK_params"]["tolerance"] 
 
+
+class paramVIC(Enum):
+    VIC_MAX_STEPS = configs["vic_params"]["vic_max_steps"]
+    VIC_TOL = configs["vic_params"]["tolerance"]
+    VIC_KP_MIN = configs["vic_params"]["kp"]["min"]
+    VIC_KP_MAX = configs["vic_params"]["kp"]["max"]
+    VIC_M = configs["vic_params"]["m"]
+
+
 # Construct the full absolute path to the STL
 SCALPEL_HANDLER_PART1 = configs["scalpel_handler_dir"]["part1"]
 SCALPEL_HANDLER_PART2 = configs["scalpel_handler_dir"]["part2"]
