@@ -9,16 +9,27 @@ from visualization.visualizer import Visualize
 
 # 1 - build experiment env
 robot = iiwa14().create(ROBOT_SCENE)
+# Experiments
 impedanceEstimator: Experiment = ImpedanceEstimator(robot)
 init_pos: Experiment = InitPos(robot)
-init_pos.controller = VariableImpedanceControl(robot)
-print(robot.model.opt.gravity)
+
+# Controllers
+vic = VariableImpedanceControl(robot)
+jik = JacobianIK(robot)
+print(f"Gravity = {robot.model.opt.gravity}")
 # 2 - simulator
 visualizer = Visualize(robot)
 
 if __name__ == '__main__':
+    controllers = {
+        "vic": vic,
+        "jik": jik
+    }
+
     experiments = {
         "motion": init_pos,
         "impedance": impedanceEstimator
         }
+
+    init_pos.controller = vic
     visualizer.run(callback=lambda x: experiments["motion"].execute(x))
