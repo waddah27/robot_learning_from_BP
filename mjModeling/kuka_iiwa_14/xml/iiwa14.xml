@@ -1,24 +1,30 @@
 <mujoco model="iiwa14">
   <compiler angle="radian" meshdir="assets" autolimits="true"/>
 
-  <option integrator="implicitfast"/>
+  <!-- <option integrator="implicitfast"/> -->
+  <option timestep="0.001" integrator="implicitfast" iterations="50" tolerance="1e-10"/>
+  <default>
+        <!-- This applies armature="0.05" to EVERY joint in the model automatically -->
+        <joint armature="0.05" damping="0.5" frictionloss="0.1"/>
+    </default>
 
   <default>
     <default class="iiwa">
       <material specular="0.5" shininess="0.25"/>
       <joint axis="0 0 1"/>
-      <general gaintype="fixed" biastype="affine" gainprm="2000" biasprm="0 -2000 -200"/>
+      <!-- <general gaintype="fixed" biastype="affine" gainprm="2000" biasprm="0 -2000 -200"/> -->
+      <general gaintype="fixed" biastype="none" ctrlrange="-300 300"/>
       <default class="joint1">
         <joint range="-2.96706 2.96706"/>
-        <general ctrlrange="-2.96706 2.96706"/>
+        <!-- <general ctrlrange="-2.96706 2.96706"/> -->
         <default class="joint2">
           <joint range="-2.0944 2.0944"/>
-          <general ctrlrange="-2.0944 2.0944"/>
+          <!-- <general ctrlrange="-2.0944 2.0944"/> -->
         </default>
       </default>
       <default class="joint3">
         <joint range="-3.05433 3.05433"/>
-        <general ctrlrange="-3.05433 3.05433"/>
+        <!-- <general ctrlrange="-3.05433 3.05433"/> -->
       </default>
       <default class="visual">
         <geom type="mesh" contype="0" conaffinity="0" group="2" material="gray"/>
