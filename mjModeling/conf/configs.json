@@ -32,10 +32,12 @@
         "vic_max_steps": 5000,
         "tolerance": 0.001,
         "kp": {
-            "min": 200,
-            "max": 5000
+            "min": 400.0,
+            "max": 1500.0
         },
-        "m": 1
+        "m": 1,
+        "ki": 200.0,
+        "lambda_sq": 1e-4
     }
 
 

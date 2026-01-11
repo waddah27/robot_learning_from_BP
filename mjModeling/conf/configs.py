@@ -24,6 +24,8 @@ class paramVIC(Enum):
     VIC_KP_MIN = configs["vic_params"]["kp"]["min"]
     VIC_KP_MAX = configs["vic_params"]["kp"]["max"]
     VIC_M = configs["vic_params"]["m"]
+    VIC_KI = configs["vic_params"]["ki"]
+    VIC_LAMBDA_SQ = configs["vic_params"]["lambda_sq"]
 
 
 # Construct the full absolute path to the STL

@@ -16,7 +16,7 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
     def get_variable_gains(self, error_norm):
         # STABILITY: Lower the max stiffness. 
         # Most MuJoCo robots explode above 2000-5000 if timestep is 0.002
-        k_min, k_max = 400.0, 1500.0
+        k_min, k_max = paramVIC.VIC_KP_MIN.value, paramVIC.VIC_KP_MAX.value
         kp = np.clip(k_max * (error_norm / 0.2), k_min, k_max)
         # DAMPING: Critically damped is 2 * sqrt(K). 
         # Over-damp slightly (1.2 multiplier) to stop the shaking.
@@ -40,7 +40,7 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
         
         self.error_accumulated = np.zeros(3)
         # Use a small epsilon for Damped Least Squares stability
-        lambda_sq = 1e-4 
+        lambda_sq = paramVIC.VIC_LAMBDA_SQ.value 
 
         for step in range(max_steps):
             mujoco.mj_forward(self.model, self.data)
@@ -50,19 +50,18 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
             dist = np.linalg.norm(error)
 
             # 2mm tolerance for 2026 surgical/precision tasks
-            if dist < 0.002: 
+            if dist < paramVIC.VIC_TOL.value: 
                 return True 
 
             # 1. VARIABLE GAIN SCHEDULING
             # High stiffness far away, lower stiffness for delicate contact
             kp_val, kd_val = self.get_variable_gains(dist)
-            
             # 2. INTEGRAL TERM (The "Closer")
             # Only accumulate when within 5cm to prevent huge overshoots
             if dist < 0.05:
-                # ki=200 is strong enough to kill that 2cm steady-state error
+                # ki=200 is strong enough to compensate for steady-state error
                 self.error_accumulated += error * self.model.opt.timestep
-            ki_val = 200.0
+            ki_val = paramVIC.VIC_KI.value
 
             # 3. TASK SPACE FORCE
             v_tip = (np.zeros(3))
