@@ -24,52 +24,59 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
         kd = 0.5 * np.sqrt(kp) 
         return kp, kd
 
-    def move_to_position(self, target_pos, viewer=None, max_steps=8000):
+    def move_to_position(self, target_pos, viewer=None, max_steps=6000):
         tcp_id = self.model.site("scalpel_tip").id
-        # Use a lower control frequency (e.g., 500Hz if timestep is 0.001)
-        control_decimation = 5 
+        # Define a 'home' or 'elbow-up' posture (adjust these to your robot's neutral pos)
+        q_home = np.zeros(self.model.nq) 
+        q_home[1] = -0.5 # Example: slight bend in elbow
         
         self.error_accumulated = np.zeros(3)
-        
+
         for step in range(max_steps):
-            # 1. Update State
             mujoco.mj_forward(self.model, self.data)
             
-            # Only update control signal every few steps to stop fast shaking
-            if step % control_decimation == 0:
-                current_pos = self.data.site_xpos[tcp_id].copy()
-                error = target_pos - current_pos
-                dist = np.linalg.norm(error)
-                
-                if dist < 0.002: return True
+            current_pos = self.data.site_xpos[tcp_id].copy()
+            error = target_pos - current_pos
+            dist = np.linalg.norm(error)
 
-                # 2. Variable Gains (Reduced for stability)
-                # High-frequency shake usually means KD is too high for the simulation
-                kp = 1200.0 if dist > 0.05 else 2500.0
-                kd = 2 * 0.5 * np.sqrt(kp) # Reduced damping ratio to 0.5
+            if dist < 0.0015: return True # Target reached!
 
-                # 3. Task Space Mapping
-                jac = np.zeros((3, self.model.nv))
-                mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
-                
-                # Integral term (Solves the "High Error" steady-state issue)
-                if dist < 0.1:
-                    self.error_accumulated += error * (self.model.opt.timestep * control_decimation)
-                
-                f_virtual = (kp * error) + (40.0 * self.error_accumulated) - (kd * (jac @ self.data.qvel))
+            # 1. Gains: Slightly higher Ki to solve that 2cm gap
+            kp, kd = 2000.0, 80.0
+            ki = 150.0 
+            
+            if dist < 0.05:
+                self.error_accumulated += error * self.model.opt.timestep
 
-                # 4. Torque Calculation + Bias
-                # Transpose is safer than Inverse for high-error starts
-                tau = jac.T @ f_virtual
-                
-                # Apply ONLY to controlled joints
-                self.data.ctrl[:self.model.nu] = (tau + self.data.qfrc_bias)[:self.model.nu]
+            # 2. Jacobian & Task Space Force
+            jac = np.zeros((3, self.model.nv))
+            mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
+            
+            v_tip = jac @ self.data.qvel
+            f_virtual = (kp * error) + (ki * self.error_accumulated) - (kd * v_tip)
 
-            # 5. Physics Step
+            # 3. Solve for Torque using Damped Least Squares (Prevents "Going Crazy" near table)
+            # tau = J^T * (JJ^T + lambda^2 * I)^-1 * F
+            diag = 0.01 * np.eye(3)
+            tau_task = jac.T @ np.linalg.solve(jac @ jac.T + diag, f_virtual)
+
+            # 4. Null-Space: Push the elbow UP to avoid "lying on material"
+            # This uses joints that aren't busy moving the tip to maintain posture
+            k_posture = 20.0
+            d_posture = 2.0
+            tau_posture = k_posture * (q_home[:self.model.nv] - self.data.qpos[:self.model.nv]) - d_posture * self.data.qvel
+            
+            # Project posture torque into the null-space of the main task
+            identity = np.eye(self.model.nv)
+            # Null space projection matrix: P = I - J_pinv * J
+            j_inv = jac.T @ np.linalg.solve(jac @ jac.T + diag, np.eye(3))
+            tau_null = (identity - j_inv @ jac) @ tau_posture
+
+            # 5. Combine everything
+            self.data.ctrl[:self.model.nu] = tau_task + tau_null + self.data.qfrc_bias[:self.model.nu]
+
             mujoco.mj_step(self.model, self.data)
-
-            if viewer and step % 50 == 0:
-                viewer.sync()
-                
+            if viewer and step % 30 == 0: viewer.sync()
+            
         return False
  
