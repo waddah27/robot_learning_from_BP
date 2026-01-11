@@ -24,13 +24,14 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
         kd = 0.5 * np.sqrt(kp) 
         return kp, kd
 
-    def move_to_position(self, target_pos, viewer=None, max_steps=6000):
+    def move_to_position(self, target_pos, viewer=None, max_steps=8000):
         tcp_id = self.model.site("scalpel_tip").id
-        # Define a 'home' or 'elbow-up' posture (adjust these to your robot's neutral pos)
-        q_home = np.zeros(self.model.nq) 
-        q_home[1] = -0.5 # Example: slight bend in elbow
+        # Define 'home' posture to keep the elbow up (joint angles in radians)
+        q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 0.0]) 
         
         self.error_accumulated = np.zeros(3)
+        # Use a small epsilon for Damped Least Squares stability
+        lambda_sq = 1e-4 
 
         for step in range(max_steps):
             mujoco.mj_forward(self.model, self.data)
@@ -39,44 +40,57 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
             error = target_pos - current_pos
             dist = np.linalg.norm(error)
 
-            if dist < 0.0015: return True # Target reached!
+            # 2mm tolerance for 2026 surgical/precision tasks
+            if dist < 0.002: 
+                return True 
 
-            # 1. Gains: Slightly higher Ki to solve that 2cm gap
-            kp, kd = 2000.0, 80.0
-            ki = 150.0 
+            # 1. VARIABLE GAIN SCHEDULING
+            # High stiffness far away, lower stiffness for delicate contact
+            kp_val, kd_val = self.get_variable_gains(dist)
             
+            # 2. INTEGRAL TERM (The "Closer")
+            # Only accumulate when within 5cm to prevent huge overshoots
             if dist < 0.05:
+                # ki=200 is strong enough to kill that 2cm steady-state error
                 self.error_accumulated += error * self.model.opt.timestep
+            ki_val = 200.0
 
-            # 2. Jacobian & Task Space Force
+            # 3. TASK SPACE FORCE
+            v_tip = (np.zeros(3))
             jac = np.zeros((3, self.model.nv))
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
-            
             v_tip = jac @ self.data.qvel
-            f_virtual = (kp * error) + (ki * self.error_accumulated) - (kd * v_tip)
+            
+            # F = Kp*e + Ki*∫e - Kd*v
+            f_virtual = (kp_val * error) + (ki_val * self.error_accumulated) - (kd_val * v_tip)
 
-            # 3. Solve for Torque using Damped Least Squares (Prevents "Going Crazy" near table)
-            # tau = J^T * (JJ^T + lambda^2 * I)^-1 * F
-            diag = 0.01 * np.eye(3)
-            tau_task = jac.T @ np.linalg.solve(jac @ jac.T + diag, f_virtual)
+            # 4. STABLE MAPPING (Damped Least Squares)
+            # Solves: tau = J^T * inv(JJ^T + λ^2I) * F
+            jjt = jac @ jac.T
+            tau_task = jac.T @ np.linalg.solve(jjt + lambda_sq * np.eye(3), f_virtual)
 
-            # 4. Null-Space: Push the elbow UP to avoid "lying on material"
-            # This uses joints that aren't busy moving the tip to maintain posture
-            k_posture = 20.0
-            d_posture = 2.0
+            # 5. NULL-SPACE POSTURE CONTROL (Fixes "lying on material")
+            # Keeps the robot elbow up while the tip follows target_pos
+            k_posture, d_posture = 10.0, 2.0
             tau_posture = k_posture * (q_home[:self.model.nv] - self.data.qpos[:self.model.nv]) - d_posture * self.data.qvel
             
-            # Project posture torque into the null-space of the main task
-            identity = np.eye(self.model.nv)
-            # Null space projection matrix: P = I - J_pinv * J
-            j_inv = jac.T @ np.linalg.solve(jac @ jac.T + diag, np.eye(3))
-            tau_null = (identity - j_inv @ jac) @ tau_posture
+            # Project posture into null-space: P = (I - J_pinv * J)
+            j_inv = jac.T @ np.linalg.solve(jjt + lambda_sq * np.eye(3), np.eye(3))
+            null_projection = np.eye(self.model.nv) - (j_inv @ jac)
+            tau_null = null_projection @ tau_posture
 
-            # 5. Combine everything
-            self.data.ctrl[:self.model.nu] = tau_task + tau_null + self.data.qfrc_bias[:self.model.nu]
-
-            mujoco.mj_step(self.model, self.data)
-            if viewer and step % 30 == 0: viewer.sync()
+            # 6. FINAL TORQUE + BIAS COMPENSATION
+            # qfrc_bias handles Gravity and Coriolis automatically
+            tau_total = tau_task + tau_null + self.data.qfrc_bias[:self.model.nv]
             
+            # Apply to actuators within hardware limits
+            self.data.ctrl[:self.model.nu] = np.clip(tau_total[:self.model.nu], -300, 300)
+
+            # 7. STEP PHYSICS
+            mujoco.mj_step(self.model, self.data)
+
+            if viewer and step % 40 == 0:
+                viewer.sync()
+                
         return False
  
