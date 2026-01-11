@@ -75,8 +75,12 @@ class iiwa14(Robot):
             type=mujoco.mjtGeom.mjGEOM_MESH,
             meshname="mesh3",
             rgba=[0.8, 0.8, 0.8, 1],  # Grey to distinguish
-            pos=attach_site.pos
+            pos=attach_site.pos,
+        contype=1,       # Bitmask: belongs to group 1
+        conaffinity=1    # Bitmask: only collides with group 1
         )
+       
+    
         # 8. TCP defined at the tip of scalpel
         tip_offset = [0, 0, 0.113]
         tcp_site = handler.add_site(
@@ -86,16 +90,17 @@ class iiwa14(Robot):
             rgba=[1, 0, 0, 1],  # Red tip
             group=1  # Ensure group 1 is enabled in viewer
         )
-        # 9. Cutting material definition - MAKE IT SOFTER for cutting
+        # 9. Update Material to use Collision Group 2
         material = spec.worldbody.add_body(name=MATERIAL_NAME)
         material.add_geom(
             name=MATERIAL_GEOM,
             type=mujoco.mjtGeom.mjGEOM_BOX,
-            size=[0.3, 0.3, 0.02],  # Adjust dimensions
-            pos=[0.5, 0, 0.02],      # Position under scalpel
+            size=[0.3, 0.3, 0.02],
+            pos=[0.5, 0, 0.02],
             rgba=[0.2, 0.8, 0.2, 0.7],
-            solref=[0.02, 1],  # Softer contact
-            # solimp=[0.9, 0.95, 0.001,2],
+            contype=2,       # Bitmask: belongs to group 2
+            conaffinity=2,   # Bitmask: only collides with group 2
+            solref=[0.02, 1],
             margin=0.001
         )
         # 10. Compile model, forward it with data

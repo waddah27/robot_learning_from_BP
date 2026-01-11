@@ -18,11 +18,20 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
         # Most MuJoCo robots explode above 2000-5000 if timestep is 0.002
         k_min, k_max = 400.0, 1500.0
         kp = np.clip(k_max * (error_norm / 0.2), k_min, k_max)
-        
         # DAMPING: Critically damped is 2 * sqrt(K). 
         # Over-damp slightly (1.2 multiplier) to stop the shaking.
         kd = 0.5 * np.sqrt(kp) 
         return kp, kd
+
+    def sim_cutting_resistance(self, current_pos, v_tip, magnitude=100):
+        """simulate cutting resistance: here we can test different 
+        force reactions from different materials to validate the research 
+        results"""
+        # Check if tip is inside the box (z < 0.04)
+        if current_pos[2] < 0.04:
+            # Simulate resistance: add an upward force proportional to velocity
+            return -magnitude * v_tip[2] 
+        return 0.0
 
     def move_to_position(self, target_pos, viewer=None, max_steps=8000):
         tcp_id = self.model.site("scalpel_tip").id
@@ -63,7 +72,7 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
             
             # F = Kp*e + Ki*∫e - Kd*v
             f_virtual = (kp_val * error) + (ki_val * self.error_accumulated) - (kd_val * v_tip)
-
+            f_virtual += self.sim_cutting_resistance(current_pos, v_tip)
             # 4. STABLE MAPPING (Damped Least Squares)
             # Solves: tau = J^T * inv(JJ^T + λ^2I) * F
             jjt = jac @ jac.T
@@ -89,7 +98,7 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
             # 7. STEP PHYSICS
             mujoco.mj_step(self.model, self.data)
 
-            if viewer and step % 40 == 0:
+            if viewer and step % 4 == 0:
                 viewer.sync()
                 
         return False
