@@ -2,6 +2,7 @@ import numpy as np
 import mujoco
 from mjModeling.conf import paramVIC
 from mjModeling.controllers.controller_api import Controller
+from mjModeling.experiments.impedance import ImpedanceEstimator
 from mjModeling.mjRobot import Robot
 __all__ = ["VariableImpedanceControl"]
 
@@ -12,6 +13,7 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
         self.model = robot.model
         self.data = robot.data
         self.error_accumulated = np.zeros(3) # For Integral term
+        self.estimator = ImpedanceEstimator(robot)
 
     def get_variable_gains(self, error_norm):
         # STABILITY: Lower the max stiffness. 
@@ -96,6 +98,8 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
 
             # 7. STEP PHYSICS
             mujoco.mj_step(self.model, self.data)
+            if self.estimator:
+                self.estimator.get_total_cutting_force()
 
             if viewer and step % 4 == 0:
                 viewer.sync()

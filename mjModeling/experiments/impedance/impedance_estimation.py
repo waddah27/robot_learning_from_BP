@@ -46,8 +46,9 @@ class ImpedanceEstimator(Experiment):
         contacts = self.get_scalpel_contact_forces()
         total_force = np.zeros(3)
         
-        for contact in contacts:
+        for i,contact in enumerate(contacts):
             total_force += contact['force']
+            print(f"contact {i} -- force = {contact['force']}")
         
         return total_force
     
@@ -135,7 +136,7 @@ class ImpedanceEstimator(Experiment):
         return self.robot.state.get(FORCE_HISTORY)   
     # ========== IMPEDANCE ESTIMATION ==========
     
-    def estimate_impedance(self, displacement=0.001, steps=100):
+    def estimate_impedance(self, displacement=0.00001, steps=100):
         """Simple impedance estimation by applying small displacement"""
         print("\nEstimating impedance parameters...")
         
