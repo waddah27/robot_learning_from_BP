@@ -33,7 +33,7 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
         # Check if tip is inside the box (z < 0.04)
         if current_pos[2] < 0.04:
             # Simulate resistance: add an upward force proportional to velocity
-            return -magnitude * v_tip[2] 
+            return -magnitude * v_tip 
         return 0.0
 
     def move_to_position(self, target_pos, viewer=None, max_steps=8000):
