@@ -37,7 +37,7 @@ class ImpedanceEstimator(Experiment):
                 })
                 
                 # Debug print
-                # print(f"Contact {i}: force = {np.linalg.norm(force_vector):.4f} N")
+                print(f"Contact {i}: force = {np.linalg.norm(force_vector):.4f} N")
         
         return scalpel_forces
     
@@ -49,7 +49,7 @@ class ImpedanceEstimator(Experiment):
         for i,contact in enumerate(contacts):
             total_force += contact['force']
             print(f"contact {i} -- force = {contact['force']}")
-        
+        print(f"total_force = {total_force}")
         return total_force
     
     def record_force_step(self):

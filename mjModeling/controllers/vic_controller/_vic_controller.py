@@ -1,6 +1,6 @@
 import numpy as np
 import mujoco
-from mjModeling.conf import paramVIC
+from mjModeling.conf import paramVIC, workingPiece
 from mjModeling.controllers.controller_api import Controller
 from mjModeling.experiments.impedance import ImpedanceEstimator
 from mjModeling.mjRobot import Robot
@@ -25,7 +25,7 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
         kd = 0.5 * np.sqrt(kp) 
         return kp, kd
 
-    def sim_cutting_resistance(self, current_pos, v_tip, magnitude=100):
+    def sim_cutting_resistance(self, current_pos, v_tip, magnitude=workingPiece.MATERIAL_RESISTANCE.value):
         """simulate cutting resistance: here we can test different 
         force reactions from different materials to validate the research 
         results

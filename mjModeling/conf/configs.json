@@ -6,10 +6,11 @@
         "part2" :  "scalpel_model/scalpel/scalpelHandler2.STL"
     },
     "scalpel_dir" :  "scalpel_model/scalpel/Scalpel.stl",
+    "scalpel_geom_name":"scalpel_geom",
+    // working piece material properties : todo assemple in one dict
     "material_name": "cutting_material",
     "material_geom_name":"material_geom",
-    "scalpel_geom_name":"scalpel_geom",
-    
+    "material_resistance": 100,
     // visualize site frame for TCP and ee
     "vis_site_frame":false,
     // visualize virtual joints between model components 

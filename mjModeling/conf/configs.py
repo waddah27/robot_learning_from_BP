@@ -28,6 +28,10 @@ class paramVIC(Enum):
     VIC_LAMBDA_SQ = configs["vic_params"]["lambda_sq"]
 
 
+class workingPiece(Enum):
+    MATERIAL_RESISTANCE = configs["material_resistance"]
+    MATERIAL_NAME = configs["material_name"]
+
 # Construct the full absolute path to the STL
 SCALPEL_HANDLER_PART1 = configs["scalpel_handler_dir"]["part1"]
 SCALPEL_HANDLER_PART2 = configs["scalpel_handler_dir"]["part2"]
@@ -45,7 +49,6 @@ ROBOT_XML_DIR = os.path.join(ROBOT_DIR, 'xml')
 ROBOT_SCENE = os.path.join(ROBOT_XML_DIR, 'scene.xml')
 
 # attached assets parameters
-MATERIAL_NAME = configs["material_name"]
 MATERIAL_GEOM = configs["material_geom_name"]
 SCALPEL_GEOM = configs["scalpel_geom_name"]
 # get robot state dict keys

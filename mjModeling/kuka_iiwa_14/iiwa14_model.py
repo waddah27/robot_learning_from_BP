@@ -8,7 +8,7 @@ from mjModeling.conf import (
     SCALPEL_HANDLER_2_PATH,
     SCALPEL_PATH,
     FORCE_HISTORY,
-    MATERIAL_NAME
+    workingPiece
 )
 import mujoco
 
@@ -91,7 +91,7 @@ class iiwa14(Robot):
             group=1  # Ensure group 1 is enabled in viewer
         )
         # 9. Update Material to use Collision Group 2
-        material = spec.worldbody.add_body(name=MATERIAL_NAME)
+        material = spec.worldbody.add_body(name=workingPiece.MATERIAL_NAME.value)
         material.add_geom(
             name=MATERIAL_GEOM,
             type=mujoco.mjtGeom.mjGEOM_BOX,
