@@ -28,7 +28,8 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
     def sim_cutting_resistance(self, current_pos, v_tip, magnitude=100):
         """simulate cutting resistance: here we can test different 
         force reactions from different materials to validate the research 
-        results"""
+        results
+        TODO: this is a KLUDGE should be moved to an independent class"""
         # Check if tip is inside the box (z < 0.04)
         if current_pos[2] < 0.04:
             # Simulate resistance: add an upward force proportional to velocity
