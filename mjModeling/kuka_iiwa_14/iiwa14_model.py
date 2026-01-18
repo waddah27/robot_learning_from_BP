@@ -1,5 +1,8 @@
+from multiprocessing import shared_memory
 import os
 from typing import Callable
+
+import numpy as np
 from mjModeling import Robot
 from mjModeling.conf import (
     MATERIAL_GEOM,
@@ -12,13 +15,21 @@ from mjModeling.conf import (
 )
 import mujoco
 
+from mjModeling.conf.configs import oscillatorConfigs as oscConf
 
 class iiwa14(Robot):
     def __init__(self):
         self._model = None
         self._data = None
+        self.shm = shared_memory.SharedMemory(create=True, 
+                                              size=oscConf.BUFFER_SIZE.value * oscConf.N_SIGS.value * 8)
         self.state = {}
+
         self.reset_state()
+
+    def set_shm_buffer(self):
+        self.state["shared_array"] = np.frombuffer(self.shm.buf, dtype=np.float64).reshape((oscConf.BUFFER_SIZE.value, oscConf.N_SIGS.value))
+        self.state["shared_array"][:] = 0
 
     @classmethod
     def create(cls, xml_path):
@@ -110,6 +121,7 @@ class iiwa14(Robot):
         print("✓ Model created")
         print(f"Scalpel geom ID: {self._model.geom(SCALPEL_GEOM).id}")
         print(f"Material geom ID: {self._model.geom(MATERIAL_GEOM).id}")
+        self.set_shm_buffer()
         return self
 
     @property

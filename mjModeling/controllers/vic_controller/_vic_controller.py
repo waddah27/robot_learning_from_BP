@@ -8,7 +8,7 @@ __all__ = ["VariableImpedanceControl"]
 
 
 class VariableImpedanceControl(Controller): # Removed parent for standalone clarity
-    def __init__(self, robot):
+    def __init__(self, robot: Robot):
         self.robot = robot
         self.model = robot.model
         self.data = robot.data
@@ -100,7 +100,7 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
             # 7. STEP PHYSICS
             mujoco.mj_step(self.model, self.data)
             if self.estimator:
-                self.estimator.get_total_cutting_force()
+                self.robot.state["shared_array"] = self.estimator.get_total_cutting_force()
 
             if viewer and step % 4 == 0:
                 viewer.sync()

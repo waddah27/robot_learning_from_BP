@@ -39,6 +39,11 @@
         "m": 1,
         "ki": 200.0,
         "lambda_sq": 1e-4
+    },
+
+    "oscillator":{
+        "buffer_size":1000,
+        "n_sigs":3
     }
 
 

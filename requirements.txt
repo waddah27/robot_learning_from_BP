@@ -7,3 +7,5 @@ scikit-learn
 tqdm
 cvxpy
 mujoco
+pyqt6
+pyqtgraph

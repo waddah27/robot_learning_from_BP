@@ -32,6 +32,11 @@ class workingPiece(Enum):
     MATERIAL_RESISTANCE = configs["material_resistance"]
     MATERIAL_NAME = configs["material_name"]
 
+
+class oscillatorConfigs(Enum):
+    BUFFER_SIZE = configs["oscillator"]["buffer_size"]
+    N_SIGS = configs["oscillator"]["n_sigs"]
+
 # Construct the full absolute path to the STL
 SCALPEL_HANDLER_PART1 = configs["scalpel_handler_dir"]["part1"]
 SCALPEL_HANDLER_PART2 = configs["scalpel_handler_dir"]["part2"]
