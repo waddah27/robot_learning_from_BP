@@ -100,7 +100,8 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
             # 7. STEP PHYSICS
             mujoco.mj_step(self.model, self.data)
             if self.estimator:
-                self.robot.state["shared_array"] = self.estimator.get_total_cutting_force()
+                self.robot.state["shared_array"][:-1] = self.robot.state["shared_array"][1:]
+                self.robot.state["shared_array"][-1] = self.estimator.get_total_cutting_force()
 
             if viewer and step % 4 == 0:
                 viewer.sync()

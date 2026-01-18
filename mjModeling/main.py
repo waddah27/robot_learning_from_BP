@@ -23,7 +23,7 @@ print(f"Gravity = {robot.model.opt.gravity}")
 visualizer = Visualize(robot)
 
 if __name__ == '__main__':
-    # 2. Start Drawer Process
+    #  Start Oscillator Process
     drawer_proc = mp.Process(target=run_drawer, args=(robot.shm.name,))
     drawer_proc.start()
     controllers = {

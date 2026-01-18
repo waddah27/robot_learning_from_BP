@@ -7,10 +7,10 @@ import multiprocessing as mp
 import time
 
 from mjModeling.conf import oscillatorConfigs as oscConf
-__all__ = ["RealTimeDrawer", "run_drawer"]
+__all__ = ["RealTimeOscillator", "run_drawer"]
 
 
-class RealTimeDrawer(QtWidgets.QWidget):
+class RealTimeOscillator(QtWidgets.QWidget):
     def __init__(self, shm_name, num_signals=oscConf.N_SIGS.value, buffer_size=oscConf.BUFFER_SIZE.value):
         super().__init__()
         self.layout = QtWidgets.QVBoxLayout(self)
@@ -41,7 +41,7 @@ class RealTimeDrawer(QtWidgets.QWidget):
 
 def run_drawer(shm_name):
     app = QtWidgets.QApplication(sys.argv)
-    window = RealTimeDrawer(shm_name)
+    window = RealTimeOscillator(shm_name)
     window.show()
     sys.exit(app.exec())
 
