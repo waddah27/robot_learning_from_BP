@@ -39,7 +39,7 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
     def move_to_position(self, target_pos, viewer=None, max_steps=8000):
         tcp_id = self.model.site("scalpel_tip").id
         # Define 'home' posture to keep the elbow up (joint angles in radians)
-        q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 0.0]) 
+        q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159]) 
         
         self.error_accumulated = np.zeros(3)
         # Use a small epsilon for Damped Least Squares stability
