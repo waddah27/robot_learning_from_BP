@@ -4,3 +4,24 @@ __pycache__
 **/__pycache__/
 *.py[cod]
 *$py.class
+# Python build and distribution artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Byte-compiled files (speed up execution)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment files
+.env
+.venv
+env/
+venv/
+
+# IDE specific files
+.vscode/
+.idea/

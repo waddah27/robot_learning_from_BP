@@ -1,3 +1,4 @@
+build
 numpy
 pandas
 scipy
@@ -9,3 +10,4 @@ cvxpy
 mujoco
 pyqt6
 pyqtgraph
+dotenv

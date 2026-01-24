@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robot_learning_BP"
+version = "0.1.0"
+
+[tool.setuptools]
+# tells setuptools that packages are in the current root directory
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+# search the root for folders that contain an __init__.py
+where = ["."]
+include = ["bpenv*", "mjModeling*", "Osciliilator*", "crocoddylModeling*"]
+namespaces = false
