@@ -1,1 +1,1 @@
-from .Osciliilator import *
+from .Oscillator import *

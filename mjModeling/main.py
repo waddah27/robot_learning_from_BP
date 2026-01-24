@@ -1,4 +1,4 @@
-from Osciliilator import run_drawer
+from Oscillator import run_drawer
 from mjModeling.conf import ROBOT_SCENE
 from kuka_iiwa_14.iiwa14_model import iiwa14
 from mjModeling.controllers import JacobianIK, VariableImpedanceControl
