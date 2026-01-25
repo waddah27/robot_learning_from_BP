@@ -2,7 +2,7 @@ import numpy as np
 import mujoco
 from mjModeling.conf import paramVIC, workingPiece
 from mjModeling.controllers.controller_api import Controller
-from mjModeling.experiments.impedance import ImpedanceEstimator
+from mjModeling.estimators import ImpedanceEstimator
 from mjModeling.mjRobot import Robot
 __all__ = ["VariableImpedanceControl"]
 

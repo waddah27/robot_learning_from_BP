@@ -2,8 +2,6 @@ from Oscillator import run_drawer
 from mjModeling.conf import ROBOT_SCENE
 from kuka_iiwa_14.iiwa14_model import iiwa14
 from mjModeling.controllers import JacobianIK, VariableImpedanceControl
-from mjModeling.experiments.impedance import (
-    ImpedanceEstimator)
 from mjModeling.experiments.motion import InitPos, straightCutting
 from mjModeling.experiments import Experiment
 from visualization.visualizer import Visualize
