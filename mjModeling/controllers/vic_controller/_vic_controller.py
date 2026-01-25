@@ -1,3 +1,4 @@
+from mjModeling.cutting_materials import Material
 import numpy as np
 import mujoco
 from mjModeling.conf import paramVIC, workingPiece
@@ -14,6 +15,7 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
         self.data = robot.data
         self.error_accumulated = np.zeros(3) # For Integral term
         self.estimator = ImpedanceEstimator(robot)
+        self._working_piece: Material = None
 
     def get_variable_gains(self, error_norm):
         # STABILITY: Lower the max stiffness.
@@ -25,9 +27,14 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
         kd = 0.5 * np.sqrt(kp)
         return kp, kd
 
-    def sim_cutting_resistance(self, current_pos, v_tip, magnitude=workingPiece.MATERIAL_RESISTANCE.value):
+    def compensate_cutting_resistance(self, current_pos, v_tip):
+        if not self.working_piece:
+            print("No material was set to working piece or No working piece was added!")
+            return np.zeros(3)
         # Material surface is at center_z + size_z = 0.04
-        surface_z = 0.04
+        surface_z = self.working_piece.surface_hight
+        magnitude = self.working_piece.cut_resistance
+
         depth = surface_z - current_pos[2]
 
         if depth > 0:
@@ -77,7 +84,7 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
             jac = np.zeros((3, self.model.nv))
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
             v_tip = jac @ self.data.qvel
-            f_res = self.sim_cutting_resistance(current_pos, v_tip)
+            f_res = self.compensate_cutting_resistance(current_pos, v_tip)
             self.robot.state["shared_array"][-1] = np.linalg.norm(f_res)
 
             # F = Kp*e + Ki*∫e - Kd*v
@@ -115,3 +122,11 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
                 viewer.sync()
 
         return False
+
+    @property
+    def working_piece(self):
+        return self._working_piece
+
+    @working_piece.setter
+    def working_piece(self, material: Material):
+        self._working_piece = material
