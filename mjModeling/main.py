@@ -4,7 +4,7 @@ from kuka_iiwa_14.iiwa14_model import iiwa14
 from mjModeling.controllers import JacobianIK, VariableImpedanceControl
 from mjModeling.experiments.impedance import (
     ImpedanceEstimator)
-from mjModeling.experiments.motion import InitPos
+from mjModeling.experiments.motion import InitPos, straightCutting
 from mjModeling.experiments import Experiment
 from visualization.visualizer import Visualize
 import multiprocessing as mp
@@ -12,7 +12,7 @@ import multiprocessing as mp
 # 1 - build experiment env
 robot = iiwa14().create(ROBOT_SCENE)
 # Experiments
-impedanceEstimator: Experiment = ImpedanceEstimator(robot)
+straight_cut: Experiment = straightCutting(robot)
 init_pos: Experiment = InitPos(robot)
 
 # Controllers
@@ -32,9 +32,10 @@ if __name__ == '__main__':
     }
 
     experiments = {
-        "motion": init_pos,
-        "impedance": impedanceEstimator
+        "init_pos": init_pos,
+        "straight_cut": straight_cut
         }
+    current_experiment = experiments.get("straight_cut")
 
-    init_pos.controller = vic
-    visualizer.run(callback=lambda x: experiments["motion"].execute(x))
+    current_experiment.controller = vic
+    visualizer.run(callback=lambda x: current_experiment.execute(x))

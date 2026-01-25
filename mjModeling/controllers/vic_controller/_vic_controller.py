@@ -16,45 +16,51 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
         self.estimator = ImpedanceEstimator(robot)
 
     def get_variable_gains(self, error_norm):
-        # STABILITY: Lower the max stiffness. 
+        # STABILITY: Lower the max stiffness.
         # Most MuJoCo robots explode above 2000-5000 if timestep is 0.002
         k_min, k_max = paramVIC.VIC_KP_MIN.value, paramVIC.VIC_KP_MAX.value
         kp = np.clip(k_max * (error_norm / 0.2), k_min, k_max)
-        # DAMPING: Critically damped is 2 * sqrt(K). 
+        # DAMPING: Critically damped is 2 * sqrt(K).
         # Over-damp slightly (1.2 multiplier) to stop the shaking.
-        kd = 0.5 * np.sqrt(kp) 
+        kd = 0.5 * np.sqrt(kp)
         return kp, kd
 
     def sim_cutting_resistance(self, current_pos, v_tip, magnitude=workingPiece.MATERIAL_RESISTANCE.value):
-        """simulate cutting resistance: here we can test different 
-        force reactions from different materials to validate the research 
-        results
-        TODO: this is a KLUDGE should be moved to an independent class"""
-        # Check if tip is inside the box (z < 0.04)
-        if current_pos[2] < 0.04:
-            # Simulate resistance: add an upward force proportional to velocity
-            return -magnitude * v_tip 
-        return 0.0
+        # Material surface is at center_z + size_z = 0.04
+        surface_z = 0.04
+        depth = surface_z - current_pos[2]
+
+        if depth > 0:
+            # 1. Damping (The 'v_tip' part - only active while moving)
+            f_damping = -magnitude * v_tip
+
+            # 2. Stiffness (The 'depth' part - active even when stopped)
+            # Use a constant like 500 N/m to simulate material pushing back up
+            f_stiffness = np.array([0, 0, 500.0 * depth])
+
+            return f_damping + f_stiffness
+        return np.zeros(3)
+
 
     def move_to_position(self, target_pos, viewer=None, max_steps=8000):
         tcp_id = self.model.site("scalpel_tip").id
         # Define 'home' posture to keep the elbow up (joint angles in radians)
-        q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159]) 
-        
+        q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159])
+
         self.error_accumulated = np.zeros(3)
         # Use a small epsilon for Damped Least Squares stability
-        lambda_sq = paramVIC.VIC_LAMBDA_SQ.value 
+        lambda_sq = paramVIC.VIC_LAMBDA_SQ.value
 
         for step in range(max_steps):
             mujoco.mj_forward(self.model, self.data)
-            
+
             current_pos = self.data.site_xpos[tcp_id].copy()
             error = target_pos - current_pos
             dist = np.linalg.norm(error)
 
             # 2mm tolerance for 2026 surgical/precision tasks
-            if dist < paramVIC.VIC_TOL.value: 
-                return True 
+            if dist < paramVIC.VIC_TOL.value:
+                return True
 
             # 1. VARIABLE GAIN SCHEDULING
             # High stiffness far away, lower stiffness for delicate contact
@@ -71,10 +77,12 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
             jac = np.zeros((3, self.model.nv))
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
             v_tip = jac @ self.data.qvel
-            
+            f_res = self.sim_cutting_resistance(current_pos, v_tip)
+            self.robot.state["shared_array"][-1] = np.linalg.norm(f_res)
+
             # F = Kp*e + Ki*∫e - Kd*v
             f_virtual = (kp_val * error) + (ki_val * self.error_accumulated) - (kd_val * v_tip)
-            f_virtual += self.sim_cutting_resistance(current_pos, v_tip)
+            f_virtual +=  f_res #  self.sim_cutting_resistance(current_pos, v_tip)
             # 4. STABLE MAPPING (Damped Least Squares)
             # Solves: tau = J^T * inv(JJ^T + λ^2I) * F
             jjt = jac @ jac.T
@@ -84,7 +92,7 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
             # Keeps the robot elbow up while the tip follows target_pos
             k_posture, d_posture = 10.0, 2.0
             tau_posture = k_posture * (q_home[:self.model.nv] - self.data.qpos[:self.model.nv]) - d_posture * self.data.qvel
-            
+
             # Project posture into null-space: P = (I - J_pinv * J)
             j_inv = jac.T @ np.linalg.solve(jjt + lambda_sq * np.eye(3), np.eye(3))
             null_projection = np.eye(self.model.nv) - (j_inv @ jac)
@@ -93,7 +101,7 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
             # 6. FINAL TORQUE + BIAS COMPENSATION
             # qfrc_bias handles Gravity and Coriolis automatically
             tau_total = tau_task + tau_null + self.data.qfrc_bias[:self.model.nv]
-            
+
             # Apply to actuators within hardware limits
             self.data.ctrl[:self.model.nu] = np.clip(tau_total[:self.model.nu], -300, 300)
 
@@ -105,6 +113,5 @@ class VariableImpedanceControl(Controller): # Removed parent for standalone clar
 
             if viewer and step % 4 == 0:
                 viewer.sync()
-                
+
         return False
- 
