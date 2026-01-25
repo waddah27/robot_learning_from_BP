@@ -1,0 +1,105 @@
+from typing import Any, Optional
+import cvxpy as cp
+import numpy as np
+from numpy import ndarray
+import matplotlib.pyplot as plt
+
+class optimal_stiffness:
+    def __init__(self, n_dims, k_min: ndarray, k_max: ndarray, epsilon: float, delta_t: float, solver=cp.SCS) -> None:
+        self.n = n_dims
+        self.k_min = k_min
+        self.k_max = k_max
+        self.epsilon = epsilon
+        self.delta_t = delta_t
+        self.Q = np.eye(self.n)
+        self.R = np.eye(self.n)
+        self.C = np.eye(self.n)
+        self.x_t = 0.3  # Initial tank energy state
+        self.objective: Any = None
+        self.constraints: Any = None
+        self.problem: Any = None
+        self.solver = solver
+
+    def set_weights(self, q_factor: int = 3200, r_factor: int = 1, coriolis_factor=1):
+        self.Q *= q_factor
+        self.R *= r_factor
+        self.C *= coriolis_factor
+
+    def tank_energy_derivative(self, k_d: cp.Variable, x_tilde: ndarray) -> cp.Expression:
+        x_tilde_dot = np.array([0.1, 0.1, 0.1])
+        # Assume a simple model where velocity error is proportional to position error
+        # x_tilde_dot = 0.1 * x_tilde  # This is a simplification and should be replaced with actual velocity error if available
+        # return self.x_t * (x_tilde_dot.T @ x_tilde_dot - k_d.T @ x_tilde_dot)
+        return cp.multiply(x_tilde_dot, (cp.square(x_tilde_dot) + cp.multiply((k_d - self.k_min), cp.square(x_tilde_dot))))
+
+    def run(self, x_tilde: ndarray, F_d: ndarray, use_constraints=True, verbose:bool=False):
+        self.set_weights()
+        k_d = cp.Variable(self.n)
+        x_tilde_dot = np.array([0.1, 0.1, 0.1]) # we assume the worst case if the cartesian speed limit is reached
+        # Compute quadratic form components
+        # P = np.diag(x_tilde).T @ self.Q @ np.diag(x_tilde) + self.R
+        # P = np.outer(x_tilde, x_tilde) * self.Q + self.R
+        # q = -2 * (F_d.T @ self.Q @ np.diag(x_tilde) + self.k_min.T @ self.R)
+        # q = -2 * (np.dot(self.Q @ F_d, x_tilde)+self.R @ self.k_min)
+        D_d = np.array([0.7, 0.7, 0.7])
+        F_ext = self.C @ x_tilde_dot + D_d * x_tilde_dot + k_d @ x_tilde
+        # Objective function
+        # self.objective = cp.Minimize(0.5 * cp.quad_form(k_d, P) + q.T @ k_d)
+        self.objective = cp.Minimize(0.5 * cp.quad_form(F_ext - F_d, self.Q) + 0.5 * cp.quad_form(k_d - self.k_min, self.R))
+
+        # Compute tank energy derivative and its constraint
+        tank_energy = self.x_t + self.delta_t * self.tank_energy_derivative(k_d, x_tilde)
+        self.constraints = [k_d >= self.k_min, k_d <= self.k_max, tank_energy >= self.epsilon]
+
+        # Solve the optimization problem
+        if use_constraints:
+            self.problem = cp.Problem(self.objective, self.constraints)
+        else:
+            self.problem = cp.Problem(self.objective)
+        solution = self.problem.solve(solver=self.solver, verbose=verbose)
+        return k_d.value, solution, self.problem.status, tank_energy
+
+
+
+if __name__ == "__main__":
+    n = 3
+    x_tilde = np.array([0.0, 0.0, 0.0])
+    F_d = np.array([0, 0, 0])
+    K_min = np.array([10.0, 10.0, 10.0])
+    k_max = np.array([200000.0, 200000.0, 200000.0])
+    epsilon = 0.3
+    initial_tank_energy = 0.3  # Example initial energy
+    dt = 0.1
+    trj = np.linspace(0,10,10)
+    x_tr = np.linspace(1,0,10)
+    F_d_demo = np.array([[0, 0, 40] for i in trj])
+    x_tilde_demo = np.array([[0.1,0.1,0.1] for i in x_tr])
+    kd_opt_arr = []
+    final_opt_track = None
+    stiffness_optimizer = optimal_stiffness(n_dims=n, k_min=K_min, k_max=k_max, epsilon=epsilon, delta_t=dt)
+    i = 0
+    for x_tilde, F_d in zip(x_tilde_demo, F_d_demo):
+        try:
+            k_d_opt, opt_solution, status, tank_energy = stiffness_optimizer.run(x_tilde, F_d, verbose=True, use_constraints=True)
+            # kd_opt_arr.append(k_d_opt)
+            if k_d_opt is not None:
+                final_opt_track = k_d_opt
+            print(f"Solved  at {i}:Status = {status}, Optimal value = {opt_solution}, updated tank energy = {tank_energy.value}, F_d = {F_d}, X_tilde = {x_tilde} -- Kd = {k_d_opt}")
+        except Exception as E:
+            print(f"Failed at {i}: F_d = {F_d}, x_tilde = {x_tilde} -- Reason: {E}")
+            # kd_opt_arr.append(K_min)
+            pass
+        if k_d_opt is not None:
+            kd_opt_arr.append(k_d_opt)
+        elif final_opt_track is not None:
+            kd_opt_arr.append(final_opt_track)
+        i+=1
+    kd_opt_arr = np.array(kd_opt_arr)
+    col = kd_opt_arr[:,0]
+
+    for i in range(kd_opt_arr.shape[1]):
+        plt.plot(trj, kd_opt_arr[:,i], label=f'$Kd_{i}$')
+    plt.legend()
+    plt.show()
+    # for i in kd_opt_arr:
+    #     print(i)
