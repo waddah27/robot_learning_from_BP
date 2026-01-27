@@ -8,18 +8,21 @@
     "scalpel_dir" :  "scalpel_model/scalpel/Scalpel.stl",
     "scalpel_geom_name":"scalpel_geom",
     // working piece material properties : todo assemple in one dict
-    "material_name": "cutting_material",
-    "material_geom_name":"material_geom",
-    "material_resistance": 100,
     // visualize site frame for TCP and ee
     "vis_site_frame":false,
     // visualize virtual joints between model components 
     "vis_joints":false,
     // visualize label name
     "vis_label_name":true,
-
+    
     // register robot state dict keys
     "force_history":"force_history",
+    "material_params" : {
+        
+        "material_name": "cutting_material",
+        "material_geom_name":"material_geom",
+        "material_resistance": 100
+    },
     // IK controller algorithm parameters
     "IK_params": {
 

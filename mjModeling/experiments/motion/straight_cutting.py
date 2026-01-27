@@ -10,7 +10,7 @@ class straightCutting(InitPos):
         self.robot = robot
         self.controller = None
 
-    def _execute_straight_cut(self, viewer, length_m=0.3, num_waypoints=10):
+    def _execute_straight_cut(self, viewer, length_m=0.3, num_waypoints=1):
         """Executes a straight line cut with real-time force reporting"""
         if not self.controller:
             return
@@ -64,7 +64,7 @@ class straightCutting(InitPos):
 
         # 3. Perform the straight cut at this new depth
         if status == 0:
-            self._execute_straight_cut(viewer, length_m=0.15, num_waypoints=10)
+            self._execute_straight_cut(viewer, length_m=0.15, num_waypoints=1)
 
         return 0
 

@@ -29,8 +29,8 @@ class paramVIC(Enum):
 
 
 class workingPiece(Enum):
-    MATERIAL_RESISTANCE = configs["material_resistance"]
-    MATERIAL_NAME = configs["material_name"]
+    MATERIAL_RESISTANCE = configs["material_params"]["material_resistance"]
+    MATERIAL_NAME = configs["material_params"]["material_name"]
 
 
 class oscillatorConfigs(Enum):
@@ -54,7 +54,7 @@ ROBOT_XML_DIR = os.path.join(ROBOT_DIR, 'xml')
 ROBOT_SCENE = os.path.join(ROBOT_XML_DIR, 'scene.xml')
 
 # attached assets parameters
-MATERIAL_GEOM = configs["material_geom_name"]
+MATERIAL_GEOM = configs["material_params"]["material_geom_name"]
 SCALPEL_GEOM = configs["scalpel_geom_name"]
 # get robot state dict keys
 FORCE_HISTORY = configs["force_history"]
