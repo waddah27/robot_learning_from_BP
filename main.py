@@ -10,17 +10,14 @@ from sklearn.metrics import root_mean_squared_error as rmse
 from time import time
 from exp_stability_analysis import QuadraticLyapunov
 from visualization_utils import VisualizerOnline, VisualizerOffline, VisualizerOfflineSameRanges
-EXP_DATA_PATH = './experimental_data'
+from data import MaterialMeta
 # Load the data
-class MaterialMeta(Enum):
-    PVC = 'pvc'
-    penoplex = 'peno'
-    cork =  'crck'
+
 
 class MaterialData:
-    PVC = np.load(f'./predicted_pose_twist_wrench_{MaterialMeta.PVC.value}.npy')
-    penoplex = np.load(f'./predicted_pose_twist_wrench_{MaterialMeta.penoplex.value}.npy')
-    cork = np.load(f'./predicted_pose_twist_wrench_{MaterialMeta.cork.value}.npy')
+    PVC = np.load(MaterialMeta.PVC.value)
+    penoplex = np.load(MaterialMeta.penoplex.value)
+    cork = np.load(MaterialMeta.cork.value)
 
 
 data_gmr = MaterialData.cork
