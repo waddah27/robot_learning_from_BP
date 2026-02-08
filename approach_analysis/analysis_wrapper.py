@@ -8,9 +8,7 @@ __all__ = ["ResAnalyser"]
 
 
 class ResAnalyser:
-    def __init__(self):
-        pass
-
+    axs = {0: 'X', 1: 'Y', 2: 'Z'} # Axis labels
 
     @classmethod
     def get_smoothness(cls, bp_traj: bpTrajDataLoader):
@@ -19,17 +17,18 @@ class ResAnalyser:
         return F_d_sm
 
     @classmethod
-    def run(cls, bp_traj: bpTrajDataLoader):
+    def get_boundness(cls, data: np.ndarray):
+        data_bound = get_norm_bound_threshold(data)
+        return data_bound
+
+    @classmethod
+    def get_continuity(cls, bp_traj: bpTrajDataLoader):
         # visualize time per step
         plt.plot(bp.convergence_time_per_step)
         plt.xlabel('Step')
         plt.ylabel('Time [s]')
         plt.show()
 
-        axs = {0: 'X', 1: 'Y', 2: 'Z'} # Axis labels
-        # get F_d norm bound threshold
-        F_d_bound = get_norm_bound_threshold(bp_traj.force)
-        print(f"F_d_bound: {F_d_bound}")
 
         # get F_d continuity threshold (critertion value)
         F_d_continuity = get_lipschitz_criterion(bp_traj.force)
@@ -37,10 +36,23 @@ class ResAnalyser:
         # visualize F_d continuity
         F_d = np.array(bp_traj.force).T
         for ax, i in enumerate(range(3)):
-            plt.plot(F_d[i], label=f"{axs[ax]}")
+            plt.plot(F_d[i], label=f"{cls.axs[ax]}")
         plt.title(f"F_d: generated force on X,Y and Z axis - {bp_traj.material_name} material")
         plt.legend()
         plt.xlabel('Step')
         plt.ylabel(r'$\dot{F_d}$: '+ bp_traj.material_name)
         plt.show()
         return F_d_continuity
+
+    @classmethod
+    def grad(cls, material_name: str, data: np.ndarray):
+        data_dot = np.diff(data, axis=0)
+        data_dot_array = np.array(data_dot).T
+        for ax, i in enumerate(range(3)):
+            plt.plot(data_dot_array[i], label=f"{cls.axs[ax]}")
+        plt.title(r'$\dot{F_d} :1^{st} derivative generated force on X,Y and Z$: '+ material_name)
+        plt.xlabel('Step')
+        plt.ylabel(r'$\dot{F_d}$: '+ material_name)
+        plt.legend()
+        plt.show()
+        return data_dot

@@ -40,24 +40,20 @@ if __name__ == "__main__":
     if analyse_results:
 
         # Generated forces continuity
-        F_d_Continuity = ResAnalyser.run(bp_traj)
+        F_d_Continuity = ResAnalyser.get_continuity(bp_traj)
+
+        # Boundness
+        F_d_bound = ResAnalyser.get_boundness(bp_traj.force)
+        print(f"F_d_bound: {F_d_bound}")
 
         # get F_d smoothness threshold: derivatives of F_d are bounded
         F_d_sm = ResAnalyser.get_smoothness(bp_traj)
-        sys.exit(0)
 
         # get the continuity of F_d_dot
-        F_d_dot = np.diff(bp_traj.force, axis=0)
-        F_d_dot_array = np.array(F_d_dot).T
-        print(f"F_d_dot: {F_d_dot}")
-        for ax, i in enumerate(range(3)):
-            plt.plot(F_d_dot_array[i], label=f"{axs[ax]}")
-        plt.title(r'$\dot{F_d} :1^{st} derivative generated force on X,Y and Z$: '+ bp_traj.material_name)
-        plt.xlabel('Step')
-        plt.ylabel(r'$\dot{F_d}$: '+ bp_traj.material_name)
-        plt.legend()
-        plt.show()
+        F_d_dot = ResAnalyser.grad(bp_traj.material_name, bp_traj.force)
 
+        print(f"F_d_dot: {F_d_dot}")
+        sys.exit(0)
         F_d_dot_continuity = get_lipschitz_criterion(F_d_dot)
         print(f"F_d_dot_continuity: {F_d_dot_continuity}")
 
