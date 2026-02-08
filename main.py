@@ -10,7 +10,7 @@ from data import MaterialData, bpTrajDataLoader
 from motion_planners import MotionPlanner
 import sys
 from bp_basic_experiment import BasicBPexperiment as bp
-from approach_analysis import ContinuityAnalyser
+from approach_analysis import ResAnalyser
 # Load the data
 bp_data = MaterialData.cork
 bp_traj = bpTrajDataLoader(bp_data)
@@ -39,12 +39,12 @@ if __name__ == "__main__":
 
     if analyse_results:
 
-        F_d_Continuity = ContinuityAnalyser.run(bp_traj)
-        sys.exit(0)
+        # Generated forces continuity
+        F_d_Continuity = ResAnalyser.run(bp_traj)
 
         # get F_d smoothness threshold: derivatives of F_d are bounded
-        F_d_sm = get_smoothness_threshold(bp_traj.force)
-        print(f"F_d_sm: {F_d_sm}")
+        F_d_sm = ResAnalyser.get_smoothness(bp_traj)
+        sys.exit(0)
 
         # get the continuity of F_d_dot
         F_d_dot = np.diff(bp_traj.force, axis=0)
@@ -73,6 +73,7 @@ if __name__ == "__main__":
         plt.legend()
         plt.show()
         F_ddot_continuity = get_lipschitz_criterion(F_d_ddot)
+        sys.exit(0)
 
         # get the continuity of X_tilde and X_tilde_dot
         X = np.array(bp.x_tilde_list).T
