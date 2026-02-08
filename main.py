@@ -8,7 +8,7 @@ from exp_stability_analysis import QuadraticLyapunov
 from plotters import PlotterOfflineSameRange
 from data import MaterialData, bpTrajDataLoader
 from motion_planners import MotionPlanner
-
+import sys
 # Load the data
 bp_data = MaterialData.cork
 bp_traj = bpTrajDataLoader(bp_data)
@@ -22,7 +22,9 @@ use_specified_k = False
 k_specified = [500,500,500] # To test using constant stiffness case
 print(bp_traj.shape)
 analyse_results = False
-
+controller = VICController(F_min=bp_traj.F_min, F_max=bp_traj.F_max)
+planner = MotionPlanner(bp_traj)
+plot_desired_3d_pos = True
 
 
 if __name__ == "__main__":
@@ -33,17 +35,11 @@ if __name__ == "__main__":
     kd_list = []
     dd_list = []
     convergence_time_per_step = []
-    plot_desired_pos = True
     
-    if plot_desired_pos:
+    if plot_desired_3d_pos:
         PlotterTraj3D.plot(bp_traj)
-    
-    controller = VICController(F_min=bp_traj.F_min, F_max=bp_traj.F_max)
-    planner = MotionPlanner(bp_traj)
-    # visualizer = Visualizer(xlim=(min(pos[:,-1]), max(pos[:,-1])), ylim=(0,1))
-
-    visualizer = PlotterOfflineSameRange(title=title)
-
+    plotter = PlotterOfflineSameRange(title=title)
+    # sys.exit(0)    
     for x, x_dot, F_d in planner.go_to_next():
         x_tilde = np.maximum(np.abs(bp_traj.pos[-1,:] - x), np.array([0.013, 0.013, 0.013])) # accepted error to avoid division by zero
         x_tilde_dot = np.abs(bp_traj.vel[-1,:] - x_dot)
@@ -67,7 +63,6 @@ if __name__ == "__main__":
             controller.K_d = kd_opt
             dd_opt = dd_opt
 
-
         F_actual = controller.calculate_force(x_tilde, x_tilde_dot)
         F_ext_list.append(F_actual)
         elapsed_time = time() - start_time
@@ -76,12 +71,9 @@ if __name__ == "__main__":
         print(f"\t k_d = {kd_opt}, dd = {dd_opt}, F_act = {F_actual}")
         print("Next Position:", x_tilde, "Next Force:", F_d)
         # print("Total energy: "+str(controller.E_tot))
-        visualizer.collect_data(x=x_tilde,Fd=F_d, Fext=F_actual,k=kd_opt, d=dd_opt)
-    visualizer.show()
-
-    # x_tilde_dot_list = np.array(x_tilde_dot_list).T
+        plotter.collect_data(x=x_tilde, Fd=F_d, Fext=F_actual, k=kd_opt, d=dd_opt)
+    plotter.show()
     print("Completed all steps.")
-
 
     if analyse_results:
         # visualize time per step
