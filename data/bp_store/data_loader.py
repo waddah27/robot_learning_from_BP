@@ -88,7 +88,7 @@ class bpTrajDataLoader:
         return self._shape
 
     @property
-    def name(self):
+    def material_name(self):
         return self._name
 
     def get_window(self, start, end):

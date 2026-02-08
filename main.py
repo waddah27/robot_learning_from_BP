@@ -16,7 +16,7 @@ from data import MaterialData, bpTrajDataLoader
 # Load the data
 gmr_data = MaterialData.cork
 gmr_traj = bpTrajDataLoader(gmr_data)
-MATERIAL_NAME = gmr_traj.name
+MATERIAL_NAME = gmr_traj.material_name
 title = f"Visualization of Dynamics during cutting {MATERIAL_NAME}"
 
 # Optimizer configs
