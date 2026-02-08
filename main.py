@@ -33,7 +33,7 @@ if __name__ == "__main__":
     if plot_desired_3d_pos:
         PlotterTraj3D.plot(bp_traj)
     # sys.exit(0)
-    bp.run(bp_traj)
+    kd_opt, dd_opt = bp.run(bp_traj)
 
 
     if analyse_results:

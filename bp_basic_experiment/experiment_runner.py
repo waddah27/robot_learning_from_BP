@@ -65,4 +65,5 @@ class BasicBPexperiment:
             cls.plotter.collect_data(x=x_tilde, Fd=F_d, Fext=F_actual, k=kd_opt, d=dd_opt)
         cls.plotter.show()
         print("Completed all steps.")
+        return kd_opt, dd_opt
 
