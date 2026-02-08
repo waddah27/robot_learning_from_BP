@@ -1,22 +1,17 @@
-from enum import Enum
-import os
 import numpy as np
 import matplotlib.pyplot as plt
-from numpy import cos, sin
 from data_analysis_utils import get_lipschitz_criterion, get_norm_bound_threshold, get_smoothness_threshold
-from transformation_utils import transform_coordinates
 from vic_controller_with_tank_energy_inside import VICController
-from sklearn.metrics import root_mean_squared_error as rmse
 from time import time
 from exp_stability_analysis import QuadraticLyapunov
-from visualization_utils import VisualizerOnline, VisualizerOffline, VisualizerOfflineSameRanges
+from plotters import PlotterOfflineSameRange
 from data import MaterialData, bpTrajDataLoader
-
+from motion_planners import MotionPlanner
 
 # Load the data
-gmr_data = MaterialData.cork
-gmr_traj = bpTrajDataLoader(gmr_data)
-MATERIAL_NAME = gmr_traj.material_name
+bp_data = MaterialData.cork
+bp_traj = bpTrajDataLoader(bp_data)
+MATERIAL_NAME = bp_traj.material_name
 title = f"Visualization of Dynamics during cutting {MATERIAL_NAME}"
 
 # Optimizer configs
@@ -24,18 +19,9 @@ use_k_min = False
 use_k_max = False
 use_specified_k = False
 k_specified = [500,500,500] # To test using constant stiffness case
-print(gmr_traj.shape)
+print(bp_traj.shape)
 analyse_results = False
 
-
-class MotionPlanner:
-    def __init__(self, data: bpTrajDataLoader) -> None:
-        self.data = data
-
-    def go_to_next(self):
-        """ Generator that yields position, velocity, and force at each step. """
-        for d in self.data:
-            yield d
 
 
 if __name__ == "__main__":
@@ -49,7 +35,7 @@ if __name__ == "__main__":
     plot_desired_pos = False
     if plot_desired_pos:
         ax = plt.figure().add_subplot(projection='3d')
-        ax.plot(gmr_traj.pos[:,2],gmr_traj.pos[:,1], gmr_traj.pos[:,0], color='k')
+        ax.plot(bp_traj.pos[:,2],bp_traj.pos[:,1], bp_traj.pos[:,0], color='k')
         ax.set_title(label=f"Desired trajextory expressed in robot tcp frame - {MATERIAL_NAME} material")
         ax.set_xlabel(r'Z_{tcp} [m]')
         ax.set_ylabel(r'Y_{tcp}[m]')
@@ -57,15 +43,15 @@ if __name__ == "__main__":
         plt.tight_layout()
         ax.view_init(elev=65, azim=-30)
         plt.show()
-    controller = VICController(F_min=gmr_traj.F_min, F_max=gmr_traj.F_max)
-    planner = MotionPlanner(gmr_traj)
+    controller = VICController(F_min=bp_traj.F_min, F_max=bp_traj.F_max)
+    planner = MotionPlanner(bp_traj)
     # visualizer = Visualizer(xlim=(min(pos[:,-1]), max(pos[:,-1])), ylim=(0,1))
 
-    visualizer = VisualizerOfflineSameRanges(title=title)
+    visualizer = PlotterOfflineSameRange(title=title)
 
     for x, x_dot, F_d in planner.go_to_next():
-        x_tilde = np.maximum(np.abs(gmr_traj.pos[-1,:] - x), np.array([0.013, 0.013, 0.013])) # accepted error to avoid division by zero
-        x_tilde_dot = np.abs(gmr_traj.vel[-1,:] - x_dot)
+        x_tilde = np.maximum(np.abs(bp_traj.pos[-1,:] - x), np.array([0.013, 0.013, 0.013])) # accepted error to avoid division by zero
+        x_tilde_dot = np.abs(bp_traj.vel[-1,:] - x_dot)
         x_tilde_list.append(x_tilde)
         x_tilde_dot_list.append(x_tilde_dot)
         start_time = time()
@@ -111,14 +97,14 @@ if __name__ == "__main__":
 
         axs = {0: 'X', 1: 'Y', 2: 'Z'} # Axis labels
         # get F_d norm bound threshold
-        F_d_bound = get_norm_bound_threshold(gmr_traj.force)
+        F_d_bound = get_norm_bound_threshold(bp_traj.force)
         print(f"F_d_bound: {F_d_bound}")
 
         # get F_d continuity threshold (critertion value)
-        F_d_continuity = get_lipschitz_criterion(gmr_traj.force)
+        F_d_continuity = get_lipschitz_criterion(bp_traj.force)
         print(f"F_d_continuity: {F_d_continuity}")
         # visualize F_d continuity
-        F_d = np.array(gmr_traj.force).T
+        F_d = np.array(bp_traj.force).T
         for ax, i in enumerate(range(3)):
             plt.plot(F_d[i], label=f"{axs[ax]}")
         plt.title(f"F_d: generated force on X,Y and Z axis - {MATERIAL_NAME} material")
@@ -128,11 +114,11 @@ if __name__ == "__main__":
         plt.show()
 
         # get F_d smoothness threshold: derivatives of F_d are bounded
-        F_d_sm = get_smoothness_threshold(gmr_traj.force)
+        F_d_sm = get_smoothness_threshold(bp_traj.force)
         print(f"F_d_sm: {F_d_sm}")
 
         # get the continuity of F_d_dot
-        F_d_dot = np.diff(gmr_traj.force, axis=0)
+        F_d_dot = np.diff(bp_traj.force, axis=0)
         F_d_dot_array = np.array(F_d_dot).T
         print(f"F_d_dot: {F_d_dot}")
         for ax, i in enumerate(range(3)):
