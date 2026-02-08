@@ -12,8 +12,7 @@ import sys
 # Load the data
 bp_data = MaterialData.cork
 bp_traj = bpTrajDataLoader(bp_data)
-MATERIAL_NAME = bp_traj.material_name
-title = f"Visualization of Dynamics during cutting {MATERIAL_NAME}"
+title = f"Visualization of Dynamics during cutting {bp_traj.material_name}"
 
 # Optimizer configs
 use_k_min = False
@@ -26,7 +25,8 @@ controller = VICController(F_min=bp_traj.F_min, F_max=bp_traj.F_max)
 planner = MotionPlanner(bp_traj)
 plotter = PlotterOfflineSameRange(title=title)
 plot_desired_3d_pos = True
-
+krasovskii_analyasis = False
+quadratic_lyapunov = True
 
 if __name__ == "__main__":
     # tcp_rot = transform_coordinates(th_x_deg=90, th_y_deg=90)
@@ -36,10 +36,10 @@ if __name__ == "__main__":
     kd_list = []
     dd_list = []
     convergence_time_per_step = []
-    
+
     if plot_desired_3d_pos:
         PlotterTraj3D.plot(bp_traj)
-    # sys.exit(0)    
+    # sys.exit(0)
     for x, x_dot, F_d in planner.go_to_next():
         x_tilde = np.maximum(np.abs(bp_traj.pos[-1,:] - x), np.array([0.013, 0.013, 0.013])) # accepted error to avoid division by zero
         x_tilde_dot = np.abs(bp_traj.vel[-1,:] - x_dot)
@@ -94,10 +94,10 @@ if __name__ == "__main__":
         F_d = np.array(bp_traj.force).T
         for ax, i in enumerate(range(3)):
             plt.plot(F_d[i], label=f"{axs[ax]}")
-        plt.title(f"F_d: generated force on X,Y and Z axis - {MATERIAL_NAME} material")
+        plt.title(f"F_d: generated force on X,Y and Z axis - {bp_traj.material_name} material")
         plt.legend()
         plt.xlabel('Step')
-        plt.ylabel(r'$\dot{F_d}$: '+ MATERIAL_NAME)
+        plt.ylabel(r'$\dot{F_d}$: '+ bp_traj.material_name)
         plt.show()
 
         # get F_d smoothness threshold: derivatives of F_d are bounded
@@ -110,9 +110,9 @@ if __name__ == "__main__":
         print(f"F_d_dot: {F_d_dot}")
         for ax, i in enumerate(range(3)):
             plt.plot(F_d_dot_array[i], label=f"{axs[ax]}")
-        plt.title(r'$\dot{F_d} :1^{st} derivative generated force on X,Y and Z$: '+ MATERIAL_NAME)
+        plt.title(r'$\dot{F_d} :1^{st} derivative generated force on X,Y and Z$: '+ bp_traj.material_name)
         plt.xlabel('Step')
-        plt.ylabel(r'$\dot{F_d}$: '+ MATERIAL_NAME)
+        plt.ylabel(r'$\dot{F_d}$: '+ bp_traj.material_name)
         plt.legend()
         plt.show()
 
@@ -125,9 +125,9 @@ if __name__ == "__main__":
         print(f"F_d_ddot: {F_d_ddot}")
         for ax, i in enumerate(range(3)):
             plt.plot(F_d_ddot_array[i], label=f"{axs[ax]}")
-        plt.title(r'$\ddot{F_d}:2^{nd} derivative generated force on X,Y and Z$: '+ MATERIAL_NAME)
+        plt.title(r'$\ddot{F_d}:2^{nd} derivative generated force on X,Y and Z$: '+ bp_traj.material_name)
         plt.xlabel('Step')
-        plt.ylabel(r'$F_d$: '+ MATERIAL_NAME)
+        plt.ylabel(r'$F_d$: '+ bp_traj.material_name)
         plt.legend()
         plt.show()
         F_ddot_continuity = get_lipschitz_criterion(F_d_ddot)
@@ -145,31 +145,31 @@ if __name__ == "__main__":
         print(f"x_tilde_bound: {x_tilde_bound}")
         for ax, i in enumerate(range(3)):
             plt.plot(X[i], label=f"{axs[ax]}")
-        plt.title(r'$\tilde{x}: position$: '+ MATERIAL_NAME)
+        plt.title(r'$\tilde{x}: position$: '+ bp_traj.material_name)
         plt.xlabel('Step')
-        plt.ylabel(r'$\tilde{x}$: '+ MATERIAL_NAME)
+        plt.ylabel(r'$\tilde{x}$: '+ bp_traj.material_name)
         plt.legend()
         plt.show()
 
         for ax, i in enumerate(range(3)):
             plt.plot(X_dot[i], label=f"{axs[ax]}")
-        plt.title(r'$\dot{\tilde{x}}: velocity$: '+ MATERIAL_NAME)
+        plt.title(r'$\dot{\tilde{x}}: velocity$: '+ bp_traj.material_name)
         plt.xlabel('Step')
-        plt.ylabel(r'$\dot{\tilde{x}}$: '+ MATERIAL_NAME)
+        plt.ylabel(r'$\dot{\tilde{x}}$: '+ bp_traj.material_name)
         plt.legend()
         plt.show()
         # visualise dissipated energy
         plt.plot(controller.E_tot)
         plt.xlabel('Step')
-        plt.ylabel(r'Tank storage $T(x_t)$: '+ MATERIAL_NAME)
+        plt.ylabel(r'Tank storage $T(x_t)$: '+ bp_traj.material_name)
         plt.show()
 
         # visualise velocity error ZYZ
         for ax, i in enumerate(range(3)):
             plt.plot(x_tilde_dot_list[i], label=f"{axs[ax]}")
-        plt.title(r'$\dot{\tilde{x}}: velocity error$: '+ MATERIAL_NAME)
+        plt.title(r'$\dot{\tilde{x}}: velocity error$: '+ bp_traj.material_name)
         plt.xlabel('Step')
-        plt.ylabel(r'$\dot{\tilde{x}}$: '+ MATERIAL_NAME)
+        plt.ylabel(r'$\dot{\tilde{x}}$: '+ bp_traj.material_name)
         plt.legend()
         plt.show()
 
@@ -178,7 +178,7 @@ if __name__ == "__main__":
             norm_bounds.append(x[-1])
         plt.plot(norm_bounds)
         plt.xlabel('Step')
-        plt.ylabel(r'Force error norm: '+ MATERIAL_NAME)
+        plt.ylabel(r'Force error norm: '+ bp_traj.material_name)
         plt.show()
 
         for i in range(4):
@@ -186,14 +186,14 @@ if __name__ == "__main__":
             plt.plot(controller.Force_error[rand_idx], label=f"Step {rand_idx}")
         plt.plot(controller.Force_error[-1], label=f"Step {len(controller.Force_error)}")
         plt.xlabel('optimizer iterations per step')
-        plt.ylabel(r'Force error: '+ MATERIAL_NAME)
+        plt.ylabel(r'Force error: '+ bp_traj.material_name)
         plt.legend()
         plt.show()
 
 
         plt.plot(controller.fun_value)
         plt.xlabel('Step')
-        plt.ylabel(r'optimizer fun_value: '+ MATERIAL_NAME)
+        plt.ylabel(r'optimizer fun_value: '+ bp_traj.material_name)
         plt.show()
         convergence_delta = np.max(controller.step_Force_errors)
         print(f"convergence_delta: {convergence_delta}")
@@ -201,8 +201,7 @@ if __name__ == "__main__":
     print(f"Done!")
 
 # roubstness test
-krasovskii_analyasis = False
-quadratic_lyapunov = True
+
 if krasovskii_analyasis:
     # Define the matrices M, Kd, and Dd
     M = np.diag(np.ones_like(kd_opt))
