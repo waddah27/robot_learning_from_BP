@@ -10,6 +10,7 @@ from data import MaterialData, bpTrajDataLoader
 from motion_planners import MotionPlanner
 import sys
 from bp_basic_experiment import BasicBPexperiment as bp
+from approach_analysis import ContinuityAnalyser
 # Load the data
 bp_data = MaterialData.cork
 bp_traj = bpTrajDataLoader(bp_data)
@@ -19,7 +20,7 @@ title = f"Visualization of Dynamics during cutting {bp_traj.material_name}"
 
 # Optimizer configs
 
-analyse_results = False
+analyse_results = True
 bp.controller = VICController(F_min=bp_traj.F_min, F_max=bp_traj.F_max)
 bp.planner = MotionPlanner(bp_traj)
 bp.plotter = PlotterOfflineSameRange(title=title)
@@ -37,29 +38,9 @@ if __name__ == "__main__":
 
 
     if analyse_results:
-        # visualize time per step
-        plt.plot(bp.convergence_time_per_step)
-        plt.xlabel('Step')
-        plt.ylabel('Time [s]')
-        plt.show()
 
-        axs = {0: 'X', 1: 'Y', 2: 'Z'} # Axis labels
-        # get F_d norm bound threshold
-        F_d_bound = get_norm_bound_threshold(bp_traj.force)
-        print(f"F_d_bound: {F_d_bound}")
-
-        # get F_d continuity threshold (critertion value)
-        F_d_continuity = get_lipschitz_criterion(bp_traj.force)
-        print(f"F_d_continuity: {F_d_continuity}")
-        # visualize F_d continuity
-        F_d = np.array(bp_traj.force).T
-        for ax, i in enumerate(range(3)):
-            plt.plot(F_d[i], label=f"{axs[ax]}")
-        plt.title(f"F_d: generated force on X,Y and Z axis - {bp_traj.material_name} material")
-        plt.legend()
-        plt.xlabel('Step')
-        plt.ylabel(r'$\dot{F_d}$: '+ bp_traj.material_name)
-        plt.show()
+        F_d_Continuity = ContinuityAnalyser.run(bp_traj)
+        sys.exit(0)
 
         # get F_d smoothness threshold: derivatives of F_d are bounded
         F_d_sm = get_smoothness_threshold(bp_traj.force)
