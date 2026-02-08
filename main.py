@@ -24,6 +24,7 @@ print(bp_traj.shape)
 analyse_results = False
 controller = VICController(F_min=bp_traj.F_min, F_max=bp_traj.F_max)
 planner = MotionPlanner(bp_traj)
+plotter = PlotterOfflineSameRange(title=title)
 plot_desired_3d_pos = True
 
 
@@ -38,7 +39,6 @@ if __name__ == "__main__":
     
     if plot_desired_3d_pos:
         PlotterTraj3D.plot(bp_traj)
-    plotter = PlotterOfflineSameRange(title=title)
     # sys.exit(0)    
     for x, x_dot, F_d in planner.go_to_next():
         x_tilde = np.maximum(np.abs(bp_traj.pos[-1,:] - x), np.array([0.013, 0.013, 0.013])) # accepted error to avoid division by zero
