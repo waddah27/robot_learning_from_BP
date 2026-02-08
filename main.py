@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from data_analysis_utils import get_lipschitz_criterion, get_norm_bound_threshold, get_smoothness_threshold
+from plotters.plotter_traj_3d import PlotterTraj3D
 from vic_controller_with_tank_energy_inside import VICController
 from time import time
 from exp_stability_analysis import QuadraticLyapunov
@@ -32,17 +33,11 @@ if __name__ == "__main__":
     kd_list = []
     dd_list = []
     convergence_time_per_step = []
-    plot_desired_pos = False
+    plot_desired_pos = True
+    
     if plot_desired_pos:
-        ax = plt.figure().add_subplot(projection='3d')
-        ax.plot(bp_traj.pos[:,2],bp_traj.pos[:,1], bp_traj.pos[:,0], color='k')
-        ax.set_title(label=f"Desired trajextory expressed in robot tcp frame - {MATERIAL_NAME} material")
-        ax.set_xlabel(r'Z_{tcp} [m]')
-        ax.set_ylabel(r'Y_{tcp}[m]')
-        ax.set_zlabel(r'X_{tcp}[m]')
-        plt.tight_layout()
-        ax.view_init(elev=65, azim=-30)
-        plt.show()
+        PlotterTraj3D.plot(bp_traj)
+    
     controller = VICController(F_min=bp_traj.F_min, F_max=bp_traj.F_max)
     planner = MotionPlanner(bp_traj)
     # visualizer = Visualizer(xlim=(min(pos[:,-1]), max(pos[:,-1])), ylim=(0,1))
