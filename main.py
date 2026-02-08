@@ -6,7 +6,7 @@ from vic_controller_with_tank_energy_inside import VICController
 from time import time
 from exp_stability_analysis import QuadraticLyapunov
 from plotters import PlotterOfflineSameRange
-from data import MaterialData, bpTrajDataLoader
+from data import MaterialData, bpTrajDataLoader, NamedArray
 from motion_planners import MotionPlanner
 import sys
 from bp_basic_experiment import BasicBPexperiment as bp
@@ -40,7 +40,8 @@ if __name__ == "__main__":
     if analyse_results:
 
         # Generated forces continuity
-        F_d_Continuity = ResAnalyser.get_continuity(bp_traj)
+        F_d = NamedArray(bp_traj.force)
+        F_d_Continuity = ResAnalyser.get_continuity(bp_traj.material_name, F_d)
 
         # Boundness
         F_d_bound = ResAnalyser.get_boundness(bp_traj.force)
@@ -54,6 +55,7 @@ if __name__ == "__main__":
 
         print(f"F_d_dot: {F_d_dot}")
         sys.exit(0)
+
         F_d_dot_continuity = get_lipschitz_criterion(F_d_dot)
         print(f"F_d_dot_continuity: {F_d_dot_continuity}")
 

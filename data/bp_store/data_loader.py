@@ -2,8 +2,9 @@ import os
 import glob
 from enum import Enum
 import numpy as np
+import inspect
 
-__all__ = ["MaterialData", "bpTrajDataLoader"]
+__all__ = ["MaterialData", "bpTrajDataLoader", "NamedArray"]
 
 _file_dir = os.path.dirname(__file__)
 _mat_dirs = sorted(glob.glob(os.path.join(_file_dir, "*.npy")))
@@ -13,24 +14,50 @@ _bp_pvc_dir = _mat_dirs[2]
 
 
 class NamedArray:
-    def __init__(self, path: str):
-        self.path = path
-        self.name = None
+    def __init__(self, data_or_path):
+        self._name = None
+        self._data = data_or_path if isinstance(data_or_path, np.ndarray) else None
+        self.path = data_or_path if isinstance(data_or_path, str) else None
 
     def __set_name__(self, owner, name):
-        self.name = name 
+        self._name = name
 
     def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
+        if obj is None: return self
         return self.data
 
     @property
     def data(self):
-        return np.load(self.path)
+        if self._data is None and self.path:
+            self._data = np.load(self.path)
+        return self._data
 
-    def get_name(self):
-        return self.name
+    @property
+    def name(self):
+        if self._name is not None:
+            return self._name
+        # Look at the caller of the method accessing this property
+        frame = inspect.currentframe().f_back.f_back
+        # 1. Search Locals (Functions/Methods)
+        if self._helper_lookup_name(frame.f_locals):
+            return self._name
+        # 2. Search Globals (Module level)
+        if self._helper_lookup_name(frame.f_globals):
+            return self._name
+        # Get the caller's frame
+        frame = inspect.currentframe().f_back
+        if self._helper_lookup_name(frame.f_locals):
+            return self._name
+        if self._helper_lookup_name(frame.f_globals):
+            return self._name
+        return None
+
+    def _helper_lookup_name(self, dic: dict):
+        for name, val in dic.items():
+            if val is self:
+                self._name = name
+                return self._name
+        return None
 
 
 class MaterialMeta(Enum):
