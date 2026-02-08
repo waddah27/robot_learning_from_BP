@@ -51,16 +51,16 @@ if __name__ == "__main__":
         F_d_sm = ResAnalyser.get_smoothness(bp_traj)
 
         # get the continuity of F_d_dot
-        F_d_dot = ResAnalyser.grad(bp_traj.material_name, bp_traj.force)
+        F_d_dot = NamedArray(ResAnalyser.grad(bp_traj.material_name, bp_traj.force))
 
-        print(f"F_d_dot: {F_d_dot}")
+        print(f"F_d_dot: {F_d_dot.data}")
+
+        F_d_dot_continuity = ResAnalyser.get_continuity(bp_traj.material_name, F_d_dot)
+        print(f"F_d_dot_continuity: {F_d_dot_continuity}")
         sys.exit(0)
 
-        F_d_dot_continuity = get_lipschitz_criterion(F_d_dot)
-        print(f"F_d_dot_continuity: {F_d_dot_continuity}")
-
         # get the continuity of F_d_ddot: second derivative of F_d is continuous
-        F_d_ddot = np.diff(F_d_dot, axis=0)
+        F_d_ddot = np.diff(F_d_dot.data, axis=0)
         F_d_ddot_array = np.array(F_d_ddot).T
         print(f"F_d_ddot: {F_d_ddot}")
         for ax, i in enumerate(range(3)):
