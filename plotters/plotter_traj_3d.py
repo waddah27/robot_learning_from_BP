@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
 from data import bpTrajDataLoader
 
+__all__ = ["PlotterTraj3D"]
 
 class PlotterTraj3D:
-    
+
     @staticmethod
     def plot(bp_traj: bpTrajDataLoader):
         ax = plt.figure().add_subplot(projection='3d')

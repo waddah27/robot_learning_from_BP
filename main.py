@@ -1,16 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from data_analysis_utils import get_lipschitz_criterion, get_norm_bound_threshold, get_smoothness_threshold
-from plotters.plotter_traj_3d import PlotterTraj3D
 from vic_controller_with_tank_energy_inside import VICController
 from time import time
 from exp_stability_analysis import QuadraticLyapunov
-from plotters import PlotterOfflineSameRange
+from plotters import PlotterOfflineSameRange, PlotterTraj3D, PlotterCartesian
 from data import MaterialData, bpTrajDataLoader, NamedArray
 from motion_planners import MotionPlanner
 import sys
 from bp_basic_experiment import BasicBPexperiment as bp
-from approach_analysis import ResAnalyser
+from approach_analysis import ResAnalyser, AXES
 # Load the data
 bp_data = MaterialData.cork
 bp_traj = bpTrajDataLoader(bp_data)
@@ -57,21 +56,13 @@ if __name__ == "__main__":
 
         F_d_dot_continuity = ResAnalyser.get_continuity(bp_traj.material_name, F_d_dot)
         print(f"F_d_dot_continuity: {F_d_dot_continuity}")
-        sys.exit(0)
 
         # get the continuity of F_d_ddot: second derivative of F_d is continuous
         F_d_ddot = np.diff(F_d_dot.data, axis=0)
         F_d_ddot_array = np.array(F_d_ddot).T
         print(f"F_d_ddot: {F_d_ddot}")
-        for ax, i in enumerate(range(3)):
-            plt.plot(F_d_ddot_array[i], label=f"{axs[ax]}")
-        plt.title(r'$\ddot{F_d}:2^{nd} derivative generated force on X,Y and Z$: '+ bp_traj.material_name)
-        plt.xlabel('Step')
-        plt.ylabel(r'$F_d$: '+ bp_traj.material_name)
-        plt.legend()
-        plt.show()
+        PlotterCartesian.plot(F_d_ddot_array, bp_traj.material_name)
         F_ddot_continuity = get_lipschitz_criterion(F_d_ddot)
-        sys.exit(0)
 
         # get the continuity of X_tilde and X_tilde_dot
         X = np.array(bp.x_tilde_list).T
@@ -85,7 +76,7 @@ if __name__ == "__main__":
         x_tilde_bound = get_norm_bound_threshold(X.T)
         print(f"x_tilde_bound: {x_tilde_bound}")
         for ax, i in enumerate(range(3)):
-            plt.plot(X[i], label=f"{axs[ax]}")
+            plt.plot(X[i], label=f"{AXES[ax]}")
         plt.title(r'$\tilde{x}: position$: '+ bp_traj.material_name)
         plt.xlabel('Step')
         plt.ylabel(r'$\tilde{x}$: '+ bp_traj.material_name)
@@ -93,7 +84,7 @@ if __name__ == "__main__":
         plt.show()
 
         for ax, i in enumerate(range(3)):
-            plt.plot(X_dot[i], label=f"{axs[ax]}")
+            plt.plot(X_dot[i], label=f"{AXES[ax]}")
         plt.title(r'$\dot{\tilde{x}}: velocity$: '+ bp_traj.material_name)
         plt.xlabel('Step')
         plt.ylabel(r'$\dot{\tilde{x}}$: '+ bp_traj.material_name)
@@ -107,7 +98,7 @@ if __name__ == "__main__":
 
         # visualise velocity error ZYZ
         for ax, i in enumerate(range(3)):
-            plt.plot(bp.x_tilde_dot_list[i], label=f"{axs[ax]}")
+            plt.plot(bp.x_tilde_dot_list[i], label=f"{AXES[ax]}")
         plt.title(r'$\dot{\tilde{x}}: velocity error$: '+ bp_traj.material_name)
         plt.xlabel('Step')
         plt.ylabel(r'$\dot{\tilde{x}}$: '+ bp_traj.material_name)
