@@ -1,5 +1,16 @@
 import numpy as np
 
+
+__all__ = [
+    "get_lipchitz_constant",
+   "get_lipschitz_criterion",
+    "is_smooth",
+    "get_smoothness_threshold",
+    "is_norm_bounded",
+    "get_norm_bound_threshold"
+
+]
+
 def get_lipchitz_constant(X):
     """
     Compute the Lipschitz constant of the data.
@@ -77,7 +88,6 @@ def get_smoothness_threshold(X):
     derivatives = np.diff(X)
     return np.max(np.abs(derivatives))
 
-
 def get_norm_bound_threshold(X):
     """
     get the norm bound threshold
@@ -92,7 +102,6 @@ def get_norm_bound_threshold(X):
         The norm bound of the data.
     """
     return np.max(np.linalg.norm(X, axis=1))
-
 def is_norm_bounded(X, bound):
     """
     Check if the data is norm bounded.

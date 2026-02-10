@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from data_analysis_utils import get_lipschitz_criterion, get_norm_bound_threshold, get_smoothness_threshold
 from vic_controller_with_tank_energy_inside import VICController
 from time import time
 from exp_stability_analysis import QuadraticLyapunov
@@ -9,7 +8,8 @@ from data import MaterialData, bpTrajDataLoader, NamedArray
 from motion_planners import MotionPlanner
 import sys
 from bp_basic_experiment import BasicBPexperiment as bp
-from approach_analysis import ResAnalyser, AXES
+from approach_analysis import (ResAnalyser, AXES,
+                               get_lipschitz_criterion, get_norm_bound_threshold, get_smoothness_threshold)
 # Load the data
 bp_data = MaterialData.cork
 bp_traj = bpTrajDataLoader(bp_data)

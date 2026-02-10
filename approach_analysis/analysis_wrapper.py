@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from bp_basic_experiment import BasicBPexperiment as bp
 from data import bpTrajDataLoader, NamedArray
-from data_analysis_utils import get_lipschitz_criterion, get_norm_bound_threshold, get_smoothness_threshold
+from approach_analysis.data_analysis_utils import get_lipschitz_criterion, get_norm_bound_threshold, get_smoothness_threshold
 
 __all__ = ["ResAnalyser", "AXES"]
 
