@@ -5,10 +5,10 @@ from mjModeling.conf import paramVIC, workingPiece
 from mjModeling.controllers.controller_api import Controller
 from mjModeling.estimators import ImpedanceEstimator
 from mjModeling.mjRobot import Robot
-__all__ = ["VariableImpedanceControl"]
+__all__ = ["BasicVariableImpedanceControl"]
 
 
-class VariableImpedanceControl(Controller): # Removed parent for standalone clarity
+class BasicVariableImpedanceControl(Controller): # Removed parent for standalone clarity
     def __init__(self, robot: Robot):
         self.robot = robot
         self.model = robot.model
