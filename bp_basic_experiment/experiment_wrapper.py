@@ -2,7 +2,7 @@ import numpy as np
 from time import time
 from data import bpTrajDataLoader
 from plotters import PlotterOfflineSameRange
-from motion_planners import MotionPlanner
+from reference_generators import SimpleGenerator
 from vic_controller_with_tank_energy_inside import VICController
 
 __all__ = ["BasicBPexperiment"]
@@ -20,12 +20,12 @@ class BasicBPexperiment:
     use_k_max: bool = False
     use_specified_k: bool = False
     controller: VICController
-    planner: MotionPlanner
+    planner: SimpleGenerator
     plotter: PlotterOfflineSameRange
     k_specified: list = [500,500,500] # To test using constant stiffness case
 
 
-    def __init__(self, planner: MotionPlanner, plotter: PlotterOfflineSameRange):
+    def __init__(self, planner: SimpleGenerator, plotter: PlotterOfflineSameRange):
         self.plotter = plotter
         self.planner = planner
 

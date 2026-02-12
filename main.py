@@ -5,7 +5,7 @@ from time import time
 from exp_stability_analysis import QuadraticLyapunov
 from plotters import PlotterOfflineSameRange, PlotterTraj3D, PlotterCartesian
 from data import MaterialData, bpTrajDataLoader, NamedArray
-from motion_planners import MotionPlanner
+from reference_generators import SimpleGenerator
 import sys
 from bp_basic_experiment import BasicBPexperiment as bp
 from approach_analysis import (ResAnalyser, AXES,
@@ -21,7 +21,7 @@ title = f"Visualization of Dynamics during cutting {bp_traj.material_name}"
 
 analyse_results = True
 bp.controller = VICController(F_min=bp_traj.F_min, F_max=bp_traj.F_max)
-bp.planner = MotionPlanner(bp_traj)
+bp.planner = SimpleGenerator(bp_traj)
 bp.plotter = PlotterOfflineSameRange(title=title)
 
 plot_desired_3d_pos = True

@@ -1,8 +1,8 @@
 from data import bpTrajDataLoader
-__all__ = ["MotionPlanner"]
+__all__ = ["SimpleGenerator"]
 
 
-class MotionPlanner:
+class SimpleGenerator:
     def __init__(self, data: bpTrajDataLoader) -> None:
         self.data = data
 
