@@ -1,1 +1,1 @@
-from ._vic_controller import *
+from .basic_vic_controller import *
