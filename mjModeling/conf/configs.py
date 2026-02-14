@@ -2,7 +2,7 @@ import os
 import re
 import json
 from enum import Enum
-# load configs 
+# load configs
 file_dir = os.path.dirname(__file__)
 root_dir = os.path.dirname(file_dir)
 
@@ -15,7 +15,7 @@ class paramIK(Enum):
     IK_MAX_STEPS = configs["IK_params"]["ik_max_steps"]
     IK_KP = configs["IK_params"]["kp"]
     IK_KD = configs["IK_params"]["kd"]
-    IK_TOL = configs["IK_params"]["tolerance"] 
+    IK_TOL = configs["IK_params"]["tolerance"]
 
 
 class paramVIC(Enum):
@@ -27,6 +27,16 @@ class paramVIC(Enum):
     VIC_KI = configs["vic_params"]["ki"]
     VIC_LAMBDA_SQ = configs["vic_params"]["lambda_sq"]
 
+# GMR Integration Parameters
+class GMRParams:
+    FORCE_ERROR_THRESHOLD = 5.0  # N, threshold for triggering adaptation
+    ADAPTATION_RATE = 0.1  # How quickly to adapt gains
+    BLENDING_FACTOR = 0.7  # Weight of GMR vs reactive control (0=GMR only, 1=reactive only)
+    MIN_STIFFNESS_CONTACT = 100.0  # N/m, minimum in contact
+    MAX_STIFFNESS_FREE = 2000.0  # N/m, maximum in free motion
+
+# Add to existing paramVIC class
+paramVIC.GMR = GMRParams
 
 class workingPiece(Enum):
     MATERIAL_RESISTANCE = configs["material_params"]["material_resistance"]

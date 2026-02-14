@@ -2,11 +2,18 @@ import cvxpy as cp
 import numpy as np
 from scipy import signal
 
-__all__ = ["ImpedanceProfileOptimizer"]
+__all__ = ["ImpedanceProfileOptimizer","MPCImpedanceOptimizer"]
 
 
 class ImpedanceProfileOptimizer:
     def __init__(self, dt=0.002, horizon=1000):
+        """
+        Offline Trajectory-Based Optimization
+
+        :param self: Description
+        :param dt: Description
+        :param horizon: Description
+        """
         self.dt = dt
         self.horizon = horizon
         self.setup_constraints()
@@ -107,3 +114,65 @@ class ImpedanceProfileOptimizer:
         K_safe = np.tile((self.K_min + self.K_max) / 2, (N, 1))
         D_safe = 2 * np.sqrt(K_safe)  # Critically damped
         return K_safe, D_safe, None, None
+
+
+
+class MPCImpedanceOptimizer:
+    def __init__(self, dt=0.002, horizon=50):
+        """
+        Online adaptive optimizer
+
+        :param self: Description
+        :param dt: Description
+        :param horizon: Description
+        """
+        self.dt = dt
+        self.horizon = horizon
+        self.setup_qp_matrices()
+
+    def setup_qp_matrices(self):
+        """Precompute QP matrices for speed"""
+        # State: [x, v], Control: [K, D]
+        nx, nu = 6, 6
+        self.nx, self.nu = nx, nu
+
+        # QP matrices (Ax = b form)
+        self.H = np.eye(2*nu)  # Quadratic cost
+        self.A_eq = None  # Will be built online
+        self.lb = np.concatenate([
+            np.tile([50, 50, 50, 5, 5, 5], 2),  # Min K,D
+        ])
+        self.ub = np.concatenate([
+            np.tile([2000, 2000, 2000, 100, 100, 100], 2),  # Max K,D
+        ])
+
+    def solve_mpc(self, x0, X_ref, V_ref, F_ref, M_est):
+        """Solve MPC problem online"""
+        # Build dynamics matrices
+        A, B = self.build_dynamics_matrices(M_est)
+
+        # Build QP
+        H, f, A_eq, b_eq, A_ineq, b_ineq = self.build_qp(
+            A, B, x0, X_ref, V_ref, F_ref
+        )
+
+        # Solve using fast QP solver
+        try:
+            from qpsolvers import solve_qp
+            z = solve_qp(
+                P=H, q=f, A=A_eq, b=b_eq,
+                G=A_ineq, h=b_ineq,
+                lb=self.lb, ub=self.ub,
+                solver='osqp'  # Fast, robust solver
+            )
+
+            if z is not None:
+                # Extract first control
+                K = z[0:3]
+                D = z[3:6]
+                return K, D
+        except:
+            pass
+
+        # Fallback
+        return np.array([500, 500, 500]), np.array([20, 20, 20])

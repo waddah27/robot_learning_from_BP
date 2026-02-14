@@ -1,6 +1,9 @@
 import numpy as np
 from data import bpTrajDataLoader
 
+__all__ = ["GMRReferenceGenerator"]
+
+
 class GMRReferenceGenerator:
     def __init__(self, gmr_sequence: bpTrajDataLoader):
         self.trajectory = gmr_sequence.pos
