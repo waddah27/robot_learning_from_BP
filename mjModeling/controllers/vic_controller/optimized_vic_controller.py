@@ -1,6 +1,6 @@
 import numpy as np
 from mjModeling.conf import paramVIC
-from Optimizer import ImpedanceProfileOptimizer, MPCImpedanceOptimizer
+from Optimizers import ImpedanceProfileOptimizer, MPCImpedanceOptimizer
 from mjModeling.controllers.vic_controller import VariableImpedanceControl
 from mjModeling.mjRobot import Robot
 
