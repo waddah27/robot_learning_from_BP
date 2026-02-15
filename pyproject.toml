@@ -13,5 +13,5 @@ package-dir = {"" = "."}
 [tool.setuptools.packages.find]
 # search the root for folders that contain an __init__.py
 where = ["."]
-include = ["bpenv*", "mjModeling*", "Osciliilator*", "crocoddylModeling*"]
+include = ["bpenv*", "mjModeling*", "Osciliilator*", "crocoddylModeling*", "Optimizers*", "system_analysis*"]
 namespaces = false

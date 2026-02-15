@@ -1,3 +1,4 @@
+from system_analysis.validation import PassivityMonitor
 from Optimizers import EnergyTankPassivityOptimizer
 from mjModeling.controllers.vic_controller.vic_controller_gmr import VariableImpedanceControl
 
