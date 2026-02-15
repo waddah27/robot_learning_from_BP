@@ -313,13 +313,13 @@ class EnergyTankPassivityOptimizer:
             pass
 
         # Fallback: maintain current or safe impedance
-        return self._get_fallback_impedance(), {'status': 'fallback'}
+        return self._get_fallback_impedance(), False
 
     def _generate_safe_profile(self, N):
         """Generate guaranteed-safe impedance profile"""
         K_safe = np.ones((N, 3)) * (self.K_min + self.K_max) / 2
         D_safe = 1.5 * np.sqrt(K_safe)  # Over-damped for safety
-        return K_safe, D_safe
+        return K_safe, D_safe, False
 
     def _get_fallback_impedance(self):
         """Fallback impedance for when optimization fails"""

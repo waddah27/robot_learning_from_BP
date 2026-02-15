@@ -54,28 +54,21 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
             print(f"Trajectory length: {len(self.traj_loader)} steps")
 
     def move_to_position(self, target_pos=None, viewer=None, max_steps=8000):
-        """
-        OVERRIDDEN: If GMR data exists, follows trajectory to target_pos as endpoint.
-        If no GMR data, behaves EXACTLY like parent.
-        """
-        # CASE 1: NO GMR DATA - use parent behavior exactly
+        # CASE 1: NO GMR - use parent
         if not self.use_gmr:
             return super().move_to_position(target_pos, viewer, max_steps)
 
-        # CASE 2: GMR DATA EXISTS - follow trajectory to reach target_pos
+        # CASE 2: GMR MODE
         tcp_id = self.model.site("scalpel_tip").id
         q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159])
 
         self.error_accumulated = np.zeros(3)
         lambda_sq = paramVIC.VIC_LAMBDA_SQ.value
-
-        # Start timing
         self.start_time = self.data.time
 
-        # Pre-compute optimal impedance from trajectory
+        # Try to compute optimal impedance (may fail without ECOS)
         self._compute_optimal_impedance_from_trajectory()
 
-        # Use trajectory iterator
         traj_iter = iter(self.traj_loader)
         step = 0
 
@@ -86,7 +79,7 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
             while step < max_steps:
                 mujoco.mj_forward(self.model, self.data)
 
-                # Get next trajectory point
+                # Get trajectory point
                 pos_des, vel_des, force_des = next(traj_iter)
                 time_elapsed = self.data.time - self.start_time
 
@@ -96,46 +89,44 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
                 mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
                 v_tip = jac @ self.data.qvel
 
-                # Calculate errors relative to trajectory
+                # Errors
                 pos_error = pos_des - current_pos
                 vel_error = vel_des - v_tip
-                dist_to_traj = np.linalg.norm(pos_error)
+                error_norm = np.linalg.norm(pos_error)
 
-                # Check if we've reached final target
-                dist_to_target = np.linalg.norm(target_pos - current_pos) if target_pos is not None else 0
-                if target_pos is not None and dist_to_target < paramVIC.VIC_TOL.value:
-                    print(f"\n✓ Target reached at step {step}")
-                    return True
-
-                # Get gains (optimal if available)
-                if self.K_optimal is not None:
-                    kp_val, kd_val = self._get_impedance_at_time(time_elapsed)
+                # FIX: Check if target_pos is None properly
+                if target_pos is not None:
+                    dist_to_target = np.linalg.norm(target_pos - current_pos)
+                    # Check target reached
+                    if dist_to_target < paramVIC.VIC_TOL.value:
+                        print(f"✓ Target reached at step {step}")
+                        return True
                 else:
-                    # Fallback to original gain scheduling
-                    kp_val, kd_val = self.get_variable_gains(dist_to_traj)
+                    dist_to_target = 0.0
 
-                # Integral term (same logic as parent)
-                if dist_to_traj < 0.05:
+                # GET GAINS
+                if self.K_optimal is not None:
+                    idx = min(int(time_elapsed / self.model.opt.timestep), len(self.K_optimal) - 1)
+                    kp_val = self.K_optimal[idx]
+                    kd_val = self.D_optimal[idx]
+                else:
+                    kp_scalar, kd_scalar = self.get_variable_gains(error_norm)
+                    kp_val = np.ones(3) * kp_scalar
+                    kd_val = np.ones(3) * kd_scalar
+
+                # Force calculation
+                if error_norm < 0.05:
                     self.error_accumulated += pos_error * self.model.opt.timestep
-                ki_val = paramVIC.VIC_KI.value
 
-                # Cutting resistance (using parent method)
-                f_res = self.compensate_cutting_resistance(current_pos, v_tip)
-
-                # Force calculation with GMR feedforward
                 f_impedance = kp_val * pos_error - kd_val * vel_error
-                f_integral = ki_val * self.error_accumulated
+                f_integral = paramVIC.VIC_KI.value * self.error_accumulated
+                f_res = self.compensate_cutting_resistance(current_pos, v_tip)
                 f_virtual = f_impedance + f_integral + force_des + f_res
 
-                # Store tank energy for monitoring
-                if hasattr(self.optimizer, 'T_energy'):
-                    self.T_energy_history.append(self.optimizer.T_energy)
-
-                # === IDENTICAL MAPPING TO PARENT ===
+                # Rest is same as parent
                 jjt = jac @ jac.T
                 tau_task = jac.T @ np.linalg.solve(jjt + lambda_sq * np.eye(3), f_virtual)
 
-                # Null-space posture (same as parent)
                 k_posture, d_posture = 10.0, 2.0
                 tau_posture = k_posture * (q_home[:self.model.nv] - self.data.qpos[:self.model.nv]) - d_posture * self.data.qvel
 
@@ -148,17 +139,13 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
 
                 mujoco.mj_step(self.model, self.data)
 
-                # Update state (same as parent)
-                if self.estimator:
-                    self.robot.state["shared_array"][:-1] = self.robot.state["shared_array"][1:]
-                    self.robot.state["shared_array"][-1] = self.estimator.get_total_cutting_force()
-
                 # Progress reporting
                 if step % 100 == 0:
                     progress = (step + 1) / len(self.traj_loader) * 100
+                    kp_z = kp_val[2] if hasattr(kp_val, '__len__') else kp_val
                     print(f"Step {step}: Progress {progress:.1f}% | "
-                          f"Dist to target: {dist_to_target:.4f}m | "
-                          f"Kp_z: {kp_val[2]:.1f} N/m")
+                        f"Dist to target: {dist_to_target:.4f}m | "
+                        f"Kp_z: {kp_z:.1f} N/m")
 
                 if viewer and step % 4 == 0:
                     viewer.sync()
@@ -166,31 +153,49 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
                 step += 1
 
         except StopIteration:
-            # Trajectory completed, now go directly to target if needed
-            print("\nTrajectory completed, moving directly to target...")
-            return super().move_to_position(target_pos, viewer, max_steps - step)
+            print("Trajectory completed, final approach...")
+            if target_pos is not None:  # FIX: Check properly here too
+                return super().move_to_position(target_pos, viewer, max_steps - step)
+            return True
 
         return False
 
     # ===== PRIVATE HELPER METHODS (NOT PART OF PUBLIC API) =====
-
     def _compute_optimal_impedance_from_trajectory(self):
-        """Compute optimal impedance using loaded trajectory"""
-        X_des = self.traj_loader.pos
-        V_des = self.traj_loader.vel
-        F_des = self.traj_loader.force
+        """Compute optimal impedance - handle ECOS missing gracefully"""
+        if not self.use_gmr:
+            return False
 
-        M_cart = self._estimate_cartesian_inertia()
+        try:
+            X_des = self.traj_loader.pos
+            V_des = self.traj_loader.vel
+            F_des = self.traj_loader.force
 
-        K_opt, D_opt, info = self.optimizer.optimize_impedance_profile(
-            X_des, V_des, F_des, M_cart
-        )
+            M_cart = self._estimate_cartesian_inertia()
 
-        if info and not info.get('passivity_violated', True):
-            self.K_optimal = K_opt
-            self.D_optimal = D_opt
-            self.impedance_times = np.arange(len(K_opt)) * self.model.opt.timestep
-            print(f"✓ Optimal impedance computed for {len(K_opt)} points")
+            result = self.optimizer.optimize_impedance_profile(
+                X_des, V_des, F_des, M_cart
+            )
+
+            # Handle different return types
+            if isinstance(result, tuple) and len(result) == 3:
+                K_opt, D_opt, info = result
+            elif isinstance(result, tuple) and len(result) == 2:
+                K_opt, D_opt = result
+            else:
+                K_opt, D_opt = None, None
+
+            if K_opt is not None and D_opt is not None:
+                self.K_optimal = K_opt
+                self.D_optimal = D_opt
+                self.impedance_times = np.arange(len(K_opt)) * self.model.opt.timestep
+                print(f"✓ Optimal impedance computed for {len(K_opt)} points")
+                return True
+
+        except Exception as e:
+            print(f"⚠️ Optimization failed: {e}")
+            print("   Using default gain scheduling")
+            return False
 
     def _get_impedance_at_time(self, t):
         """Get optimal impedance at time t"""

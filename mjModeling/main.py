@@ -1,3 +1,4 @@
+import multiprocessing as mp
 from Oscillator import run_drawer
 from mjModeling.conf import ROBOT_SCENE, workingPiece
 from kuka_iiwa_14.iiwa14_model import iiwa14
@@ -9,11 +10,12 @@ from mjModeling.cutting_materials import Material
 from mjModeling.experiments.motion import InitPos, straightCutting
 from mjModeling.experiments import Experiment
 from visualization.visualizer import Visualize
-import multiprocessing as mp
-
+from data import MaterialData
 # 1 - build experiment env
 robot = iiwa14().create(ROBOT_SCENE)
 working_piece = Material()
+
+cork_data = MaterialData.cork
 working_piece.cut_resistance = workingPiece.MATERIAL_RESISTANCE.value
 working_piece.surface_hight = 0.04
 # Experiments
@@ -21,7 +23,7 @@ straight_cut: Experiment = straightCutting(robot)
 init_pos: Experiment = InitPos(robot)
 
 # Controllers
-vic = VariableImpedanceControl(robot)
+vic = VariableImpedanceControl(robot, gmr_sequence=cork_data)
 vic.working_piece = working_piece
 
 jik = JacobianIK(robot)
