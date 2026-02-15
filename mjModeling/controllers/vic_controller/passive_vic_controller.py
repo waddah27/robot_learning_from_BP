@@ -1,9 +1,12 @@
+import numpy as np
+from mjModeling.mjRobot import Robot
 from system_analysis.validation import PassivityMonitor
 from Optimizers import EnergyTankPassivityOptimizer
-from mjModeling.controllers.vic_controller.vic_controller_gmr import VariableImpedanceControl
+from mjModeling.controllers.vic_controller.vic_controller_gmr import GMRVariableImpedanceControl
 
+__all__ = ["PassiveVariableImpedanceControl"]
 
-class PassiveVariableImpedanceControl(VariableImpedanceControl):
+class PassiveVariableImpedanceControl(GMRVariableImpedanceControl):
     """
     VIC with convex optimization and guaranteed passivity
     """

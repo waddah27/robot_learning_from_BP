@@ -1,13 +1,13 @@
 import numpy as np
 from mjModeling.conf import paramVIC
 from Optimizers import ImpedanceProfileOptimizer, MPCImpedanceOptimizer
-from mjModeling.controllers.vic_controller import VariableImpedanceControl
+from mjModeling.controllers.vic_controller import GMRVariableImpedanceControl
 from mjModeling.mjRobot import Robot
 
 __all__ = ["OptimizedVariableImpedanceControl"]
 
 
-class OptimizedVariableImpedanceControl(VariableImpedanceControl):
+class OptimizedVariableImpedanceControl(GMRVariableImpedanceControl):
     def __init__(self, robot: Robot, gmr_sequence=None):
         super().__init__(robot, gmr_sequence)
 
