@@ -54,55 +54,129 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
             print(f"Trajectory length: {len(self.traj_loader)} steps")
 
     def move_to_position(self, target_pos=None, viewer=None, max_steps=8000):
-        # CASE 1: NO GMR - use parent
         if not self.use_gmr:
             return super().move_to_position(target_pos, viewer, max_steps)
 
-        # CASE 2: GMR MODE
         tcp_id = self.model.site("scalpel_tip").id
-        q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159])
 
+        # ===== WORKPIECE BOUNDARIES =====
+        workpiece_center = np.array([0.5, 0.0, 0.02])
+        workpiece_size = np.array([0.3, 0.3, 0.02])
+
+        # Cutting area on workpiece
+        cut_start_x = 0.35  # Start of cut in X direction
+        cut_end_x = 0.65    # End of cut in X direction
+        cut_width_y = 0.3    # Total Y range (-0.15 to 0.15)
+
+        # Tool depth range (how deep the tool cuts)
+        min_depth = 0.02     # Bottom of workpiece
+        max_depth = 0.04     # Surface of workpiece
+
+        print(f"\n=== MAPPING GMR TO WORKPIECE ===")
+        print(f"GMR X (constant {self.traj_loader.pos[0,0]:.3f}) -> World Z (depth): [{min_depth}, {max_depth}]")
+        print(f"GMR Y (lateral) -> World Y (lateral): [{-cut_width_y/2}, {cut_width_y/2}]")
+        print(f"GMR Z (cutting direction) -> World X (cut): [{cut_start_x}, {cut_end_x}]")
+
+        # ===== ANALYZE GMR DATA RANGE =====
+        gmr_pos = self.traj_loader.pos
+        gmr_min = np.min(gmr_pos, axis=0)
+        gmr_max = np.max(gmr_pos, axis=0)
+        gmr_range = gmr_max - gmr_min
+
+        print(f"\nGMR data ranges:")
+        print(f"  X (tool axis): [{gmr_min[0]:.3f}, {gmr_max[0]:.3f}] range {gmr_range[0]:.3f}")
+        print(f"  Y (lateral): [{gmr_min[1]:.3f}, {gmr_max[1]:.3f}] range {gmr_range[1]:.3f}")
+        print(f"  Z (cut dir): [{gmr_min[2]:.3f}, {gmr_max[2]:.3f}] range {gmr_range[2]:.3f}")
+
+        # ===== TRANSFORMATION FUNCTION =====
+        def gmr_to_world(gmr_point):
+            # Normalize each axis to [0, 1]
+            norm_x = (gmr_point[0] - gmr_min[0]) / gmr_range[0] if gmr_range[0] > 0 else 0.5
+            norm_y = (gmr_point[1] - gmr_min[1]) / gmr_range[1] if gmr_range[1] > 0 else 0.5
+            norm_z = (gmr_point[2] - gmr_min[2]) / gmr_range[2] if gmr_range[2] > 0 else 0.5
+
+            # Map to world coordinates:
+            # GMR X (tool axis) -> World Z (depth) - but tool axis should be constant?
+            # Actually from your data, GMR X is constant at ~0.013, so it's not varying much
+            # Let's use it for depth control
+            world_z = min_depth + norm_x * (max_depth - min_depth)
+
+            # GMR Y (lateral) -> World Y (centered on workpiece)
+            world_y = -cut_width_y/2 + norm_y * cut_width_y
+
+            # GMR Z (cutting direction) -> World X (along cut)
+            world_x = cut_start_x + norm_z * (cut_end_x - cut_start_x)
+
+            return np.array([world_x, world_y, world_z])
+
+        # Test the mapping
+        test_point = gmr_pos[0]
+        mapped_point = gmr_to_world(test_point)
+        print(f"\nTest mapping:")
+        print(f"  GMR: {test_point}")
+        print(f"  World: {mapped_point}")
+
+        q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159])
         self.error_accumulated = np.zeros(3)
         lambda_sq = paramVIC.VIC_LAMBDA_SQ.value
         self.start_time = self.data.time
 
-        # Try to compute optimal impedance (may fail without ECOS)
         self._compute_optimal_impedance_from_trajectory()
 
         traj_iter = iter(self.traj_loader)
         step = 0
 
-        print(f"\nFollowing GMR trajectory to target: {target_pos}")
-        print(f"Material: {self.traj_loader.material_name}")
+        print(f"\nFollowing TRANSFORMED GMR trajectory...")
 
         try:
             while step < max_steps:
                 mujoco.mj_forward(self.model, self.data)
 
                 # Get trajectory point
-                pos_des, vel_des, force_des = next(traj_iter)
+                pos_des_gmr, vel_des_gmr, force_des_gmr = next(traj_iter)
                 time_elapsed = self.data.time - self.start_time
 
-                # Current state
+                # Current tool tip position
                 current_pos = self.data.site_xpos[tcp_id].copy()
+
+                # ===== TRANSFORM POSITION =====
+                pos_des_world = gmr_to_world(pos_des_gmr)
+
+                # ===== TRANSFORM VELOCITY (scale by same factors) =====
+                vel_scale = np.array([
+                    (cut_end_x - cut_start_x) / gmr_range[2] if gmr_range[2] > 0 else 1.0,  # X velocity
+                    cut_width_y / gmr_range[1] if gmr_range[1] > 0 else 1.0,                 # Y velocity
+                    (max_depth - min_depth) / gmr_range[0] if gmr_range[0] > 0 else 1.0      # Z velocity
+                ])
+                vel_des_world = vel_des_gmr * vel_scale
+
+                # ===== TRANSFORM FORCE =====
+                # From your data, forces are already in the right direction:
+                # Force X (small) -> should be Z force in world (depth force)
+                # Force Y (medium) -> should be Y force in world (lateral)
+                # Force Z (large) -> should be X force in world (cutting force)
+                force_des_world = np.array([
+                    force_des_gmr[2],  # GMR Z -> World X (cutting force)
+                    force_des_gmr[1],  # GMR Y -> World Y (lateral force)
+                    force_des_gmr[0]   # GMR X -> World Z (depth force)
+                ])
+
+                # Get Jacobian
                 jac = np.zeros((3, self.model.nv))
                 mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
                 v_tip = jac @ self.data.qvel
 
-                # Errors
-                pos_error = pos_des - current_pos
-                vel_error = vel_des - v_tip
+                # Calculate errors
+                pos_error = pos_des_world - current_pos
+                vel_error = vel_des_world - v_tip
                 error_norm = np.linalg.norm(pos_error)
 
-                # FIX: Check if target_pos is None properly
+                # Check target
                 if target_pos is not None:
                     dist_to_target = np.linalg.norm(target_pos - current_pos)
-                    # Check target reached
                     if dist_to_target < paramVIC.VIC_TOL.value:
                         print(f"✓ Target reached at step {step}")
                         return True
-                else:
-                    dist_to_target = 0.0
 
                 # GET GAINS
                 if self.K_optimal is not None:
@@ -121,9 +195,9 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
                 f_impedance = kp_val * pos_error - kd_val * vel_error
                 f_integral = paramVIC.VIC_KI.value * self.error_accumulated
                 f_res = self.compensate_cutting_resistance(current_pos, v_tip)
-                f_virtual = f_impedance + f_integral + force_des + f_res
+                f_virtual = f_impedance + f_integral + force_des_world + f_res
 
-                # Rest is same as parent
+                # Same mapping
                 jjt = jac @ jac.T
                 tau_task = jac.T @ np.linalg.solve(jjt + lambda_sq * np.eye(3), f_virtual)
 
@@ -140,12 +214,12 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
                 mujoco.mj_step(self.model, self.data)
 
                 # Progress reporting
-                if step % 100 == 0:
+                if step % 20 == 0:
                     progress = (step + 1) / len(self.traj_loader) * 100
-                    kp_z = kp_val[2] if hasattr(kp_val, '__len__') else kp_val
-                    print(f"Step {step}: Progress {progress:.1f}% | "
-                        f"Dist to target: {dist_to_target:.4f}m | "
-                        f"Kp_z: {kp_z:.1f} N/m")
+                    print(f"Step {step:3d}: GMR [{pos_des_gmr[0]:.3f},{pos_des_gmr[1]:.3f},{pos_des_gmr[2]:.3f}] -> "
+                        f"World [{pos_des_world[0]:.3f},{pos_des_world[1]:.3f},{pos_des_world[2]:.3f}] | "
+                        f"Error: {error_norm:.3f}m | "
+                        f"Force: [{force_des_world[0]:.1f},{force_des_world[1]:.1f},{force_des_world[2]:.1f}]N")
 
                 if viewer and step % 4 == 0:
                     viewer.sync()
@@ -154,12 +228,11 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
 
         except StopIteration:
             print("Trajectory completed, final approach...")
-            if target_pos is not None:  # FIX: Check properly here too
+            if target_pos is not None:
                 return super().move_to_position(target_pos, viewer, max_steps - step)
             return True
 
         return False
-
     # ===== PRIVATE HELPER METHODS (NOT PART OF PUBLIC API) =====
     def _compute_optimal_impedance_from_trajectory(self):
         """Compute optimal impedance - handle ECOS missing gracefully"""

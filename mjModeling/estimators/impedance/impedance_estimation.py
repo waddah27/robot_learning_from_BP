@@ -48,7 +48,7 @@ class ImpedanceEstimator(Estimator):
 
         for i,contact in enumerate(contacts):
             total_force += contact['force']
-            print(f"contact {i} -- force = {contact['force']}")
+            # print(f"contact {i} -- force = {contact['force']}")
         return total_force
 
     def record_force_step(self):
