@@ -47,6 +47,7 @@ class straightCutting(InitPos):
                 return False
 
         print(f"✓ Cut completed: {length_m*100:.1f}cm path executed.")
+        print("=================================DONE CUTTING EPISODE===========================")
         return True
 
 
