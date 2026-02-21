@@ -1,3 +1,4 @@
+from mjModeling.controllers import VariableImpedanceControl
 import numpy as np
 from mjModeling.experiments import Experiment
 from mjModeling.experiments.motion import InitPos
@@ -52,20 +53,21 @@ class straightCutting(InitPos):
 
 
     def execute(self, viewer):
-        # 1. Position the robot
+        # 1. Approach
         status = self._init_position_for_cutting(viewer)
+        if status != 0: return status
 
-        # 2. FORCE INJECTION: Manually nudge the TCP deeper into the material
-        # If surface is 0.04, moving to 0.03 will trigger the resistance logic
-        print("\n--- Lowering scalpel into material for depth ---")
-        tcp_id = self.robot.model.site("scalpel_tip").id
-        target_deep = self.robot.data.site_xpos[tcp_id].copy()
-        target_deep[2] = 0.035  # 5mm below the surface
-        self.controller.move_to_position(target_deep, viewer=viewer)
+        if isinstance(self.controller, VariableImpedanceControl) and self.controller.use_gmr:
+            print("\n--- Starting Raw Trajectory Cut via iter/next ---")
 
-        # 3. Perform the straight cut at this new depth
-        if status == 0:
+            # Align to first point of raw data
+            start_p = self.controller.traj_loader.pos[0, 1:4]
+            start_world = self.controller._gmr_to_world(start_p)
+            self.controller.move_to_position(target_pos=start_world, viewer=viewer)
+
+            # TRIGGER CUT: Call without target_pos
+            self.controller.move_to_position(viewer=viewer)
+        else:
             self._execute_straight_cut(viewer, length_m=0.15, num_waypoints=1)
 
         return 0
-
