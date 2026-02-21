@@ -112,7 +112,7 @@ class OptimizedVariableImpedanceControl(GMRVariableImpedanceControl):
         """Enhanced force computation with optimized impedance"""
         # Get GMR references
         pos_des, vel_des, force_des, _ = \
-            self.gmr_generator.get_reference(time_elapsed)
+            self.gmr_generator.predict(time_elapsed)
 
         # Get optimal or adapted impedance
         if self.adaptation_active and measured_force is not None:

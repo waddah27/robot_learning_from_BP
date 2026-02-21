@@ -40,7 +40,7 @@ class GMRVariableImpedanceControl(BasicVariableImpedanceControl):
         if self.use_gmr_priors:
             time_elapsed = self.data.time - self.start_time
             pos_des, vel_des, force_des, stiffness_des = \
-                self.gmr_generator.get_reference(time_elapsed)
+                self.gmr_generator.predict(time_elapsed)
 
             # Compute errors relative to GMR trajectory
             pos_error = pos_des - current_pos
@@ -198,7 +198,7 @@ class GMRVariableImpedanceControl(BasicVariableImpedanceControl):
                 # Track force error if using GMR
                 if self.use_gmr_priors:
                     time_elapsed = self.data.time - self.start_time
-                    _, _, force_des, _ = self.gmr_generator.get_reference(time_elapsed)
+                    _, _, force_des, _ = self.gmr_generator.predict(time_elapsed)
                     force_error = np.linalg.norm(force_des - cutting_force)
                     self.robot.state["force_tracking_error"].append(force_error)
 
@@ -214,7 +214,7 @@ class GMRVariableImpedanceControl(BasicVariableImpedanceControl):
     def visualize_gmr_reference(self, viewer, time_elapsed):
         """Optional: Visualize GMR references in MuJoCo viewer"""
         if hasattr(self, 'gmr_generator'):
-            pos_des, _, force_des, _ = self.gmr_generator.get_reference(time_elapsed)
+            pos_des, _, force_des, _ = self.gmr_generator.predict(time_elapsed)
 
             # Add visualization markers
             mujoco.mjv_initGeom(viewer.user_scn.geoms[0],
