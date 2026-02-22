@@ -32,6 +32,7 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
             print("No material was set to working piece or No working piece was added!")
             return np.zeros(3)
         # Material surface is at center_z + size_z = 0.04
+        f_res = np.zeros(3)
         surface_z = self.working_piece.surface_hight
         magnitude = self.working_piece.cut_resistance
 
@@ -44,9 +45,12 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
             # 2. Stiffness (The 'depth' part - active even when stopped)
             # Use a constant like 500 N/m to simulate material pushing back up
             f_stiffness = np.array([0, 0, 500.0 * depth])
+            f_res = f_damping + f_stiffness
 
-            return f_damping + f_stiffness
-        return np.zeros(3)
+            self.robot.state["shared_array"][-1] = np.linalg.norm(f_res)
+            return f_res
+
+        return f_res
 
 
     def move_to_position(self, target_pos, viewer=None, max_steps=8000):
@@ -85,7 +89,6 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
             v_tip = jac @ self.data.qvel
             f_res = self.compensate_cutting_resistance(current_pos, v_tip)
-            self.robot.state["shared_array"][-1] = np.linalg.norm(f_res)
 
             # F = Kp*e + Ki*∫e - Kd*v
             f_virtual = (kp_val * error) + (ki_val * self.error_accumulated) - (kd_val * v_tip)
@@ -114,14 +117,17 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
 
             # 7. STEP PHYSICS
             mujoco.mj_step(self.model, self.data)
-            if self.estimator:
-                self.robot.state["shared_array"][:-1] = self.robot.state["shared_array"][1:]
-                self.robot.state["shared_array"][-1] = self.estimator.get_total_cutting_force()
+            self.record_contact_forces()
 
             if viewer and step % 4 == 0:
                 viewer.sync()
 
         return False
+
+    def record_contact_forces(self):
+        if self.estimator:
+                self.robot.state["shared_array"][:-1] = self.robot.state["shared_array"][1:]
+                self.robot.state["shared_array"][-1] = self.estimator.get_total_cutting_force()
 
     @property
     def working_piece(self):

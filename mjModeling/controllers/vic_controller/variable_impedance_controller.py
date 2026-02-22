@@ -110,6 +110,8 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
             f_val = f_raw if np.isscalar(f_raw) else f_raw[0]
             f_ff = np.array([f_val, f_val, f_val])
             f_virtual = (kp * error) + (paramVIC.VIC_KI.value * self.error_accumulated) - (kd * v_tip) + f_ff
+            f_res = self.compensate_cutting_resistance(current_pos, v_tip)
+            f_virtual += f_res
 
             # Torque calculation
             jjt = jac @ jac.T
@@ -131,6 +133,7 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
 
             self.data.ctrl[:self.model.nu] = np.clip(tau_safe[:self.model.nu], -300, 300)
             mujoco.mj_step(self.model, self.data)
+            self.record_contact_forces()
 
             if viewer and step % 4 == 0: viewer.sync()
 
