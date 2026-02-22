@@ -1,5 +1,3 @@
-
-
 from mjModeling.estimators import Estimator
 import mujoco
 import numpy as np
