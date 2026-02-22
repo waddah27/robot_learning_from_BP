@@ -11,7 +11,7 @@ class Estimator(ABC):
         self._controller = None
 
     @abstractmethod
-    def execute(self, *args, **kwargs): ...
+    def estimate(self, *args, **kwargs): ...
 
     @property
     def robot(self):
