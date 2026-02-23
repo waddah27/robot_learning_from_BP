@@ -97,7 +97,7 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
 
             jac = np.zeros((3, self.model.nv))
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
-            v_tip = jac @ self.data.qvel
+            v_tip = v_raw #jac @ self.data.qvel
 
             error = pos_des - current_pos
             dist = np.linalg.norm(error)
@@ -107,8 +107,10 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
                 self.error_accumulated += error * self.dt
 
             # Force FF (Force from GMR)
-            f_val = f_raw if np.isscalar(f_raw) else f_raw[0]
-            f_ff = np.array([f_val, f_val, f_val])
+            f_x = f_raw if np.isscalar(f_raw) else f_raw[0]
+            f_y = f_raw if np.isscalar(f_raw) else f_raw[1]
+            f_z = f_raw if np.isscalar(f_raw) else f_raw[2]
+            f_ff = np.array([f_x, f_y, f_z])
             f_virtual = (kp * error) + (paramVIC.VIC_KI.value * self.error_accumulated) - (kd * v_tip) + f_ff
             f_res = self.compensate_cutting_resistance(current_pos, v_tip)
             f_virtual += f_res
