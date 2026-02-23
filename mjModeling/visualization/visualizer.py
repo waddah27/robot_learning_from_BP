@@ -30,7 +30,7 @@ class Visualize:
                 # Show the Site Frame (displays RGB axes at the TCP)
                 if VIS_SITE_FRAME:
                     viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
-                # Ensure the group site belongs to is visible 
+                # Ensure the group site belongs to is visible
                 # (default is Group 0)
                 # This bitmask enables groups 0, 1, and 2
                 viewer.opt.sitegroup = 3
@@ -38,10 +38,11 @@ class Visualize:
             # Loop as long as the user has not closed the viewer window.
             while viewer.is_running():
                 step_start = time.time()
-                self.robot.run_experiment(callback, viewer)
+                # wrapper to call <experiment.execute()>
+                self.robot.experiment_exeucte_wrapper(callback, viewer)
                 # Step the simulation forward
-                mujoco.mj_step(self.robot.model, self.robot.data)  
-                # Sync the viewer display with the current data 
+                mujoco.mj_step(self.robot.model, self.robot.data)
+                # Sync the viewer display with the current data
                 # state and options
                 viewer.sync()
                 # Rudimentary time keeping to run near real-time

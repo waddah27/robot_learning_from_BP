@@ -21,7 +21,7 @@ class iiwa14(Robot):
     def __init__(self):
         self._model = None
         self._data = None
-        self.shm = shared_memory.SharedMemory(create=True, 
+        self.shm = shared_memory.SharedMemory(create=True,
                                               size=oscConf.BUFFER_SIZE.value * oscConf.N_SIGS.value * 8)
         self.state = {}
 
@@ -42,7 +42,7 @@ class iiwa14(Robot):
         # 1. Register Mesh 1
         mesh1 = spec.add_mesh(name="mesh1", file=SCALPEL_HANDLER_1_PATH)
         mesh1.refquat = [0.707, -0.707, 0, 0]
-        mesh1.scale = [0.001, 0.001, 0.001] 
+        mesh1.scale = [0.001, 0.001, 0.001]
 
         # 2. Register Mesh 2
         mesh2 = spec.add_mesh(name="mesh2", file=SCALPEL_HANDLER_2_PATH)
@@ -50,13 +50,13 @@ class iiwa14(Robot):
         mesh2.scale = [0.001, 0.001, 0.001]
         # 3. Register the scalpel mesh
         mesh3 = spec.add_mesh(name="mesh3", file=SCALPEL_PATH)
-        #  Rotate 60 degrees To mach scalpel being perpendicular to ee  
-        mesh3.refquat = [0, 0.5, 0, 0.866] 
+        #  Rotate 60 degrees To mach scalpel being perpendicular to ee
+        mesh3.refquat = [0, 0.5, 0, 0.866]
         mesh3.scale = [0.0001, 0.0001, 0.0001]
         # 4. Setup Body Hierarchy
         ee_body = spec.body("link7")
         attach_site = spec.site("attachment_site")
-        
+
         handler = ee_body.add_body(name="3d_printed_handler")
         # Align handler origin to the attachment site
         handler.pos = attach_site.pos
@@ -64,9 +64,9 @@ class iiwa14(Robot):
         handler_depth = -0.09
         # 5. Add Part 1 (First half of handler)
         handler.add_geom(
-            name="handler_part1_geom", 
-            type=mujoco.mjtGeom.mjGEOM_MESH, 
-            meshname="mesh1", 
+            name="handler_part1_geom",
+            type=mujoco.mjtGeom.mjGEOM_MESH,
+            meshname="mesh1",
             rgba=[0.9, 0.9, 0.0, 1],  # Orange
             pos=attach_site.pos + [-0.045, 0.045, handler_depth]
         )
@@ -90,8 +90,8 @@ class iiwa14(Robot):
         contype=1,       # Bitmask: belongs to group 1
         conaffinity=1    # Bitmask: only collides with group 1
         )
-       
-    
+
+
         # 8. TCP defined at the tip of scalpel
         tip_offset = [0, 0, 0.113]
         tcp_site = handler.add_site(
@@ -139,7 +139,7 @@ class iiwa14(Robot):
         else:
             self.state.get(FORCE_HISTORY).clear()
 
-    def run_experiment(self, callback: Callable[[], None], *args):
+    def experiment_exeucte_wrapper(self, callback: Callable[[], None], *args):
         if callable(callback):
             return callback(*args)
         else:
