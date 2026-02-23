@@ -1,15 +1,18 @@
+from typing import Union
+
 import numpy as np
 import mujoco
 from cvxopt import matrix, solvers
 from mjModeling.controllers.vic_controller import BasicVariableImpedanceControl
 from mjModeling.conf import paramVIC
 from data import bpTrajDataLoader, NamedArray
+from reference_generators import GMRReferenceGenerator
 
 __all__ = ["VariableImpedanceControl"]
 solvers.options['show_progress'] = False
 
 class VariableImpedanceControl(BasicVariableImpedanceControl):
-    def __init__(self, robot, gmr_sequence: bpTrajDataLoader = None):
+    def __init__(self, robot, gmr_sequence: Union[bpTrajDataLoader, NamedArray] = None):
         super().__init__(robot)
         self.use_gmr = gmr_sequence is not None
         self.dt = self.model.opt.timestep
@@ -27,6 +30,7 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
                 self.traj_loader = gmr_sequence
             else:
                 raise TypeError("gmr_sequence must be NamedArray or bpTrajDataLoader")
+            self.bp_generator = GMRReferenceGenerator(self.traj_loader)
 
             # --- ROBUST 3D PADDING LOGIC ---
             # Extract everything after the time column
