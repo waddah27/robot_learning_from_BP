@@ -15,7 +15,7 @@ from data import MaterialData
 robot = iiwa14().create(ROBOT_SCENE)
 working_piece = Material()
 
-cork_data = MaterialData.cork
+bp_data = MaterialData.cork
 working_piece.cut_resistance = workingPiece.MATERIAL_RESISTANCE.value
 working_piece.surface_hight = 0.04
 # Experiments
