@@ -35,7 +35,7 @@ class ImpedanceEstimator(Estimator):
                 })
 
                 # Debug print
-                print(f"Contact {i}: force = {np.linalg.norm(force_vector):.4f} N")
+                # print(f"Contact {i}: force = {np.linalg.norm(force_vector):.4f} N")
 
         return scalpel_forces
 
