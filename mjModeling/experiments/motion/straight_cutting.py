@@ -17,7 +17,9 @@ class straightCutting(InitPos):
             return
 
         tcp_id = self.robot.model.site("scalpel_tip").id
+        desired_z = 0.02
         start_pos = self.robot.data.site_xpos[tcp_id].copy()
+        start_pos[2] = desired_z   # override Z with the target depth
 
         print(f"\n3. Starting Monitored Cut: {start_pos}")
         # Updated header to reflect Magnitude
