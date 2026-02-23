@@ -34,7 +34,7 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
 
             # --- ROBUST 3D PADDING LOGIC ---
             # Extract everything after the time column
-            raw_pos = self.traj_loader.pos[:, 1:]
+            raw_pos = self.traj_loader.pos[:, 0:]
 
             # Create a 3D array regardless of raw_pos shape (e.g., if it's only N x 2)
             pos_3d = np.zeros((raw_pos.shape[0], 3))
