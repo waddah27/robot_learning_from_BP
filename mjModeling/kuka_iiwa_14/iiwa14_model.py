@@ -88,7 +88,7 @@ class iiwa14(Robot):
             rgba=[0.8, 0.8, 0.8, 1],  # Grey to distinguish
             pos=attach_site.pos,
         contype=1,       # Bitmask: belongs to group 1
-        conaffinity=1    # Bitmask: only collides with group 1
+        conaffinity=2 if workingPiece.MATERIAL_IS_SOLID.value else 1    # Bitmask: only collides with group 1
         )
 
 
@@ -110,7 +110,7 @@ class iiwa14(Robot):
             pos=[0.5, 0, 0.02],
             rgba=[0.2, 0.8, 0.2, 0.7],
             contype=2,       # Bitmask: belongs to group 2
-            conaffinity=2,   # Bitmask: only collides with group 2
+            conaffinity=1 if workingPiece.MATERIAL_IS_SOLID.value else 2,   # Bitmask: only collides with group 2
             solref=[0.02, 1],
             margin=0.001
         )
