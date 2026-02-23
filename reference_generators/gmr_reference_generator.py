@@ -1,13 +1,20 @@
+import sys
+from typing import Union
+
 import numpy as np
-from data import bpTrajDataLoader
+from data import bpTrajDataLoader, NamedArray
 
 __all__ = ["GMRReferenceGenerator"]
 
 class GMRReferenceGenerator:
     def __init__(self, gmr_sequence: bpTrajDataLoader):
-        self.trajectory = gmr_sequence.pos
-        self.velocity_profile = gmr_sequence.vel
-        self.force_profile = gmr_sequence.force
+        if isinstance(gmr_sequence, bpTrajDataLoader):
+            self.trajectory = gmr_sequence.pos
+            self.velocity_profile = gmr_sequence.vel
+            self.force_profile = gmr_sequence.force
+        else:
+            raise TypeError(f"gmr_sequence must be of type bpTrajDataLoader, got {type(gmr_sequence)} instead")
+
         self.stiffness_profile = None
         self.dt = 0.002 # Default simulation step
         self.time_elapsed = 0.0
