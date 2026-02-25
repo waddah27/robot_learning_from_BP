@@ -47,6 +47,8 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
             f_stiffness = np.array([0, 0, 500.0 * depth])
             f_res = f_damping + f_stiffness
 
+            # here estimated contact force is registered to shared memory if the material is not solid
+            # this whole function should be refactored to consider estimating forces for 3d directions
             self.robot.state["shared_array"][-1] = np.linalg.norm(f_res)
             return f_res
 

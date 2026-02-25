@@ -55,21 +55,28 @@ class straightCutting(InitPos):
 
 
     def execute(self, viewer):
-        # 1. Approach
+        # Phase 1: Approach to generic height
         status = self._init_position_for_cutting(viewer)
         if status != 0: return status
 
         if isinstance(self.controller, VariableImpedanceControl) and self.controller.use_gmr:
-            print("\n--- Starting Raw Trajectory Cut via iter/next ---")
-
-            # Align to first point of raw data
-            start_p = self.controller.traj_loader.pos[0, 1:4]
-            start_world = self.controller._gmr_to_world(start_p)
+            # Phase 2: Perfect Alignment to GMR Start
+            p_start = self.controller.traj_loader.pos[0, 0:3]
+            start_world = self.controller._gmr_to_world(p_start)
+            print(f"--- Aligning to Start: {start_world} ---")
             self.controller.move_to_position(target_pos=start_world, viewer=viewer)
 
-            # TRIGGER CUT: Call without target_pos
-            self.controller.move_to_position(viewer=viewer)
+            # Phase 3: Execute Cut (No target_pos provided)
+            if hasattr(self.controller, "traj_loader"):
+                print("--- Executing Real-Time GMR Cut ---")
+                traj_iter = iter(self.controller.traj_loader)
+                for i, move in enumerate(traj_iter):
+                    p_raw, v_raw, f_raw = move
+                    print(f"move {i}: to {p_raw} -- Fx = {f_raw[0]}, Fy = {f_raw[1]}, Fz = {f_raw[2]}")
+                    self.controller.move_to_position(use_default=False, target_pos=p_raw, v_raw=v_raw, f_raw=f_raw, viewer=viewer, max_steps=50)
+                    print("done!")
+            else:
+                raise AttributeError(self.controller, "traj_loader")
         else:
             self._execute_straight_cut(viewer, length_m=0.15, num_waypoints=1)
-
         return 0

@@ -37,9 +37,9 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
             raw_pos = self.traj_loader.pos[:, 0:]
 
             # Create a 3D array regardless of raw_pos shape (e.g., if it's only N x 2)
-            pos_3d = np.zeros((raw_pos.shape[0], 3))
-            cols_to_copy = min(raw_pos.shape[1], 3)
-            pos_3d[:, :cols_to_copy] = raw_pos[:, :cols_to_copy]
+            pos_3d =raw_pos # np.zeros((raw_pos.shape[0], 3))
+            # cols_to_copy = min(raw_pos.shape[1], 3)
+            # pos_3d[:, :cols_to_copy] = raw_pos[:, :cols_to_copy]
 
             self.gmr_min = np.min(pos_3d, axis=0)
             self.gmr_max = np.max(pos_3d, axis=0)
@@ -76,28 +76,23 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
         except:
             return np.zeros(nv)
 
-    def move_to_position(self, target_pos=None, viewer=None, max_steps=8000):
-        if target_pos is not None:
+    def move_to_position(self, use_default = True, target_pos=None, v_raw=None, f_raw=None, viewer=None, max_steps=8000):
+        if use_default:
             return super().move_to_position(target_pos, viewer, max_steps)
 
-        if not self.use_gmr: return False
 
         tcp_id = self.model.site("scalpel_tip").id
         q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159])
         self.error_accumulated = np.zeros(3)
-        traj_iter = iter(self.traj_loader)
 
         for step in range(max_steps):
-            try:
-                p_raw, v_raw, f_raw = next(traj_iter)
-            except StopIteration:
-                break
+
 
             mujoco.mj_forward(self.model, self.data)
             current_pos = self.data.site_xpos[tcp_id].copy()
 
             # Map raw data to 3D world (p_raw is padded inside helper)
-            pos_des = self._gmr_to_world(p_raw)
+            pos_des = self._gmr_to_world(target_pos)
 
             jac = np.zeros((3, self.model.nv))
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
