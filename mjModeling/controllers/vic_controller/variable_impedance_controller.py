@@ -1,3 +1,4 @@
+from logger import Logger
 from typing import Union
 
 import numpy as np
@@ -57,7 +58,7 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
 
         # Workspace: X[0.35,0.65], Y[-0.15,0.15], Z[0.02,0.04]
         world_x = 0.35 + norm[0] * (0.65 - 0.35)
-        world_y = -0.15 + norm[1] * (0.15 - (-0.15))
+        world_y = 0.0 #-0.15 + norm[1] * (0.15 - (-0.15))
         world_z = 0.02 + norm[2] * (0.04 - 0.02)
 
         return np.array([world_x, world_y, world_z])
@@ -76,14 +77,19 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
         except:
             return np.zeros(nv)
 
-    def move_to_position(self, use_default = True, target_pos=None, v_raw=None, f_raw=None, viewer=None, max_steps=8000):
+    def move_to_position(self, use_default = True, target_pos=None, v_raw=None, f_raw=None, viewer=None):
         if use_default:
-            return super().move_to_position(target_pos, viewer, max_steps)
+            return super().move_to_position(target_pos, viewer)
 
 
         tcp_id = self.model.site("scalpel_tip").id
         q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159])
         self.error_accumulated = np.zeros(3)
+
+        max_steps = int(self.opt_max_steps/100)
+        # Map raw data to 3D world (p_raw is padded inside helper)
+        pos_des = self._gmr_to_world(target_pos)
+        Logger.debug(f"move to {pos_des}")
 
         for step in range(max_steps):
 
@@ -91,8 +97,6 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
             mujoco.mj_forward(self.model, self.data)
             current_pos = self.data.site_xpos[tcp_id].copy()
 
-            # Map raw data to 3D world (p_raw is padded inside helper)
-            pos_des = self._gmr_to_world(target_pos)
 
             jac = np.zeros((3, self.model.nv))
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
@@ -100,7 +104,14 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
 
             error = pos_des - current_pos
             dist = np.linalg.norm(error)
+
+            if step % int(self.opt_max_steps/10) == 0:
+                Logger.debug(f"step {step}: current pos tcp = {current_pos} -- pos_des = {pos_des} -- err = {dist}")
+
             kp, kd = self.get_variable_gains(dist)
+
+            if dist < paramVIC.VIC_TOL.value:
+                return True
 
             if dist < 0.05:
                 self.error_accumulated += error * self.dt

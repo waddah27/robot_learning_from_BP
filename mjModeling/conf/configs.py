@@ -41,7 +41,7 @@ paramVIC.GMR = GMRParams
 class workingPiece(Enum):
     MATERIAL_RESISTANCE = configs["material_params"]["material_resistance"]
     MATERIAL_NAME = configs["material_params"]["material_name"]
-    MATERIAL_IS_SOLID = False
+    MATERIAL_IS_SOLID = True
 
 
 class oscillatorConfigs(Enum):

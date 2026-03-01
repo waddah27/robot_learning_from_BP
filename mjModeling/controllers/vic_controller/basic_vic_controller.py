@@ -1,3 +1,4 @@
+from logger import Logger
 from mjModeling.cutting_materials import Material
 import numpy as np
 import mujoco
@@ -5,6 +6,7 @@ from mjModeling.conf import paramVIC, workingPiece
 from mjModeling.controllers.controller_api import Controller
 from mjModeling.estimators import ImpedanceEstimator
 from mjModeling.mjRobot import Robot
+
 __all__ = ["BasicVariableImpedanceControl"]
 
 
@@ -55,7 +57,7 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
         return f_res
 
 
-    def move_to_position(self, target_pos, viewer=None, max_steps=8000):
+    def move_to_position(self, target_pos, viewer=None):
         tcp_id = self.model.site("scalpel_tip").id
         # Define 'home' posture to keep the elbow up (joint angles in radians)
         q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159])
@@ -64,12 +66,15 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
         # Use a small epsilon for Damped Least Squares stability
         lambda_sq = paramVIC.VIC_LAMBDA_SQ.value
 
-        for step in range(max_steps):
+        for step in range(self.opt_max_steps):
             mujoco.mj_forward(self.model, self.data)
 
             current_pos = self.data.site_xpos[tcp_id].copy()
             error = target_pos - current_pos
             dist = np.linalg.norm(error)
+
+            if not step % int(self.opt_max_steps/10):
+                Logger.debug(f"default VIC: opt_step {step}: target = {target_pos} -- current = {current_pos} --err = {dist}")
 
             # 2mm tolerance for 2026 surgical/precision tasks
             if dist < paramVIC.VIC_TOL.value:

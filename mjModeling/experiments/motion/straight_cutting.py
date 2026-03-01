@@ -58,23 +58,25 @@ class straightCutting(InitPos):
         # Phase 1: Approach to generic height
         status = self._init_position_for_cutting(viewer)
         if status != 0: return status
+        Logger.info(f"\n{'*'*100}\nCUTTING PHASE\n{'*'*100}\n")
 
         if isinstance(self.controller, VariableImpedanceControl) and self.controller.use_gmr:
             # Phase 2: Perfect Alignment to GMR Start
             p_start = self.controller.traj_loader.pos[0, 0:3]
             start_world = self.controller._gmr_to_world(p_start)
-            print(f"--- Aligning to Start: {start_world} ---")
+            Logger.debug(f"\n2.1. Aligning to Start: {start_world} ---")
             self.controller.move_to_position(target_pos=start_world, viewer=viewer)
 
             # Phase 3: Execute Cut (No target_pos provided)
             if hasattr(self.controller, "traj_loader"):
-                print("--- Executing Real-Time GMR Cut ---")
+                Logger.debug("\n 2.2 Executing Real-Time GMR Cut ---")
                 traj_iter = iter(self.controller.traj_loader)
                 for i, move in enumerate(traj_iter):
                     p_raw, v_raw, f_raw = move
-                    Logger.debug(f"move {i}: to {p_raw} -- Fx = {f_raw[0]}, Fy = {f_raw[1]}, Fz = {f_raw[2]}")
-                    self.controller.move_to_position(use_default=False, target_pos=p_raw, v_raw=v_raw, f_raw=f_raw, viewer=viewer, max_steps=50)
-                    print("done!")
+                    # Logger.debug(f"move {i}: to {p_raw} -- Fx = {f_raw[0]}, Fy = {f_raw[1]}, Fz = {f_raw[2]}")
+                    success = self.controller.move_to_position(use_default=False, target_pos=p_raw, v_raw=v_raw, f_raw=f_raw, viewer=viewer)
+                    Logger.debug(f"move is done!" if success else f"move {i} failed!")
+                Logger.info(f"\n{'*'*100}\nEND CUTTING\n{'*'*100}\n")
             else:
                 raise AttributeError(self.controller, "traj_loader")
         else:

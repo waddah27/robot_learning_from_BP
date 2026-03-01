@@ -34,7 +34,7 @@
     // vic controller parameters
     "vic_params": {
         "vic_max_steps": 5000,
-        "tolerance": 0.0021,
+        "tolerance": 0.0040,
         "kp": {
             "min": 400.0,
             "max": 1500.0

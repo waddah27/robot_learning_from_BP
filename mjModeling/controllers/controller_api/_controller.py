@@ -4,6 +4,7 @@ __all__ = ["Controller"]
 
 
 class Controller(ABC):
+    opt_max_steps = 8000
     def __init__(self):
         super().__init__()
 
