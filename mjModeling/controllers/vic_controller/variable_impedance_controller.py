@@ -100,7 +100,19 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
 
             jac = np.zeros((3, self.model.nv))
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
-            v_tip = v_raw #jac @ self.data.qvel
+            # v_tip = v_raw #jac @ self.data.qvel
+            # --- FIX: actual tip velocity and force transformation ---
+            # Get current site orientation (rotation from site frame to world)
+            site_rot = self.data.site_xmat[tcp_id].reshape(3, 3)
+
+            # Transform force from site frame to world frame
+            # (f_raw is a 3D vector in the sensor/tip frame)
+            f_raw_array = np.asarray(f_raw).flatten()  # ensure shape (3,)
+            f_ff_world = site_rot @ f_raw_array
+
+            # Compute actual tip velocity (for damping)
+            v_tip = jac @ self.data.qvel
+
 
             error = pos_des - current_pos
             dist = np.linalg.norm(error)
@@ -116,14 +128,11 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
             if dist < 0.05:
                 self.error_accumulated += error * self.dt
 
-            # Force FF (Force from GMR)
-            f_x = f_raw if np.isscalar(f_raw) else f_raw[0]
-            f_y = f_raw if np.isscalar(f_raw) else f_raw[1]
-            f_z = f_raw if np.isscalar(f_raw) else f_raw[2]
-            f_ff = np.array([f_x, f_y, f_z])
-            f_virtual = (kp * error) + (paramVIC.VIC_KI.value * self.error_accumulated) - (kd * v_tip) + f_ff
-            f_res = self.compensate_cutting_resistance(current_pos, v_tip)
-            f_virtual += f_res
+            # calcs of virtual force using world quantities
+            f_virtual = (kp * error) + (paramVIC.VIC_KI.value * self.error_accumulated) \
+                        - (kd * v_tip) + f_ff_world
+            # ---------------------------------------------------------
+
 
             # Torque calculation
             jjt = jac @ jac.T

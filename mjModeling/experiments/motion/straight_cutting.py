@@ -9,7 +9,7 @@ class straightCutting(InitPos):
     def __init__(self, robot: Robot):
         super().__init__(robot) # Ensure parent InitPos is initialized
         self.robot = robot
-        self.controller = None
+        self.controller: VariableImpedanceControl = None
 
     def _execute_straight_cut(self, viewer, length_m=0.3, num_waypoints=1):
         """Executes a straight line cut with real-time force reporting"""
