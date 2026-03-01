@@ -3,7 +3,7 @@ import numpy as np
 from mjModeling.experiments import Experiment
 from mjModeling.experiments.motion import InitPos
 from mjModeling.mjRobot import Robot
-
+from logger import Logger
 
 class straightCutting(InitPos):
     def __init__(self, robot: Robot):
@@ -72,7 +72,7 @@ class straightCutting(InitPos):
                 traj_iter = iter(self.controller.traj_loader)
                 for i, move in enumerate(traj_iter):
                     p_raw, v_raw, f_raw = move
-                    print(f"move {i}: to {p_raw} -- Fx = {f_raw[0]}, Fy = {f_raw[1]}, Fz = {f_raw[2]}")
+                    Logger.debug(f"move {i}: to {p_raw} -- Fx = {f_raw[0]}, Fy = {f_raw[1]}, Fz = {f_raw[2]}")
                     self.controller.move_to_position(use_default=False, target_pos=p_raw, v_raw=v_raw, f_raw=f_raw, viewer=viewer, max_steps=50)
                     print("done!")
             else:
