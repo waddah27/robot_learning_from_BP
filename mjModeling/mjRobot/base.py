@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+__all__ = ["Robot"]
 
 class Robot(ABC):
     def __init__(self):

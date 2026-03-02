@@ -17,6 +17,9 @@ import mujoco
 
 from mjModeling.conf.configs import oscillatorConfigs as oscConf
 
+__all__ = ["iiwa14"]
+
+
 class iiwa14(Robot):
     def __init__(self):
         self._model = None

@@ -105,7 +105,7 @@ class GMRVariableImpedanceControl(BasicVariableImpedanceControl):
         force_error = np.linalg.norm(force_desired - force_measured)
 
         # Check if we're in contact region (using working piece surface)
-        surface_z = self.working_piece.surface_hight if self.working_piece else 0
+        surface_z = self.working_piece.surface_height if self.working_piece else 0
         depth = surface_z - current_pos[2]
 
         if depth > 0:  # In contact

@@ -35,7 +35,7 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
             return np.zeros(3)
         # Material surface is at center_z + size_z = 0.04
         f_res = np.zeros(3)
-        surface_z = self.working_piece.surface_hight
+        surface_z = self.working_piece.surface_height
         magnitude = self.working_piece.cut_resistance
 
         depth = surface_z - current_pos[2]

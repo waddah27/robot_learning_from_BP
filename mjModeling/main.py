@@ -7,17 +7,19 @@ from mjModeling.controllers import (JacobianIK, BasicVariableImpedanceControl,
                                     PassiveVariableImpedanceControl,
                                     OptimizedVariableImpedanceControl, VariableImpedanceControl)
 from mjModeling.cutting_materials import Material
+from mjModeling.cutting_materials.utils import get_material_geometry
 from mjModeling.experiments.motion import InitPos, straightCutting
 from mjModeling.experiments import Experiment
 from visualization.visualizer import Visualize
 from data import MaterialData
+import sys
 # 1 - build experiment env
 robot = iiwa14().create(ROBOT_SCENE)
 working_piece = Material()
 
 bp_data = MaterialData.cork
 working_piece.cut_resistance = workingPiece.MATERIAL_RESISTANCE.value
-working_piece.surface_hight = 0.04
+_, _, working_piece.surface_height = get_material_geometry(robot)
 # Experiments
 straight_cut: Experiment = straightCutting(robot)
 init_pos: Experiment = InitPos(robot)

@@ -1,2 +1,2 @@
-from .base import Robot
+from .base import *
 from .gpu_utils import *

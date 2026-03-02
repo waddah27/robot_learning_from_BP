@@ -11,20 +11,20 @@ class straightCutting(InitPos):
         self.robot = robot
         self.controller: VariableImpedanceControl = None
 
-    def _execute_straight_cut(self, viewer, length_m=0.3, num_waypoints=1):
-        """Executes a straight line cut with real-time force reporting"""
+    def _execute_default_straight_cut(self, viewer, length_m=0.3, num_waypoints=1):
+        """Executes a straight line cut with real-time force reporting using default VIC controller"""
         if not self.controller:
             return
 
         tcp_id = self.robot.model.site("scalpel_tip").id
-        desired_z = 0.02
+        desired_z = self.controller.working_piece.surface_height
         start_pos = self.robot.data.site_xpos[tcp_id].copy()
         start_pos[2] = desired_z   # override Z with the target depth
 
-        print(f"\n3. Starting Monitored Cut: {start_pos}")
+        Logger.debug(f"\n3. Starting Monitored Cut (default VIC): {start_pos}")
         # Updated header to reflect Magnitude
-        print(f"{'Step':<10} | {'Force Mag (N)':<15} | {'Z-Pos (m)':<15}")
-        print("-" * 45)
+        Logger.debug(f"{'Step':<10} | {'Force Mag (N)':<15} | {'Z-Pos (m)':<15}")
+        Logger.debug("-" * 45)
 
         for i in range(1, num_waypoints + 1):
             fraction = i / num_waypoints
@@ -43,14 +43,14 @@ class straightCutting(InitPos):
             z_height = self.robot.data.site_xpos[tcp_id][2]
 
             # Use force_val (the float) for the format string
-            print(f"{i:<10} | {force_val:<15.4f} | {z_height:<15.6f}")
+            Logger.debug(f"\n{i:<10} | {force_val:<15.4f} | {z_height:<15.6f}")
 
             if not success:
                 print("✗ Cut interrupted.")
                 return False
 
-        print(f"✓ Cut completed: {length_m*100:.1f}cm path executed.")
-        print("=================================DONE CUTTING EPISODE===========================")
+        Logger.debug(f"✓ Cut completed: {length_m*100:.1f}cm path executed.")
+        Logger.debug("=================================DONE CUTTING EPISODE===========================")
         return True
 
 
@@ -80,5 +80,5 @@ class straightCutting(InitPos):
             else:
                 raise AttributeError(self.controller, "traj_loader")
         else:
-            self._execute_straight_cut(viewer, length_m=0.15, num_waypoints=1)
+            self._execute_default_straight_cut(viewer, length_m=0.15, num_waypoints=1)
         return 0

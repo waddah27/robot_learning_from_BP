@@ -14,9 +14,9 @@ class Material(ABC):
         self._cut_resistance = value
 
     @property
-    def surface_hight(self):
+    def surface_height(self):
         return self._surface_hight
 
-    @surface_hight.setter
-    def surface_hight(self, value):
+    @surface_height.setter
+    def surface_height(self, value):
         self._surface_hight = value
