@@ -58,7 +58,7 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
 
         # Workspace: X[0.35,0.65], Y[-0.15,0.15], Z[0.02,0.04]
         world_x = 0.35 + norm[0] * (0.65 - 0.35)
-        world_y = 0.0 #-0.15 + norm[1] * (0.15 - (-0.15))
+        world_y = 0.0 + norm[1] * (0.15 - (-0.15))
         world_z = 0.02 + norm[2] * (0.04 - 0.02)
 
         return np.array([world_x, world_y, world_z])
