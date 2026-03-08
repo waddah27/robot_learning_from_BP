@@ -1,6 +1,7 @@
 from logger import Logger
 from typing import Union
 
+from mjModeling.kuka_iiwa_14.iiwa14_model import iiwa14
 import numpy as np
 import mujoco
 from cvxopt import matrix, solvers
@@ -13,9 +14,9 @@ __all__ = ["VariableImpedanceControl"]
 solvers.options['show_progress'] = False
 
 class VariableImpedanceControl(BasicVariableImpedanceControl):
-    def __init__(self, robot, gmr_sequence: Union[bpTrajDataLoader, NamedArray] = None):
+    def __init__(self, robot: iiwa14, use_behaviour_priors: bool = False):
         super().__init__(robot)
-        self.use_gmr = gmr_sequence is not None
+        self.use_bp = use_behaviour_priors
         self.dt = self.model.opt.timestep
 
         # Passivity Tank State
@@ -23,14 +24,14 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
         self.tank_max = 50.0
         self.tank_min = 0.001
 
-        if self.use_gmr:
+        if self.use_bp:
             # Trajectory loader type check
-            if isinstance(gmr_sequence, NamedArray):
-                self.traj_loader = bpTrajDataLoader(gmr_sequence)
-            elif isinstance(gmr_sequence, bpTrajDataLoader):
-                self.traj_loader = gmr_sequence
+            if isinstance(robot.work_piece.bp_data, NamedArray):
+                self.traj_loader = bpTrajDataLoader(robot.work_piece.bp_data)
+            elif isinstance(robot.work_piece.bp_data, bpTrajDataLoader):
+                self.traj_loader = robot.work_piece.bp_data
             else:
-                raise TypeError("gmr_sequence must be NamedArray or bpTrajDataLoader")
+                raise TypeError("robot.work_piece.bp_data sequence must be NamedArray or bpTrajDataLoader")
             self.bp_generator = GMRReferenceGenerator(self.traj_loader)
 
             # --- ROBUST 3D PADDING LOGIC ---

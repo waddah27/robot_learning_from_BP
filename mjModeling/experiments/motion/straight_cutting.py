@@ -60,7 +60,7 @@ class straightCutting(InitPos):
         if status != 0: return status
         Logger.info(f"\n{'*'*100}\nCUTTING PHASE\n{'*'*100}\n")
 
-        if isinstance(self.controller, VariableImpedanceControl) and self.controller.use_gmr:
+        if isinstance(self.controller, VariableImpedanceControl) and self.controller.use_bp:
             # Phase 2: Perfect Alignment to GMR Start
             p_start = self.controller.traj_loader.pos[0, 0:3]
             start_world = self.controller._gmr_to_world(p_start)

@@ -23,7 +23,7 @@ straight_cut: Experiment = straightCutting(robot)
 init_pos: Experiment = InitPos(robot)
 
 # Controllers
-vic = VariableImpedanceControl(robot, gmr_sequence=work_piece.bp_data)
+vic = VariableImpedanceControl(robot, use_behaviour_priors=True)
 vic.working_piece = work_piece
 
 jik = JacobianIK(robot)

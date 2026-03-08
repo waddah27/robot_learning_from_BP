@@ -28,7 +28,7 @@ class iiwa14(Robot):
         self.shm = shared_memory.SharedMemory(create=True,
                                               size=oscConf.BUFFER_SIZE.value * oscConf.N_SIGS.value * 8)
         self.state = {}
-        self.work_piece = None
+        self.work_piece: Material = None
 
         self.reset_state()
 
