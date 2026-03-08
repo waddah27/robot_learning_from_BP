@@ -1,6 +1,6 @@
 import multiprocessing as mp
 from Oscillator import run_drawer
-from mjModeling.conf import ROBOT_SCENE, workingPiece
+from mjModeling.conf import ROBOT_SCENE, workPiece
 from kuka_iiwa_14.iiwa14_model import iiwa14
 from mjModeling.controllers import (JacobianIK, BasicVariableImpedanceControl,
                                     GMRVariableImpedanceControl,
@@ -14,19 +14,18 @@ from visualization.visualizer import Visualize
 from data import MaterialData
 import sys
 # 1 - build experiment env
-robot = iiwa14().create(ROBOT_SCENE)
-working_piece = Material()
+work_piece = Material().from_work_piece()
 
 bp_data = MaterialData.cork
-working_piece.cut_resistance = workingPiece.MATERIAL_RESISTANCE.value
-_, _, working_piece.surface_height = get_material_geometry(robot)
+robot = iiwa14().create(xml_path=ROBOT_SCENE, work_piece=work_piece)
+
 # Experiments
 straight_cut: Experiment = straightCutting(robot)
 init_pos: Experiment = InitPos(robot)
 
 # Controllers
 vic = VariableImpedanceControl(robot, gmr_sequence=bp_data)
-vic.working_piece = working_piece
+vic.working_piece = work_piece
 
 jik = JacobianIK(robot)
 print(f"Gravity = {robot.model.opt.gravity}")

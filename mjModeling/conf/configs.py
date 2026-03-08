@@ -2,6 +2,7 @@ import os
 import re
 import json
 from enum import Enum
+import numpy as np
 # load configs
 file_dir = os.path.dirname(__file__)
 root_dir = os.path.dirname(file_dir)
@@ -38,10 +39,13 @@ class GMRParams:
 # Add to existing paramVIC class
 paramVIC.GMR = GMRParams
 
-class workingPiece(Enum):
+class workPiece:
     MATERIAL_RESISTANCE = configs["material_params"]["material_resistance"]
     MATERIAL_NAME = configs["material_params"]["material_name"]
     MATERIAL_IS_SOLID = True
+    POS = np.array([0.5, 0.0, 0.02])
+    SIZE = np.array([0.3, 0.3, 0.02])
+    SURFACE: float = SIZE[2] + POS[2]
 
 
 class oscillatorConfigs(Enum):

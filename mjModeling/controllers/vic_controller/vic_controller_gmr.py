@@ -2,7 +2,7 @@ from mjModeling.controllers.vic_controller import BasicVariableImpedanceControl
 from mjModeling.cutting_materials import Material
 import numpy as np
 import mujoco
-from mjModeling.conf import paramVIC, workingPiece
+from mjModeling.conf import paramVIC, workPiece
 from mjModeling.controllers import Controller
 from mjModeling.estimators import ImpedanceEstimator
 from mjModeling.mjRobot import Robot

@@ -1,7 +1,9 @@
+from logger import Logger
 from multiprocessing import shared_memory
 import os
 from typing import Callable
 
+from mjModeling.cutting_materials import Material
 import numpy as np
 from mjModeling import Robot
 from mjModeling.conf import (
@@ -11,7 +13,6 @@ from mjModeling.conf import (
     SCALPEL_HANDLER_2_PATH,
     SCALPEL_PATH,
     FORCE_HISTORY,
-    workingPiece
 )
 import mujoco
 
@@ -27,6 +28,7 @@ class iiwa14(Robot):
         self.shm = shared_memory.SharedMemory(create=True,
                                               size=oscConf.BUFFER_SIZE.value * oscConf.N_SIGS.value * 8)
         self.state = {}
+        self.work_piece = None
 
         self.reset_state()
 
@@ -35,8 +37,9 @@ class iiwa14(Robot):
         self.state["shared_array"][:] = 0
 
     @classmethod
-    def create(cls, xml_path):
+    def create(cls, xml_path: str, work_piece: Material):
         self = cls()
+        self.work_piece = work_piece
         if not os.path.exists(xml_path):
             raise FileNotFoundError(f"XML not found at {xml_path}")
 
@@ -91,7 +94,7 @@ class iiwa14(Robot):
             rgba=[0.8, 0.8, 0.8, 1],  # Grey to distinguish
             pos=attach_site.pos,
         contype=1,       # Bitmask: belongs to group 1
-        conaffinity=2 if workingPiece.MATERIAL_IS_SOLID.value else 1    # Bitmask: only collides with group 1
+        conaffinity=2 if self.work_piece.is_solid else 1    # Bitmask: only collides with group 1
         )
 
 
@@ -105,15 +108,15 @@ class iiwa14(Robot):
             group=1  # Ensure group 1 is enabled in viewer
         )
         # 9. Update Material to use Collision Group 2
-        material = spec.worldbody.add_body(name=workingPiece.MATERIAL_NAME.value)
+        material = spec.worldbody.add_body(name=self.work_piece.name)
         material.add_geom(
             name=MATERIAL_GEOM,
             type=mujoco.mjtGeom.mjGEOM_BOX,
-            size=[0.3, 0.3, 0.02],
-            pos=[0.5, 0, 0.02],
+            size=self.work_piece.size,
+            pos=self.work_piece.center,
             rgba=[0.2, 0.8, 0.2, 0.7],
             contype=2,       # Bitmask: belongs to group 2
-            conaffinity=1 if workingPiece.MATERIAL_IS_SOLID.value else 2,   # Bitmask: only collides with group 2
+            conaffinity=1 if self.work_piece.is_solid else 2,   # Bitmask: only collides with group 2
             solref=[0.02, 1],
             margin=0.001
         )
@@ -121,9 +124,9 @@ class iiwa14(Robot):
         self._model = spec.compile()
         self._data = mujoco.MjData(self._model)
         mujoco.mj_forward(self._model, self._data)
-        print("✓ Model created")
-        print(f"Scalpel geom ID: {self._model.geom(SCALPEL_GEOM).id}")
-        print(f"Material geom ID: {self._model.geom(MATERIAL_GEOM).id}")
+        Logger.info("✓ Model created")
+        Logger.info(f"Scalpel geom ID: {self._model.geom(SCALPEL_GEOM).id}")
+        Logger.info(f"Material geom ID: {self._model.geom(MATERIAL_GEOM).id}")
         self.set_shm_buffer()
         return self
 
