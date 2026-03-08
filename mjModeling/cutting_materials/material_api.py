@@ -1,3 +1,4 @@
+from data import MaterialData
 from mjModeling.conf import workPiece
 import numpy as np
 __all__ = ["Material"]
@@ -10,6 +11,7 @@ class Material:
         self._center = None
         self._name = None
         self._is_solid = None
+        self._bp_data = None
 
     @classmethod
     def from_work_piece(cls):
@@ -86,3 +88,22 @@ class Material:
             self._is_solid = val
         else:
             raise ValueError(f"is_solid is expected to be a bool, got {type(val)}")
+
+    @property
+    def bp_data(self):
+        return self._bp_data
+
+    @bp_data.setter
+    def bp_data(self, val: str):
+        if not isinstance(val, str):
+            raise ValueError(f"bp_data is expecting str name got {type(val)}")
+        match val:
+            case MaterialData.cork.name:
+                self._bp_data = MaterialData.cork
+            case MaterialData.penoplex.name:
+                self._bp_data = MaterialData.penoplex
+            case MaterialData.PVC.name:
+                self._bp_data = MaterialData.PVC
+            case _:
+                raise NotImplementedError(f"material name {val} was not found!")
+

@@ -15,8 +15,7 @@ from data import MaterialData
 import sys
 # 1 - build experiment env
 work_piece = Material().from_work_piece()
-
-bp_data = MaterialData.cork
+work_piece.bp_data = 'cork'
 robot = iiwa14().create(xml_path=ROBOT_SCENE, work_piece=work_piece)
 
 # Experiments
@@ -24,7 +23,7 @@ straight_cut: Experiment = straightCutting(robot)
 init_pos: Experiment = InitPos(robot)
 
 # Controllers
-vic = VariableImpedanceControl(robot, gmr_sequence=bp_data)
+vic = VariableImpedanceControl(robot, gmr_sequence=work_piece.bp_data)
 vic.working_piece = work_piece
 
 jik = JacobianIK(robot)
