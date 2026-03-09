@@ -49,9 +49,9 @@ class workPiece:
     MOVABLE: bool = True
 
 
-class oscillatorConfigs(Enum):
-    BUFFER_SIZE = configs["oscillator"]["buffer_size"]
-    N_SIGS = configs["oscillator"]["n_sigs"]
+class oscillatorConfigs:
+    BUFFER_SIZE = 1000
+    N_SIGS = 3
 
 # Construct the full absolute path to the STL
 SCALPEL_HANDLER_PART1 = configs["scalpel_handler_dir"]["part1"]

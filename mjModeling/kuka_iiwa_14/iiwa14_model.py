@@ -26,7 +26,7 @@ class iiwa14(Robot):
         self._model = None
         self._data = None
         self.shm = shared_memory.SharedMemory(create=True,
-                                              size=oscConf.BUFFER_SIZE.value * oscConf.N_SIGS.value * 8)
+                                              size=oscConf.BUFFER_SIZE * oscConf.N_SIGS * 8)
         self.state = {}
         self.work_piece: Material = None
         # for iiwa14 there are 7 DOFs
@@ -35,7 +35,7 @@ class iiwa14(Robot):
         self.reset_state()
 
     def set_shm_buffer(self):
-        self.state["shared_array"] = np.frombuffer(self.shm.buf, dtype=np.float64).reshape((oscConf.BUFFER_SIZE.value, oscConf.N_SIGS.value))
+        self.state["shared_array"] = np.frombuffer(self.shm.buf, dtype=np.float64).reshape((oscConf.BUFFER_SIZE, oscConf.N_SIGS))
         self.state["shared_array"][:] = 0
 
     @classmethod
