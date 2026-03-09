@@ -33,6 +33,7 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
         return kp, kd
 
     def compensate_cutting_resistance(self, current_pos, v_tip):
+        """OBSOLETE to be deleted later"""
         if not self.working_piece:
             print("No material was set to working piece or No working piece was added!")
             return np.zeros(3)

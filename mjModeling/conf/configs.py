@@ -1,7 +1,7 @@
 import os
 import re
 import json
-from enum import Enum
+from enum import Enum, IntEnum
 import numpy as np
 # load configs
 file_dir = os.path.dirname(__file__)
@@ -49,9 +49,14 @@ class workPiece:
     MOVABLE: bool = True
 
 
+class Signal(IntEnum):
+    FX = 0
+    FY = 1
+    FZ = 2
+
 class oscillatorConfigs:
     BUFFER_SIZE = 1000
-    N_SIGS = 3
+    N_SIGS = len(Signal)
 
 # Construct the full absolute path to the STL
 SCALPEL_HANDLER_PART1 = configs["scalpel_handler_dir"]["part1"]
