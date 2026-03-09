@@ -27,7 +27,7 @@ class iiwa14(Robot):
         self._data = None
         self.shm = shared_memory.SharedMemory(create=True,
                                               size=oscConf.BUFFER_SIZE * oscConf.N_SIGS * 8)
-        self.state = {}
+        self.robot_state = {}
         self.work_piece: Material = None
         # for iiwa14 there are 7 DOFs
         self.nq_robot = 7
@@ -35,8 +35,8 @@ class iiwa14(Robot):
         self.reset_state()
 
     def set_shm_buffer(self):
-        self.state["shared_array"] = np.frombuffer(self.shm.buf, dtype=np.float64).reshape((oscConf.BUFFER_SIZE, oscConf.N_SIGS))
-        self.state["shared_array"][:] = 0
+        self.robot_state["shared_array"] = np.frombuffer(self.shm.buf, dtype=np.float64).reshape((oscConf.BUFFER_SIZE, oscConf.N_SIGS))
+        self.robot_state["shared_array"][:] = 0
 
     @classmethod
     def create(cls, xml_path: str, work_piece: Material):
@@ -150,10 +150,10 @@ class iiwa14(Robot):
 
     def reset_state(self):
         """Reset the state dictionary"""
-        if not self.state.get(FORCE_HISTORY):
-            self.state[FORCE_HISTORY] = []  # Store cutting forces
+        if not self.robot_state.get(FORCE_HISTORY):
+            self.robot_state[FORCE_HISTORY] = []  # Store cutting forces
         else:
-            self.state.get(FORCE_HISTORY).clear()
+            self.robot_state.get(FORCE_HISTORY).clear()
 
     def experiment_exeucte_wrapper(self, callback: Callable[[], None], *args):
         if callable(callback):

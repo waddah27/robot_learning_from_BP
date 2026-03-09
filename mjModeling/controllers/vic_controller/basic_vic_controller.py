@@ -54,7 +54,7 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
 
             # here estimated contact force is registered to shared memory if the material is not solid
             # this whole function should be refactored to consider estimating forces for 3d directions
-            self.robot.state["shared_array"][-1] = np.linalg.norm(f_res)
+            self.robot.robot_state["shared_array"][-1] = np.linalg.norm(f_res)
             return f_res
 
         return f_res
@@ -98,11 +98,11 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
             jac = np.zeros((3, self.model.nv))
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
             v_tip = jac @ self.data.qvel
-            f_res = self.compensate_cutting_resistance(current_pos, v_tip)
+            # f_res = self.compensate_cutting_resistance(current_pos, v_tip)
 
             # F = Kp*e + Ki*∫e - Kd*v
             f_virtual = (kp_val * error) + (ki_val * self.error_accumulated) - (kd_val * v_tip)
-            f_virtual +=  f_res #  self.sim_cutting_resistance(current_pos, v_tip)
+            # f_virtual +=  f_res #  self.sim_cutting_resistance(current_pos, v_tip)
             # 4. STABLE MAPPING (Damped Least Squares)
             # Solves: tau = J^T * inv(JJ^T + λ^2I) * F
             jjt = jac @ jac.T
@@ -144,8 +144,8 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
 
     def record_contact_forces(self):
         if self.estimator:
-                self.robot.state["shared_array"][:-1] = self.robot.state["shared_array"][1:]
-                self.robot.state["shared_array"][-1] = self.estimator.get_total_cutting_force()
+                self.robot.robot_state["shared_array"][:-1] = self.robot.robot_state["shared_array"][1:]
+                self.robot.robot_state["shared_array"][-1] = self.estimator.get_total_cutting_force()
 
     @property
     def working_piece(self):

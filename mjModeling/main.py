@@ -1,16 +1,12 @@
 import multiprocessing as mp
 from Oscillator import run_drawer
-from mjModeling.conf import ROBOT_SCENE, workPiece
+from mjModeling.conf import ROBOT_SCENE
 from kuka_iiwa_14.iiwa14_model import iiwa14
-from mjModeling.controllers import (JacobianIK, BasicVariableImpedanceControl,
-                                    GMRVariableImpedanceControl,
-                                    PassiveVariableImpedanceControl,
-                                    OptimizedVariableImpedanceControl, VariableImpedanceControl)
+from mjModeling.controllers import JacobianIK, VariableImpedanceControl
 from mjModeling.cutting_materials import Material
 from mjModeling.experiments.motion import InitPos, straightCutting
 from mjModeling.experiments import Experiment
 from visualization.visualizer import Visualize
-from data import MaterialData
 import sys
 # 1 - build experiment env
 work_piece = Material().from_work_piece()
