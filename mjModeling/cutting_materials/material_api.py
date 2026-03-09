@@ -11,6 +11,7 @@ class Material:
         self._center = None
         self._name = None
         self._is_solid = None
+        self._is_movable = None
         self._bp_data = None
 
     @classmethod
@@ -25,6 +26,7 @@ class Material:
         obj.center = workPiece.POS
         obj.name = workPiece.MATERIAL_NAME
         obj.is_solid = workPiece.MATERIAL_IS_SOLID
+        obj.is_movable = workPiece.MOVABLE
         return obj
 
     @property
@@ -86,6 +88,17 @@ class Material:
     def is_solid(self, val: bool):
         if isinstance(val, bool):
             self._is_solid = val
+        else:
+            raise ValueError(f"is_solid is expected to be a bool, got {type(val)}")
+
+    @property
+    def is_movable(self):
+        return self._is_movable
+
+    @is_movable.setter
+    def is_movable(self, val: bool):
+        if isinstance(val, bool):
+            self._is_movable = val
         else:
             raise ValueError(f"is_solid is expected to be a bool, got {type(val)}")
 

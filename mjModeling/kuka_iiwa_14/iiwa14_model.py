@@ -29,6 +29,8 @@ class iiwa14(Robot):
                                               size=oscConf.BUFFER_SIZE.value * oscConf.N_SIGS.value * 8)
         self.state = {}
         self.work_piece: Material = None
+        # for iiwa14 there are 7 DOFs
+        self.nq_robot = 7
 
         self.reset_state()
 
@@ -109,6 +111,14 @@ class iiwa14(Robot):
         )
         # 9. Update Material to use Collision Group 2
         material = spec.worldbody.add_body(name=self.work_piece.name)
+        # Added a slide joint so the material can move up/down
+        material.add_joint(
+            type=mujoco.mjtJoint.mjJNT_SLIDE,
+            axis=[0, 0, 1],          # vertical axis
+            name="material_slide",
+            limited=True,
+            range=[-0.1, 0.1]        # adjust as needed
+        )
         material.add_geom(
             name=MATERIAL_GEOM,
             type=mujoco.mjtGeom.mjGEOM_BOX,

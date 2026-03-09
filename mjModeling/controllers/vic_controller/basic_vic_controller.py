@@ -1,5 +1,6 @@
 from logger import Logger
 from mjModeling.cutting_materials import Material
+from mjModeling.kuka_iiwa_14.iiwa14_model import iiwa14
 import numpy as np
 import mujoco
 from mjModeling.conf import paramVIC, workPiece
@@ -11,13 +12,15 @@ __all__ = ["BasicVariableImpedanceControl"]
 
 
 class BasicVariableImpedanceControl(Controller): # Removed parent for standalone clarity
-    def __init__(self, robot: Robot):
+    def __init__(self, robot: iiwa14):
         self.robot = robot
         self.model = robot.model
         self.data = robot.data
         self.error_accumulated = np.zeros(3) # For Integral term
         self.estimator = ImpedanceEstimator(robot)
         self._working_piece: Material = None
+        # Number of robot joints (always 7 for iiwa)
+        self.n_robot = robot.nq_robot
 
     def get_variable_gains(self, error_norm):
         # STABILITY: Lower the max stiffness.
@@ -108,7 +111,15 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
             # 5. NULL-SPACE POSTURE CONTROL (Fixes "lying on material")
             # Keeps the robot elbow up while the tip follows target_pos
             k_posture, d_posture = 10.0, 2.0
-            tau_posture = k_posture * (q_home[:self.model.nv] - self.data.qpos[:self.model.nv]) - d_posture * self.data.qvel
+
+
+            # Compute posture torque only for robot joints
+            tau_posture_robot = k_posture * (q_home - self.data.qpos[:self.n_robot]) - d_posture * self.data.qvel[:self.n_robot]
+
+            # Pad with zeros for extra DOFs (material joint)
+            tau_posture = np.zeros(self.model.nv)
+            tau_posture[:self.n_robot] = tau_posture_robot
+            # tau_posture = k_posture * (q_home[:self.model.nv] - self.data.qpos[:self.model.nv]) - d_posture * self.data.qvel
 
             # Project posture into null-space: P = (I - J_pinv * J)
             j_inv = jac.T @ np.linalg.solve(jjt + lambda_sq * np.eye(3), np.eye(3))

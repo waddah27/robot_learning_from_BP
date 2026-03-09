@@ -46,6 +46,7 @@ class workPiece:
     POS = np.array([0.5, 0.0, 0.02])
     SIZE = np.array([0.3, 0.3, 0.02])
     SURFACE: float = SIZE[2] + POS[2]
+    MOVABLE: bool = True
 
 
 class oscillatorConfigs(Enum):
