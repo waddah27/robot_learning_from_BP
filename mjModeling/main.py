@@ -7,7 +7,6 @@ from mjModeling.controllers import (JacobianIK, BasicVariableImpedanceControl,
                                     PassiveVariableImpedanceControl,
                                     OptimizedVariableImpedanceControl, VariableImpedanceControl)
 from mjModeling.cutting_materials import Material
-from mjModeling.cutting_materials.utils import get_material_geometry
 from mjModeling.experiments.motion import InitPos, straightCutting
 from mjModeling.experiments import Experiment
 from visualization.visualizer import Visualize

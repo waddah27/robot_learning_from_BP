@@ -1,6 +1,7 @@
 from logger import Logger
 from typing import Union
 
+from mjModeling.cutting_materials.utils import wp_sine_motion
 from mjModeling.kuka_iiwa_14.iiwa14_model import iiwa14
 import numpy as np
 import mujoco
@@ -28,13 +29,10 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
         self.mat_geom_id = self.model.geom(MATERIAL_GEOM).id
         try:
             self.mat_joint_id = self.model.joint("material_slide").id
+            Logger.info(f"Material joint ID = {self.mat_joint_id} – motion enabled")
         except:
             self.mat_joint_id = None
             Logger.warning("material_slide joint not found – material will be static.")
-        if self.mat_joint_id is None:
-            Logger.warning("Material is static – no vertical motion.")
-        else:
-            Logger.info(f"Material joint ID = {self.mat_joint_id} – motion enabled")
 
         self.cut_width_x = robot.work_piece.size[0]
         self.cut_width_y = robot.work_piece.size[1]
@@ -102,8 +100,8 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
         for step in range(max_steps):
             # --- Update material position ---
             if self.mat_joint_id is not None and self.wp_mobile:
-                new_z = motion_amplitude * np.sin(2 * np.pi * motion_frequency * self.sim_time)
-                self.data.qpos[self.mat_joint_id] = new_z
+                wp_hieght = wp_sine_motion(self.sim_time)
+                self.data.qpos[self.mat_joint_id] = wp_hieght
                 mujoco.mj_forward(self.model, self.data)
 
             # --- Desired position at current surface ---
