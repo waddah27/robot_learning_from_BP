@@ -94,8 +94,6 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
 
         if not hasattr(self, 'sim_time'):
             self.sim_time = 0.0
-        motion_amplitude = 0.02
-        motion_frequency = 0.5
 
         for step in range(max_steps):
             # --- Update material position ---
