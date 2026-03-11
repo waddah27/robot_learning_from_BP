@@ -145,8 +145,8 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
 
     def record_contact_forces(self):
         if self.estimator:
-                self.robot.robot_state["shared_array"][:-1] = self.robot.robot_state["shared_array"][1:]
-                self.robot.robot_state["shared_array"][-1] = self.estimator.get_total_cutting_force()
+            force = self.estimator.get_total_cutting_force()   # assume returns [fx, fy, fz]
+            self.robot.buffer.write_samples(force)
 
     @property
     def working_piece(self):

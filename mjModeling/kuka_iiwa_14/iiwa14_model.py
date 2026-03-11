@@ -17,6 +17,7 @@ from mjModeling.conf import (
 import mujoco
 
 from mjModeling.conf.configs import oscillatorConfigs as oscConf
+from shmemory import SharedMemoryBuffer
 
 __all__ = ["iiwa14"]
 
@@ -25,18 +26,15 @@ class iiwa14(Robot):
     def __init__(self):
         self._model = None
         self._data = None
-        self.shm = shared_memory.SharedMemory(create=True,
-                                              size=oscConf.BUFFER_SIZE * oscConf.N_SIGS * 8)
         self.robot_state = {}
         self.work_piece: Material = None
         # for iiwa14 there are 7 DOFs
         self.nq_robot = 7
-
+        self.buffer: SharedMemoryBuffer = None
         self.reset_state()
 
     def set_shm_buffer(self):
-        self.robot_state["shared_array"] = np.frombuffer(self.shm.buf, dtype=np.float64).reshape((oscConf.BUFFER_SIZE, oscConf.N_SIGS))
-        self.robot_state["shared_array"][:] = 0
+        self.robot_state["shared_array"] = self.buffer.data
 
     @classmethod
     def create(cls, xml_path: str, work_piece: Material):
@@ -134,11 +132,27 @@ class iiwa14(Robot):
         self._model = spec.compile()
         self._data = mujoco.MjData(self._model)
         mujoco.mj_forward(self._model, self._data)
+        self.buffer = SharedMemoryBuffer(
+            name=None,                       # anonymous
+            create=True,
+            num_signals=3,
+            buffer_size=1000,                 # use your config value
+            signal_names=["Fx (N)", "Fy (N)", "Fz (N)"]
+        )
+        # self.robot_state["shared_memory"] = self.buffer.data
+        self.set_shm_buffer()
+
         Logger.info("✓ Model created")
         Logger.info(f"Scalpel geom ID: {self._model.geom(SCALPEL_GEOM).id}")
         Logger.info(f"Material geom ID: {self._model.geom(MATERIAL_GEOM).id}")
-        self.set_shm_buffer()
         return self
+
+    def shutdown(self):
+        if hasattr(self, 'robot_state') and 'shared_array' in self.robot_state:
+            self.robot_state['shared_array'] = None   # release reference
+        if self.buffer:
+            self.buffer.close()
+            self.buffer.unlink()
 
     @property
     def model(self):
@@ -147,6 +161,12 @@ class iiwa14(Robot):
     @property
     def data(self):
         return self._data
+
+    @property
+    def shm(self):
+        # For backward compatibility with existing code that expects self.shm
+        # (like the main script passing robot.shm.name)
+        return self.buffer
 
     def reset_state(self):
         """Reset the state dictionary"""

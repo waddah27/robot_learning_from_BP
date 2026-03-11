@@ -1,1 +1,1 @@
-from .main import *
+from .oscillator_intfs import *

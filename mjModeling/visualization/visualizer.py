@@ -49,5 +49,7 @@ class Visualize:
                 time_2_next_stp = self.robot.model.opt.timestep - (time.time() - step_start)
                 if time_2_next_stp > 0:
                     time.sleep(time_2_next_stp)
-
+        self.robot.shutdown()
+        self.robot = None
+        del self.viewer
         print(f"Simulation loop terminated after running for {self.robot.data.time:.2f} seconds of simulation time.")
