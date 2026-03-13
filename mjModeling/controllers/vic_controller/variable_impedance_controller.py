@@ -33,6 +33,10 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
         except:
             self.mat_joint_id = None
             Logger.warning("material_slide joint not found – material will be static.")
+        if self.mat_joint_id is None:
+            Logger.warning("Material is static – no vertical motion.")
+        else:
+            Logger.info(f"Material joint ID = {self.mat_joint_id} – motion enabled")
 
         self.cut_width_x = robot.work_piece.size[0]
         self.cut_width_y = robot.work_piece.size[1]
@@ -115,7 +119,9 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
             site_rot = self.data.site_xmat[tcp_id].reshape(3, 3)
             f_raw_array = np.asarray(f_raw).flatten()
             f_ff_world = site_rot @ f_raw_array
-            f_ff_world *= 0.3   # scale feedforward
+            # Scale feedforward: reduce Z component significantly
+            f_ff_world[2] *= 0.1   # only 10% in Z
+            f_ff_world[:2] *= 0.3  # keep 30% in XY (or as desired)
 
             v_tip = jac @ self.data.qvel
 
@@ -125,27 +131,36 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
             if step % int(self.opt_max_steps/10) == 0:
                 Logger.debug(f"step {step}: current pos tcp = {current_pos} -- pos_des = {pos_des} -- err = {dist}")
 
-            kp, kd = self.get_variable_gains(dist)
+            # Base gains from variable gain scheduling (scalar, same for all axes)
+            kp_base, kd_base = self.get_variable_gains(dist)
 
-            # --- ANTI‑PENETRATION: modify vertical force if tip is below surface ---
-            if current_pos[2] < surface_z - 0.001:   # tip is below surface
-                # Compute a strong upward force proportional to penetration depth
-                penetration = surface_z - current_pos[2]
-                upward_force = 1000.0 * penetration   # 1000 N/m stiffness
-                # Override the Z component of the virtual force
-                # (keep the original X,Y components from the PD + feedforward)
-                f_virtual = (kp * error) + (paramVIC.VIC_KI.value * self.error_accumulated) \
-                            - (kd * v_tip) + f_ff_world
-                f_virtual[2] = upward_force   # force the tip up
-            else:
-                # Normal VIC force
-                f_virtual = (kp * error) + (paramVIC.VIC_KI.value * self.error_accumulated) \
-                            - (kd * v_tip) + f_ff_world
+            # --- Adaptive gains for Z based on penetration ---
+            penetration_depth = max(0.0, surface_z - current_pos[2])
+            is_penetrating = penetration_depth > 0.001
 
-            # --- Integral anti‑windup (still applied) ---
-            if dist < 0.05:
+            kp_z = kp_base * (5.0 if is_penetrating else 1.0)   # stronger when penetrating
+            kd_z = kd_base * (3.0 if is_penetrating else 1.0)   # more damping when penetrating
+
+            # --- Virtual force with separate gains per axis ---
+            f_virtual = np.zeros(3)
+            # XY axes use base gains
+            f_virtual[:2] = (kp_base * error[:2]
+                             + paramVIC.VIC_KI.value * self.error_accumulated[:2]
+                             - kd_base * v_tip[:2]
+                             + f_ff_world[:2])
+            # Z axis uses adaptive gains
+            f_virtual[2] = (kp_z * error[2]
+                            + paramVIC.VIC_KI.value * self.error_accumulated[2]
+                            - kd_z * v_tip[2]
+                            + f_ff_world[2])
+
+            # --- Integral update with anti‑windup ---
+            # Only update integral when not deeply penetrating, to prevent wind-up
+            if penetration_depth < 0.005 and dist < 0.05:
                 self.error_accumulated += error * self.dt
+                # Clamp each component to ±0.05
                 self.error_accumulated = np.clip(self.error_accumulated, -0.05, 0.05)
+            # If deeply penetrating, do not update integral (integral stays as is)
 
             # Torque calculation (unchanged)
             jjt = jac @ jac.T
@@ -163,7 +178,7 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
 
             power_flow = self.data.qvel.dot(tau_safe)
             self.tank_energy -= power_flow * self.dt
-            self.tank_energy += (np.sum(kd * (v_tip**2)) + 1.0) * self.dt
+            self.tank_energy += (np.sum(kd_base * (v_tip**2)) + 1.0) * self.dt   # use kd_base as representative
             self.tank_energy = np.clip(self.tank_energy, 0, self.tank_max)
 
             self.data.ctrl[:self.model.nu] = np.clip(tau_safe[:self.model.nu], -300, 300)
