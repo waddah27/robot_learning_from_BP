@@ -145,12 +145,12 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
             f_virtual = np.zeros(3)
             # XY axes use base gains
             f_virtual[:2] = (kp_base * error[:2]
-                             + paramVIC.VIC_KI.value * self.error_accumulated[:2]
+                             + paramVIC.VIC_KI * self.error_accumulated[:2]
                              - kd_base * v_tip[:2]
                              + f_ff_world[:2])
             # Z axis uses adaptive gains
             f_virtual[2] = (kp_z * error[2]
-                            + paramVIC.VIC_KI.value * self.error_accumulated[2]
+                            + paramVIC.VIC_KI * self.error_accumulated[2]
                             - kd_z * v_tip[2]
                             + f_ff_world[2])
 
@@ -165,10 +165,9 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
             # Torque calculation (unchanged)
             jjt = jac @ jac.T
             tau_task = jac.T @ np.linalg.solve(jjt + 1e-4, f_virtual)
-            n_robot = 7
-            tau_posture_robot = 10.0 * (q_home - self.data.qpos[:n_robot]) - 2.0 * self.data.qvel[:n_robot]
+            tau_posture_robot = 10.0 * (q_home - self.data.qpos[:self.n_robot]) - 2.0 * self.data.qvel[:self.n_robot]
             tau_posture = np.zeros(self.model.nv)
-            tau_posture[:n_robot] = tau_posture_robot
+            tau_posture[:self.n_robot] = tau_posture_robot
             j_inv = jac.T @ np.linalg.solve(jjt + 1e-4, np.eye(3))
             tau_null = (np.eye(self.model.nv) - (j_inv @ jac)) @ tau_posture
 
@@ -184,7 +183,8 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
             self.data.ctrl[:self.model.nu] = np.clip(tau_safe[:self.model.nu], -300, 300)
             mujoco.mj_step(self.model, self.data)
             self.sim_time += self.dt
-            self.record_contact_forces()
+            K = np.array([kp_base, kp_base, kp_z])
+            self.record_contact_forces(K)
 
             if viewer and step % 4 == 0:
                 viewer.sync()

@@ -19,14 +19,14 @@ class paramIK(Enum):
     IK_TOL = configs["IK_params"]["tolerance"]
 
 
-class paramVIC(Enum):
-    VIC_MAX_STEPS = configs["vic_params"]["vic_max_steps"]
-    VIC_TOL = configs["vic_params"]["tolerance"]
-    VIC_KP_MIN = configs["vic_params"]["kp"]["min"]
-    VIC_KP_MAX = configs["vic_params"]["kp"]["max"]
-    VIC_M = configs["vic_params"]["m"]
-    VIC_KI = configs["vic_params"]["ki"]
-    VIC_LAMBDA_SQ = configs["vic_params"]["lambda_sq"]
+class paramVIC:
+    VIC_MAX_STEPS = 5000 #configs["vic_params"]["vic_max_steps"]
+    VIC_TOL = 0.004 #configs["vic_params"]["tolerance"]
+    VIC_KP_MIN = 400.0 #configs["vic_params"]["kp"]["min"]
+    VIC_KP_MAX = 1500.0 #configs["vic_params"]["kp"]["max"]
+    VIC_M = 1 #configs["vic_params"]["m"]
+    VIC_KI = 200 #configs["vic_params"]["ki"]
+    VIC_LAMBDA_SQ = 1e-4 #configs["vic_params"]["lambda_sq"]
 
 # GMR Integration Parameters
 class GMRParams:

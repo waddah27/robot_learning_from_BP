@@ -7,7 +7,7 @@ from mjModeling.conf import paramVIC, workPiece
 from mjModeling.controllers.controller_api import Controller
 from mjModeling.estimators import ImpedanceEstimator
 from mjModeling.mjRobot import Robot
-
+import sys
 __all__ = ["BasicVariableImpedanceControl"]
 
 
@@ -25,7 +25,7 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
     def get_variable_gains(self, error_norm):
         # STABILITY: Lower the max stiffness.
         # Most MuJoCo robots explode above 2000-5000 if timestep is 0.002
-        k_min, k_max = paramVIC.VIC_KP_MIN.value, paramVIC.VIC_KP_MAX.value
+        k_min, k_max = paramVIC.VIC_KP_MIN, paramVIC.VIC_KP_MAX
         kp = np.clip(k_max * (error_norm / 0.2), k_min, k_max)
         # DAMPING: Critically damped is 2 * sqrt(K).
         # Over-damp slightly (1.2 multiplier) to stop the shaking.
@@ -68,7 +68,7 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
 
         self.error_accumulated = np.zeros(3)
         # Use a small epsilon for Damped Least Squares stability
-        lambda_sq = paramVIC.VIC_LAMBDA_SQ.value
+        lambda_sq = paramVIC.VIC_LAMBDA_SQ
 
         for step in range(self.opt_max_steps):
             mujoco.mj_forward(self.model, self.data)
@@ -81,18 +81,19 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
                 Logger.debug(f"default VIC: opt_step {step}: target = {target_pos} -- current = {current_pos} --err = {dist}")
 
             # 2mm tolerance for 2026 surgical/precision tasks
-            if dist < paramVIC.VIC_TOL.value:
+            if dist < paramVIC.VIC_TOL:
                 return True
 
             # 1. VARIABLE GAIN SCHEDULING
             # High stiffness far away, lower stiffness for delicate contact
             kp_val, kd_val = self.get_variable_gains(dist)
+
             # 2. INTEGRAL TERM (The "Closer")
             # Only accumulate when within 5cm to prevent huge overshoots
             if dist < 0.05:
                 # ki=200 is strong enough to compensate for steady-state error
                 self.error_accumulated += error * self.model.opt.timestep
-            ki_val = paramVIC.VIC_KI.value
+            ki_val = paramVIC.VIC_KI
 
             # 3. TASK SPACE FORCE
             v_tip = (np.zeros(3))
@@ -136,17 +137,24 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
 
             # 7. STEP PHYSICS
             mujoco.mj_step(self.model, self.data)
-            self.record_contact_forces()
+            K = np.array([kp_val, kp_val, kp_val])
+            self.record_contact_forces(K)
 
             if viewer and step % 4 == 0:
                 viewer.sync()
 
         return False
 
-    def record_contact_forces(self):
+    def record_contact_forces(self, K:np.ndarray = None):
         if self.estimator:
             force = self.estimator.get_total_cutting_force()   # assume returns [fx, fy, fz]
-            self.robot.buffer.write_samples(force)
+            if isinstance(K, np.ndarray):
+                sample = np.append(force, K.flatten())
+            else:
+                residual =np.zeros(self.robot.buffer.num_signals - len(sample))
+                sample = np.append(force, residual)
+
+            self.robot.buffer.write_samples(sample)
 
     @property
     def working_piece(self):

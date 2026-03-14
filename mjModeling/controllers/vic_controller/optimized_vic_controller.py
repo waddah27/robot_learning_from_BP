@@ -1,3 +1,7 @@
+"""
+OBSOLETE TO BE DELETED
+"""
+
 import numpy as np
 from mjModeling.conf import paramVIC
 from Optimizers import ImpedanceProfileOptimizer, MPCImpedanceOptimizer

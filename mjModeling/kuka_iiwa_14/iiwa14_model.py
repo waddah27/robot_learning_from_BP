@@ -135,9 +135,9 @@ class iiwa14(Robot):
         self.buffer = SharedMemoryBuffer(
             name=None,                       # anonymous
             create=True,
-            num_signals=3,
+            num_signals=6,
             buffer_size=1000,                 # use your config value
-            signal_names=["Fx (N)", "Fy (N)", "Fz (N)"]
+            signal_names=["Fx (N)", "Fy (N)", "Fz (N)", "Kdx", "Kdy", "Kdz"]
         )
         # self.robot_state["shared_memory"] = self.buffer.data
         self.set_shm_buffer()

@@ -1,3 +1,7 @@
+"""
+OBSOLETE TO BE DELETED
+"""
+
 from mjModeling.controllers.vic_controller import BasicVariableImpedanceControl
 from mjModeling.cutting_materials import Material
 import numpy as np
