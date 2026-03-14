@@ -132,35 +132,54 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
                 Logger.debug(f"step {step}: current pos tcp = {current_pos} -- pos_des = {pos_des} -- err = {dist}")
 
             # Base gains from variable gain scheduling (scalar, same for all axes)
-            kp_base, kd_base = self.get_variable_gains(dist)
+            # kp_base, kd_base = self.get_variable_gains(dist)
+            # Inside the loop, after computing error and v_tip
+            kp, kd = self.get_variable_gains(error)
 
-            # --- Adaptive gains for Z based on penetration ---
+            # Optional: boost Z gain if penetrating (as before)
             penetration_depth = max(0.0, surface_z - current_pos[2])
-            is_penetrating = penetration_depth > 0.001
+            if penetration_depth > 0.001:
+                kp[2] *= 5.0
+                kd[2] *= 3.0
+                # Re‑clamp to bounds (optional)
+                kp = np.clip(kp, paramVIC.VIC_KP_MIN, paramVIC.VIC_KP_MAX)
+                kd = np.clip(kd, 0.5*np.sqrt(paramVIC.VIC_KP_MIN), None)
 
-            kp_z = kp_base * (5.0 if is_penetrating else 1.0)   # stronger when penetrating
-            kd_z = kd_base * (3.0 if is_penetrating else 1.0)   # more damping when penetrating
+            # Virtual force (now with vector gains)
+            f_virtual = kp * error + paramVIC.VIC_KI * self.error_accumulated - kd * v_tip + f_ff_world
 
-            # --- Virtual force with separate gains per axis ---
-            f_virtual = np.zeros(3)
-            # XY axes use base gains
-            f_virtual[:2] = (kp_base * error[:2]
-                             + paramVIC.VIC_KI * self.error_accumulated[:2]
-                             - kd_base * v_tip[:2]
-                             + f_ff_world[:2])
-            # Z axis uses adaptive gains
-            f_virtual[2] = (kp_z * error[2]
-                            + paramVIC.VIC_KI * self.error_accumulated[2]
-                            - kd_z * v_tip[2]
-                            + f_ff_world[2])
-
-            # --- Integral update with anti‑windup ---
-            # Only update integral when not deeply penetrating, to prevent wind-up
+            # Integral update (unchanged)
             if penetration_depth < 0.005 and dist < 0.05:
                 self.error_accumulated += error * self.dt
-                # Clamp each component to ±0.05
                 self.error_accumulated = np.clip(self.error_accumulated, -0.05, 0.05)
-            # If deeply penetrating, do not update integral (integral stays as is)
+
+            # --- Adaptive gains for Z based on penetration ---
+            # penetration_depth = max(0.0, surface_z - current_pos[2])
+            # is_penetrating = penetration_depth > 0.001
+
+            # kp_z = kp_base * (5.0 if is_penetrating else 1.0)   # stronger when penetrating
+            # kd_z = kd_base * (3.0 if is_penetrating else 1.0)   # more damping when penetrating
+
+            # --- Virtual force with separate gains per axis ---
+            # f_virtual = np.zeros(3)
+            # XY axes use base gains
+            # f_virtual[:2] = (kp_base * error[:2]
+            #                  + paramVIC.VIC_KI * self.error_accumulated[:2]
+            #                  - kd_base * v_tip[:2]
+            #                  + f_ff_world[:2])
+            # # Z axis uses adaptive gains
+            # f_virtual[2] = (kp_z * error[2]
+            #                 + paramVIC.VIC_KI * self.error_accumulated[2]
+            #                 - kd_z * v_tip[2]
+            #                 + f_ff_world[2])
+
+            # # --- Integral update with anti‑windup ---
+            # # Only update integral when not deeply penetrating, to prevent wind-up
+            # if penetration_depth < 0.005 and dist < 0.05:
+            #     self.error_accumulated += error * self.dt
+            #     # Clamp each component to ±0.05
+            #     self.error_accumulated = np.clip(self.error_accumulated, -0.05, 0.05)
+            # # If deeply penetrating, do not update integral (integral stays as is)
 
             # Torque calculation (unchanged)
             jjt = jac @ jac.T
@@ -177,14 +196,14 @@ class VariableImpedanceControl(BasicVariableImpedanceControl):
 
             power_flow = self.data.qvel.dot(tau_safe)
             self.tank_energy -= power_flow * self.dt
-            self.tank_energy += (np.sum(kd_base * (v_tip**2)) + 1.0) * self.dt   # use kd_base as representative
+            self.tank_energy += (np.sum(kd * (v_tip**2)) + 1.0) * self.dt   # use kd_base as representative
             self.tank_energy = np.clip(self.tank_energy, 0, self.tank_max)
 
             self.data.ctrl[:self.model.nu] = np.clip(tau_safe[:self.model.nu], -300, 300)
             mujoco.mj_step(self.model, self.data)
             self.sim_time += self.dt
-            K = np.array([kp_base, kp_base, kp_z])
-            self.record_contact_forces(K)
+            K = np.array([kp, kp, kp])
+            self.record_contact_forces(kp)
 
             if viewer and step % 4 == 0:
                 viewer.sync()

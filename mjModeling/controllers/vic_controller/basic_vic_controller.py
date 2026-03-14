@@ -22,14 +22,25 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
         # Number of robot joints (always 7 for iiwa)
         self.n_robot = robot.nq_robot
 
-    def get_variable_gains(self, error_norm):
-        # STABILITY: Lower the max stiffness.
-        # Most MuJoCo robots explode above 2000-5000 if timestep is 0.002
-        k_min, k_max = paramVIC.VIC_KP_MIN, paramVIC.VIC_KP_MAX
-        kp = np.clip(k_max * (error_norm / 0.2), k_min, k_max)
-        # DAMPING: Critically damped is 2 * sqrt(K).
-        # Over-damp slightly (1.2 multiplier) to stop the shaking.
+    def get_variable_gains(self, error):
+        """
+        error : np.ndarray of shape (3,) – position error.
+        Returns:
+            kp : np.ndarray (3,) – proportional gains for each axis.
+            kd : np.ndarray (3,) – derivative gains for each axis.
+        """
+        # These can later be made per‑axis arrays (e.g., self.kp_min = [x_min, y_min, z_min])
+        k_min = paramVIC.VIC_KP_MIN
+        k_max = paramVIC.VIC_KP_MAX
+        alpha = 0.02  # tune this – error scale at which stiffness reaches halfway to max
+
+        # Per‑axis proportional gain using saturating function
+        abs_e = np.abs(error)
+        kp = k_min + (k_max - k_min) * (abs_e / (alpha + abs_e))
+
+        # Derivative gain: critically damped would be 2*sqrt(kp), but we keep your heuristic
         kd = 0.5 * np.sqrt(kp)
+
         return kp, kd
 
     def compensate_cutting_resistance(self, current_pos, v_tip):
