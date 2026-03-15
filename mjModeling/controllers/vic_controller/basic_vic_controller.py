@@ -22,9 +22,10 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
         # Number of robot joints (always 7 for iiwa)
         self.n_robot = robot.nq_robot
 
-    def get_variable_gains(self, error):
+    def get_variable_gains(self, error, adaptive:bool = paramVIC.ADAPTIVE):
         """
         error : np.ndarray of shape (3,) – position error.
+        adaptive: decide the behaviour of calculating gains as function of error
         Returns:
             kp : np.ndarray (3,) – proportional gains for each axis.
             kd : np.ndarray (3,) – derivative gains for each axis.
@@ -32,11 +33,15 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
         # These can later be made per‑axis arrays (e.g., self.kp_min = [x_min, y_min, z_min])
         k_min = paramVIC.VIC_KP_MIN
         k_max = paramVIC.VIC_KP_MAX
-        alpha = 0.02  # tune this – error scale at which stiffness reaches halfway to max
+        if adaptive:
+            alpha = 0.02  # tune this – error scale at which stiffness reaches halfway to max
 
-        # Per‑axis proportional gain using saturating function
-        abs_e = np.abs(error)
-        kp = k_min + (k_max - k_min) * (abs_e / (alpha + abs_e))
+            # Per‑axis proportional gain using saturating function
+            abs_e = np.abs(error)
+            kp = k_min + (k_max - k_min) * (abs_e / (alpha + abs_e))
+        else:
+            error_norm = np.linalg.norm(error)
+            kp = np.clip(k_max * (error_norm / 0.2), k_min, k_max) * np.ones(len(error))
 
         # Derivative gain: critically damped would be 2*sqrt(kp), but we keep your heuristic
         kd = 0.5 * np.sqrt(kp)
@@ -97,7 +102,7 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
 
             # 1. VARIABLE GAIN SCHEDULING
             # High stiffness far away, lower stiffness for delicate contact
-            kp_val, kd_val = self.get_variable_gains(dist)
+            kp_val, kd_val = self.get_variable_gains(error)
 
             # 2. INTEGRAL TERM (The "Closer")
             # Only accumulate when within 5cm to prevent huge overshoots
@@ -148,8 +153,7 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
 
             # 7. STEP PHYSICS
             mujoco.mj_step(self.model, self.data)
-            K = np.array([kp_val, kp_val, kp_val])
-            self.record_contact_forces(K)
+            self.record_contact_forces(kp_val)
 
             if viewer and step % 4 == 0:
                 viewer.sync()
