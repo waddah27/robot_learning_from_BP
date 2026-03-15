@@ -1,4 +1,4 @@
-from mjModeling.controllers import VariableImpedanceControl
+from mjModeling.controllers import BpVariableImpedanceControl
 import numpy as np
 from mjModeling.experiments import Experiment
 from mjModeling.experiments.motion import InitPos
@@ -9,7 +9,7 @@ class straightCutting(InitPos):
     def __init__(self, robot: Robot):
         super().__init__(robot) # Ensure parent InitPos is initialized
         self.robot = robot
-        self.controller: VariableImpedanceControl = None
+        self.controller: BpVariableImpedanceControl = None
 
     def _execute_default_straight_cut(self, viewer, length_m=0.3, num_waypoints=1):
         """Executes a straight line cut with real-time force reporting using default VIC controller"""
@@ -60,7 +60,7 @@ class straightCutting(InitPos):
         if status != 0: return status
         Logger.info(f"\n{'*'*100}\nCUTTING PHASE\n{'*'*100}\n")
 
-        if isinstance(self.controller, VariableImpedanceControl) and self.controller.use_bp:
+        if isinstance(self.controller, BpVariableImpedanceControl) and self.controller.use_bp:
             # Phase 2: Perfect Alignment to GMR Start
             p_start = self.controller.traj_loader.pos[0, 0:3]
             start_world = self.controller._gmr_to_world(p_start)

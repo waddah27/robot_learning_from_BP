@@ -11,10 +11,10 @@ from mjModeling.conf import paramVIC, MATERIAL_GEOM
 from data import bpTrajDataLoader, NamedArray
 from reference_generators import GMRReferenceGenerator
 
-__all__ = ["VariableImpedanceControl"]
+__all__ = ["BpVariableImpedanceControl"]
 solvers.options['show_progress'] = False
 
-class VariableImpedanceControl(BasicVariableImpedanceControl):
+class BpVariableImpedanceControl(BasicVariableImpedanceControl):
     def __init__(self, robot: iiwa14, use_behaviour_priors: bool = False):
         super().__init__(robot)
         self.use_bp = use_behaviour_priors
