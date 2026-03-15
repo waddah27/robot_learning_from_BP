@@ -1,5 +1,6 @@
 from typing import Union
 
+from mjModeling.conf.configs import paramVIC
 from mjModeling.controllers import BpVariableImpedanceControl, ContinuousTrajectoryVIC
 import numpy as np
 from mjModeling.experiments import Experiment
@@ -8,7 +9,7 @@ from mjModeling.mjRobot import Robot
 from logger import Logger
 
 class straightCutting(InitPos):
-    def __init__(self, robot: Robot, use_continuous=False):
+    def __init__(self, robot: Robot, use_continuous=paramVIC.CONTINUOUS_TRAJ):
         super().__init__(robot)
         self.robot = robot
         self.use_continuous = use_continuous

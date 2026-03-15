@@ -81,48 +81,56 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
         return np.array([v_world_xy[0], v_world_xy[1], v_world_z])
 
-    def follow_trajectory(self, phase_speed=0.01, viewer=None):
+    def follow_trajectory(self, phase_speed=1.0, viewer=None):
         """
         Execute the entire GMR trajectory as one continuous motion.
         phase_speed : float > 0, scaling factor for execution speed.
-                      phase_speed = 1.0 corresponds to original recording speed.
         """
         tcp_id = self.model.site("scalpel_tip").id
         q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159])
         self.error_accumulated = np.zeros(3)
 
-        # Phase variable
+        # Phase variable and scaled time for material motion
         self.phase = 0.0
+        self.mat_time = 0.0
         phase_inc = phase_speed * self.dt / self.traj_duration
 
-        # Maximum steps (safety margin)
+        # For material velocity computation (finite difference)
+        prev_mat_height = None
+
         max_steps = int(2 * self.traj_duration / self.dt)
 
         for step in range(max_steps):
             if self.phase >= 1.0:
                 break
 
-            # --- Update material position (if movable) ---
+            # --- Update material position using SCALED TIME ---
             if self.mat_joint_id is not None and self.wp_mobile:
-                wp_height = wp_sine_motion(self.sim_time)   # your existing function
-                self.data.qpos[self.mat_joint_id] = wp_height
+                current_height = wp_sine_motion(self.mat_time)
+                self.data.qpos[self.mat_joint_id] = current_height
                 mujoco.mj_forward(self.model, self.data)
+
+                # Compute material velocity via finite difference
+                if prev_mat_height is None:
+                    mat_vel = 0.0
+                else:
+                    # Actual time step for material is phase_speed * dt
+                    mat_vel = (current_height - prev_mat_height) / (phase_speed * self.dt)
+                prev_mat_height = current_height
+            else:
+                mat_vel = 0.0
 
             # --- Get desired quantities at current phase ---
             pos_des_gmr = self.pos_func(self.phase)
             vel_des_gmr = self.vel_func(self.phase)
             force_des_gmr = self.force_func(self.phase)
 
-            # Current material pose and velocity
-            mat_pos = self.data.geom_xpos[self.mat_geom_id].copy()
-            if self.mat_joint_id is not None:
-                mat_vel = self.data.qvel[self.mat_joint_id]   # scalar (only Z)
-            else:
-                mat_vel = 0.0
+            # Scale velocity to match phase speed
+            vel_des_gmr_scaled = vel_des_gmr * phase_speed
 
-            # Transform to world coordinates
+            # Transform to world coordinates – DO NOT pass mat_pos to _gmr_to_world
             pos_des = self._gmr_to_world(pos_des_gmr)
-            vel_des = self._gmr_vel_to_world(vel_des_gmr, mat_vel, mat_pos)
+            vel_des = self._gmr_vel_to_world(vel_des_gmr_scaled, mat_vel)
 
             # --- Current robot state ---
             mujoco.mj_forward(self.model, self.data)
@@ -131,38 +139,35 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
             v_cur = jac @ self.data.qvel
 
-            # Transform feedforward force (assumed in tool frame)
+            # Transform feedforward force (tool frame to world)
             site_rot = self.data.site_xmat[tcp_id].reshape(3, 3)
             f_ff_world = site_rot @ force_des_gmr
-            # Optional scaling (as in your original code)
             f_ff_world[2] *= 0.1
             f_ff_world[:2] *= 0.3
 
             # --- Error and variable gains ---
             error = pos_des - current_pos
-            penetration_depth = max(0.0, (mat_pos[2] + self.cut_depth_z) - current_pos[2])
+            mat_pos = self.data.geom_xpos[self.mat_geom_id].copy()
+            surface_z = mat_pos[2] + self.cut_depth_z
+            penetration_depth = max(0.0, surface_z - current_pos[2])
             kp, kd = self.get_variable_gains(error)
 
             if penetration_depth > 0.001:
                 kp[2] *= 5.0
                 kd[2] *= 3.0
                 kp = np.clip(kp, paramVIC.VIC_KP_MIN, paramVIC.VIC_KP_MAX)
-                # kd clipping optional
 
             # --- Control law with velocity tracking ---
-            f_virtual = (kp * error) \
-                        + paramVIC.VIC_KI * self.error_accumulated \
-                        + kd * (vel_des - v_cur) \
-                        + f_ff_world
+            f_virtual = (kp * error) + paramVIC.VIC_KI * self.error_accumulated \
+                        + kd * (vel_des - v_cur) + f_ff_world
 
-            # Update integral (only near surface, as before)
             if penetration_depth < 0.005 and np.linalg.norm(error) < 0.05:
                 self.error_accumulated += error * self.dt
                 self.error_accumulated = np.clip(self.error_accumulated, -0.05, 0.05)
 
-            # --- Torque calculation (reusing your existing method) ---
+            # --- Torque calculation (unchanged) ---
             jjt = jac @ jac.T
-            lambda_sq = paramVIC.VIC_LAMBDA_SQ   # or 1e-4 as in adaptive version
+            lambda_sq = paramVIC.VIC_LAMBDA_SQ
             tau_task = jac.T @ np.linalg.solve(jjt + lambda_sq * np.eye(3), f_virtual)
 
             tau_posture_robot = 10.0 * (q_home - self.data.qpos[:self.n_robot]) \
@@ -176,21 +181,22 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
             tau_nominal = tau_task + tau_null + self.data.qfrc_bias[:self.model.nv]
 
-            # Optional passivity QP (reuse your _solve_passivity_qp)
+            # Optional passivity QP
             tau_safe = self._solve_passivity_qp(tau_nominal, self.data.qvel)
 
             # --- Apply and step ---
             self.data.ctrl[:self.model.nu] = np.clip(tau_safe[:self.model.nu], -300, 300)
             mujoco.mj_step(self.model, self.data)
+
+            # Advance scaled time and phase
+            self.mat_time += phase_speed * self.dt
+            self.phase += phase_inc
             self.sim_time += self.dt
 
-            # Record forces (with current gains)
+            # Record forces
             self.record_contact_forces(kp)
 
             if viewer and step % 4 == 0:
                 viewer.sync()
 
-            # Advance phase
-            self.phase += phase_inc
-
-        return True   # trajectory finished
+        return True

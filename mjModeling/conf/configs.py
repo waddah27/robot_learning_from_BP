@@ -28,6 +28,7 @@ class paramVIC:
     VIC_KI = 200 #configs["vic_params"]["ki"]
     VIC_LAMBDA_SQ = 1e-4 #configs["vic_params"]["lambda_sq"]
     ADAPTIVE = True
+    CONTINUOUS_TRAJ = True
 
 # GMR Integration Parameters
 class GMRParams:
