@@ -25,6 +25,7 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
         self.tank_max = 50.0
         self.tank_min = 0.001
         self.wp_mobile = robot.work_piece.is_movable
+        self.sim_time = 0.0
 
         self.mat_geom_id = self.model.geom(MATERIAL_GEOM).id
         try:

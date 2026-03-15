@@ -3,6 +3,7 @@ from Oscillator import run_drawer
 from mjModeling.conf import ROBOT_SCENE
 from kuka_iiwa_14.iiwa14_model import iiwa14
 from mjModeling.controllers import JacobianIK, BpVariableImpedanceControl
+from mjModeling.controllers.vic_controller.continuous_trajectory_vic import ContinuousTrajectoryVIC
 from mjModeling.cutting_materials import Material
 from mjModeling.experiments.motion import InitPos, straightCutting
 from mjModeling.experiments import Experiment
@@ -18,7 +19,7 @@ straight_cut: Experiment = straightCutting(robot)
 init_pos: Experiment = InitPos(robot)
 
 # Controllers
-vic = BpVariableImpedanceControl(robot, use_behaviour_priors=True)
+vic = ContinuousTrajectoryVIC(robot, use_behaviour_priors=True)
 vic.working_piece = work_piece
 
 jik = JacobianIK(robot)

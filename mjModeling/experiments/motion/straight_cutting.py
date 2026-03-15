@@ -1,4 +1,6 @@
-from mjModeling.controllers import BpVariableImpedanceControl
+from typing import Union
+
+from mjModeling.controllers import BpVariableImpedanceControl, ContinuousTrajectoryVIC
 import numpy as np
 from mjModeling.experiments import Experiment
 from mjModeling.experiments.motion import InitPos
@@ -6,79 +8,47 @@ from mjModeling.mjRobot import Robot
 from logger import Logger
 
 class straightCutting(InitPos):
-    def __init__(self, robot: Robot):
-        super().__init__(robot) # Ensure parent InitPos is initialized
+    def __init__(self, robot: Robot, use_continuous=False):
+        super().__init__(robot)
         self.robot = robot
-        self.controller: BpVariableImpedanceControl = None
-
-    def _execute_default_straight_cut(self, viewer, length_m=0.3, num_waypoints=1):
-        """Executes a straight line cut with real-time force reporting using default VIC controller"""
-        if not self.controller:
-            return
-
-        tcp_id = self.robot.model.site("scalpel_tip").id
-        desired_z = self.controller.working_piece.surface_height
-        start_pos = self.robot.data.site_xpos[tcp_id].copy()
-        start_pos[2] = desired_z   # override Z with the target depth
-
-        Logger.debug(f"\n3. Starting Monitored Cut (default VIC): {start_pos}")
-        # Updated header to reflect Magnitude
-        Logger.debug(f"{'Step':<10} | {'Force Mag (N)':<15} | {'Z-Pos (m)':<15}")
-        Logger.debug("-" * 45)
-
-        for i in range(1, num_waypoints + 1):
-            fraction = i / num_waypoints
-            target_waypoint = start_pos.copy()
-            target_waypoint[0] += length_m * fraction
-
-            success = self.controller.move_to_position(target_pos=target_waypoint, viewer=viewer)
-
-            # FIX: Convert the numpy array to a scalar magnitude
-            raw_force = self.robot.state["shared_array"][-1]
-            if isinstance(raw_force, np.ndarray):
-                force_val = np.linalg.norm(raw_force)
-            else:
-                force_val = raw_force
-
-            z_height = self.robot.data.site_xpos[tcp_id][2]
-
-            # Use force_val (the float) for the format string
-            Logger.debug(f"\n{i:<10} | {force_val:<15.4f} | {z_height:<15.6f}")
-
-            if not success:
-                print("✗ Cut interrupted.")
-                return False
-
-        Logger.debug(f"✓ Cut completed: {length_m*100:.1f}cm path executed.")
-        Logger.debug("=================================DONE CUTTING EPISODE===========================")
-        return True
-
+        self.use_continuous = use_continuous
+        self.controller: Union[BpVariableImpedanceControl, ContinuousTrajectoryVIC] = None
 
     def execute(self, viewer):
-        # Phase 1: Approach to generic height
+        # Phase 1: Approach
         status = self._init_position_for_cutting(viewer)
-        if status != 0: return status
+        if status != 0:
+            return status
         Logger.info(f"\n{'*'*100}\nCUTTING PHASE\n{'*'*100}\n")
 
         if isinstance(self.controller, BpVariableImpedanceControl) and self.controller.use_bp:
-            # Phase 2: Perfect Alignment to GMR Start
+            # Align to start
             p_start = self.controller.traj_loader.pos[0, 0:3]
             start_world = self.controller._gmr_to_world(p_start)
             Logger.debug(f"\n2.1. Aligning to Start: {start_world} ---")
             self.controller.move_to_position(target_pos=start_world, viewer=viewer)
 
-            # Phase 3: Execute Cut (No target_pos provided)
-            if hasattr(self.controller, "traj_loader"):
-                Logger.debug("\n 2.2 Executing Real-Time GMR Cut ---")
+            if self.use_continuous and hasattr(self.controller, 'follow_trajectory'):
+                # Use continuous trajectory tracking
+                Logger.debug("\n 2.2 Executing Continuous GMR Trajectory ---")
+                success = self.controller.follow_trajectory(phase_speed=1.0, viewer=viewer)
+                if success:
+                    Logger.info(f"\n{'*'*100}\nEND CUTTING\n{'*'*100}\n")
+                else:
+                    Logger.error("Trajectory execution did not complete.")
+            else:
+                # Fallback to per‑waypoint (original behaviour)
+                Logger.debug("\n 2.2 Executing Per‑Waypoint GMR Cut ---")
                 traj_iter = iter(self.controller.traj_loader)
                 for i, move in enumerate(traj_iter):
                     p_raw, v_raw, f_raw = move
-                    # Logger.debug(f"move {i}: to {p_raw} -- Fx = {f_raw[0]}, Fy = {f_raw[1]}, Fz = {f_raw[2]}")
-                    success = self.controller.move_to_position(use_default=False, target_pos=p_raw, v_raw=v_raw, f_raw=f_raw, viewer=viewer)
-                    Logger.debug(f"move is done!" if success else f"move {i} failed!")
+                    success = self.controller.move_to_position(use_default=False,
+                                                                target_pos=p_raw,
+                                                                v_raw=v_raw,
+                                                                f_raw=f_raw,
+                                                                viewer=viewer)
+                    Logger.debug(f"move {i} {'done' if success else 'failed'}!")
                 Logger.info(f"\n{'*'*100}\nEND CUTTING\n{'*'*100}\n")
-            else:
-                raise AttributeError(self.controller, "traj_loader")
         else:
             self._execute_default_straight_cut(viewer, length_m=0.15, num_waypoints=1)
         return 0
