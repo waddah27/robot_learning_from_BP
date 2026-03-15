@@ -43,7 +43,7 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
             error_norm = np.linalg.norm(error)
             kp = np.clip(k_max * (error_norm / 0.2), k_min, k_max) * np.ones(len(error))
 
-        # Derivative gain: critically damped would be 2*sqrt(kp), but we keep your heuristic
+        # Derivative gain
         kd = 0.5 * np.sqrt(kp)
 
         return kp, kd
