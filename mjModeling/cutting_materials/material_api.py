@@ -26,7 +26,7 @@ class Material:
         obj.center = workPiece.POS
         obj.name = workPiece.MATERIAL_NAME
         obj.is_solid = workPiece.MATERIAL_IS_SOLID
-        obj.is_movable = workPiece.MOVABLE
+        obj.is_movable = workPiece.MOBILE
         return obj
 
     @property
