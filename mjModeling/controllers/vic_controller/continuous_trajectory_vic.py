@@ -97,8 +97,9 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
         # For material velocity computation (finite difference)
         prev_mat_height = None
+        actual_duration = self.traj_duration / phase_speed
+        max_steps = int(2 * actual_duration / self.dt)   # 2x safety margin
 
-        max_steps = int(2 * self.traj_duration / self.dt)
 
         for step in range(max_steps):
             if self.phase >= 1.0:
