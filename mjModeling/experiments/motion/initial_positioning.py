@@ -35,22 +35,7 @@ class InitPos(Experiment):
             Logger.debug("✓ Approach position reached")
         else:
             Logger.debug("✗ Failed to reach approach position")
-        # Position 2: Cutting height (5cm above)
-        cut_pos = mat_center.copy()
-        cut_pos[2] = mat_center[2] + 0.02 #+ mat_size[2] + 0.05  # Top + 5cm
-        Logger.debug(f"\n1.2. Moving to cutting height: {cut_pos}")
-        # Visualized move
-        success2 = self.controller.move_to_position(target_pos=cut_pos, viewer=viewer)
-        if success2:
-            Logger.debug("✓ Cutting height reached")
-        else:
-            Logger.debug("✗ Failed to reach cutting height")
-        # Final verification
-        tcp_id = self.robot.model.site("scalpel_tip").id
-        final_pos = self.robot.data.site_xpos[tcp_id]
-        err = np.linalg.norm(final_pos - cut_pos)
-        Logger.debug(f"\n✓ reached Final TCP: actual {final_pos} -- desired {cut_pos} -- err = {err} ")
-        Logger.debug(f"\n {'*'*100} \n Robot tcp at final pos .. start cutting phase... \n {'*'*100} \n")
+       
         return 0
 
     def execute(self, viewer):
