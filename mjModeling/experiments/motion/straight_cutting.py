@@ -32,7 +32,7 @@ class straightCutting(InitPos):
             if self.use_continuous and hasattr(self.controller, 'follow_trajectory'):
                 # Use continuous trajectory tracking
                 Logger.debug("\n 2.2 Executing Continuous GMR Trajectory ---")
-                success = self.controller.follow_trajectory(phase_speed=1.0, viewer=viewer)
+                success = self.controller.follow_trajectory(phase_speed=paramVIC.PHASE_SPEED, viewer=viewer)
                 if success:
                     Logger.info(f"\n{'*'*100}\nEND CUTTING\n{'*'*100}\n")
                 else:

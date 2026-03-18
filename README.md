@@ -28,7 +28,10 @@ note that this setup runs cutting experiment in different scenarios to prove mul
 3. Straight cuts from learned behaviour priors generated from bp model then parametrized using phase variable to provide continuous trajectory tracking and scalable time duration of task execution where the work piece is static.
 4. same above continuous trajectory approach with mobile work piece.
 
-selection which scenario to observe is very easy .. go to `mjModeling/conf/configs.py` and modify `CONTINUOUS_TRAJ` in `paramVIC` and `MOBILE` in `workPiece` .. you can also play with other configurations but not all cases and configs are guaranteed to give appropriate behaviour as my research is not about choosing the best vic controller but how to use skill patterns learnt from human to teach a robot 
+selection which scenario to observe is very easy .. go to `mjModeling/conf/configs.py` and modify `CONTINUOUS_TRAJ` in `paramVIC` and `MOBILE` in `workPiece` ..
+
+To test phase variable effect on task parametrisation (run faster or slower) simply adjust `paramVIC.PHASE_SPEED`.
+you can also play with other configurations but not all cases and configs are guaranteed to give appropriate behaviour as my research is not about choosing the best vic controller but how to use skill patterns learnt from human to teach a robot
 ```python
 class paramVIC:
     VIC_MAX_STEPS = 5000 #configs["vic_params"]["vic_max_steps"]
@@ -40,6 +43,7 @@ class paramVIC:
     VIC_LAMBDA_SQ = 1e-4 #configs["vic_params"]["lambda_sq"]
     ADAPTIVE = True
     CONTINUOUS_TRAJ = True
+    PHASE_SPEED = 1.0
 
 # GMR Integration Parameters
 class GMRParams:

@@ -29,6 +29,7 @@ class paramVIC:
     VIC_LAMBDA_SQ = 1e-4 #configs["vic_params"]["lambda_sq"]
     ADAPTIVE = True
     CONTINUOUS_TRAJ = True
+    PHASE_SPEED = 1.0
 
 # GMR Integration Parameters
 class GMRParams:

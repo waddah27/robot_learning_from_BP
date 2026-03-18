@@ -81,7 +81,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
         return np.array([v_world_xy[0], v_world_xy[1], v_world_z])
 
-    def follow_trajectory(self, phase_speed=1.0, viewer=None):
+    def follow_trajectory(self, phase_speed: float=paramVIC.PHASE_SPEED, viewer=None):
         """
         Execute the entire GMR trajectory as one continuous motion.
         phase_speed : float > 0, scaling factor for execution speed.
