@@ -163,7 +163,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                         + kd * (vel_des - v_cur) + f_ff_world
 
             if penetration_depth < 0.005 and np.linalg.norm(error) < 0.05:
-                self.error_accumulated += error * self.dt
+                self.error_accumulated += error * self.dt * phase_speed
                 self.error_accumulated = np.clip(self.error_accumulated, -0.05, 0.05)
 
             # --- Torque calculation (unchanged) ---
