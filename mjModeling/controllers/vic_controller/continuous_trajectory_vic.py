@@ -1,29 +1,46 @@
-from mjModeling.conf.configs import paramVIC
+from mjModeling.conf.configs import ImpedanceOptimizer, paramVIC
 import numpy as np
 import mujoco
-from cvxopt import matrix, solvers
 from mjModeling.cutting_materials.utils import wp_sine_motion
 from mjModeling.controllers.vic_controller.bp_based_controller import BpVariableImpedanceControl
 from mjModeling.kuka_iiwa_14.iiwa14_model import iiwa14
 
 __all__ = ["ContinuousTrajectoryVIC"]
 
-# Suppress cvxopt output
-solvers.options['show_progress'] = False
-solvers.options['maxiters'] = 100
-solvers.options['abstol'] = 1e-6
-solvers.options['reltol'] = 1e-6
+# Try to import optional solvers
+try:
+    from cvxopt import matrix, solvers
+    solvers.options['show_progress'] = False
+    CVXOPT_AVAILABLE = True
+except ImportError:
+    CVXOPT_AVAILABLE = False
+    print("cvxopt not available, using alternative solvers")
+
+try:
+    from scipy.optimize import lsq_linear
+    SCIPY_AVAILABLE = True
+except ImportError:
+    SCIPY_AVAILABLE = False
+    print("scipy.optimize not available, using gradient descent")
 
 
 class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
     """
-    Variable Impedance Controller with QP-optimized gains for force tracking.
-    Uses Quadratic Programming to optimize stiffness and damping based on desired forces from GMR.
+    Variable Impedance Controller with multiple gain optimization methods.
+    Choose which method to use via the 'optimizer' parameter.
     """
-    def __init__(self, robot: iiwa14, use_behaviour_priors: bool = False):
+    def __init__(self, robot: iiwa14, use_behaviour_priors: bool = False, optimizer=ImpedanceOptimizer.qp):
+        """
+        Args:
+            optimizer: 'qp', 'lsq', or 'gd' (gradient descent)
+        """
         super().__init__(robot, use_behaviour_priors)
 
-        # QP optimization parameters
+        # Optimizer selection
+        self.optimizer = optimizer
+        print(f"Using optimizer: {self.optimizer}")
+
+        # Store previous gains for constraints
         self.last_kp = np.ones(3) * paramVIC.VIC_KP_MIN
         self.last_kd = np.ones(3) * 0.001 * np.sqrt(paramVIC.VIC_KP_MIN)
 
@@ -38,6 +55,10 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         # Feedforward force scaling (from your original code)
         self.ff_z_scale = 0.1
         self.ff_xy_scale = 0.3
+
+        # Gradient descent parameters
+        self.gd_learning_rate = 1e-6
+        self.gd_iterations = 10
 
         # Debug
         self.last_print_time = 0
@@ -146,89 +167,100 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
         return np.array([v_world_xy[0], v_world_xy[1], v_world_z])
 
+    # ==================== OPTIMIZER 1: QUADRATIC PROGRAMMING ====================
     def get_variable_gains_qp(self, error, vel_error, desired_force, current_force):
         """
-        Optimize impedance gains using Quadratic Programming to match desired forces.
-
-        Args:
-            error: position error (p_des - p_cur) [3,]
-            vel_error: velocity error (v_des - v_cur) [3,]
-            desired_force: desired force from GMR [3,]
-            current_force: current estimated contact force [3,]
-
-        Returns:
-            kp: optimized proportional gains [3,]
-            kd: optimized derivative gains [3,]
+        Optimize gains using Quadratic Programming.
         """
+        if not CVXOPT_AVAILABLE:
+            print("cvxopt not available, falling back to heuristic")
+            return super().get_variable_gains(error)
+
         n_dims = 3
 
-        # Force tracking error
-        force_error = desired_force - current_force
+        # Check for invalid values
+        if np.any(np.isnan(error)) or np.any(np.isnan(vel_error)) or np.any(np.isnan(desired_force)):
+            print("NaN detected in inputs, using heuristic gains")
+            return super().get_variable_gains(error)
 
-        # Build regressor matrix: each row maps gains to force
-        # For each axis i: F_i = error_i * kp_i + vel_error_i * kd_i
-        n_vars = 2 * n_dims  # [kp_x, kp_y, kp_z, kd_x, kd_y, kd_z]
+        # Clip errors to reasonable ranges to avoid numerical issues
+        error = np.clip(error, -0.1, 0.1)  # Max 10cm error
+        vel_error = np.clip(vel_error, -1.0, 1.0)  # Max 1m/s velocity error
+
+        # Build regressor matrix
+        n_vars = 2 * n_dims
         R = np.zeros((n_dims, n_vars))
         for i in range(n_dims):
-            R[i, i] = error[i]              # kp for axis i
-            R[i, i + n_dims] = vel_error[i]  # kd for axis i
+            R[i, i] = error[i]
+            R[i, i + n_dims] = vel_error[i]
 
-        # QP formulation: minimize ||R·x - desired_force||²
-        # This is equivalent to: minimize 0.5 * x^T·Q·x + p^T·x
-        # where Q = 2*R^T·R, p = -2*R^T·desired_force
+        # Check if R is valid
+        if np.linalg.norm(R) < 1e-6:
+            print("Regressor matrix too small, using heuristic gains")
+            return super().get_variable_gains(error)
+
+        # QP formulation with better conditioning
         Q = 2 * R.T @ R
-        # Add small regularization to ensure positive definiteness
-        Q += 1e-8 * np.eye(n_vars)
+        Q += 1e-4 * np.eye(n_vars)  # Regularization
 
-        # Linear cost term
         p = -2 * R.T @ desired_force
 
         # --- Constraints ---
+        kp_min = max(paramVIC.VIC_KP_MIN, 1.0)
+        kp_max = min(paramVIC.VIC_KP_MAX, 10000.0)
+        kd_min = 0.001
+        kd_max = 0.1
 
-        # Gain limits from config
-        kp_min = paramVIC.VIC_KP_MIN
-        kp_max = paramVIC.VIC_KP_MAX
+        G_list = []
+        h_list = []
 
-        # Damping limits (critically damped would be 2*sqrt(kp), but we allow range)
-        kd_min = 0.001 * np.ones(n_dims)
-        kd_max = 0.01 * np.ones(n_dims)
+        # Lower bounds
+        for i in range(n_vars):
+            row = np.zeros(n_vars)
+            row[i] = -1
+            G_list.append(row)
+            if i < n_dims:
+                h_list.append(-kp_min)
+            else:
+                h_list.append(-kd_min)
 
-        # Inequality constraints: G·x ≤ h
-        # Each gain has lower and upper bound
-        G = np.vstack([
-            -np.eye(n_vars),  # -x ≤ -lower  →  x ≥ lower
-            np.eye(n_vars)    #  x ≤ upper
-        ])
+        # Upper bounds
+        for i in range(n_vars):
+            row = np.zeros(n_vars)
+            row[i] = 1
+            G_list.append(row)
+            if i < n_dims:
+                h_list.append(kp_max)
+            else:
+                h_list.append(kd_max)
 
-        h = np.concatenate([
-            -np.array([kp_min, kp_min, kp_min, kd_min[0], kd_min[0], kd_min[0]]),
-            np.array([kp_max, kp_max, kp_max, kd_max[0], kd_max[0], kd_max[0]])
-        ])
-
-        # Add passivity constraint: kd_i ≥ 2*ζ*sqrt(kp_i) with ζ=0.7
-        # This is nonlinear, so we linearize around current operating point
-        zeta = 0.7
+        # Passivity constraint
+        zeta = 0.5
         for i in range(n_dims):
             kp_prev = max(self.last_kp[i], kp_min)
-            # Linearized: kd_i ≥ 2*zeta*sqrt(kp_prev) + (zeta/sqrt(kp_prev))*(kp_i - kp_prev)
-            slope = zeta / np.sqrt(kp_prev + 1e-6)
-            intercept = 2*zeta*np.sqrt(kp_prev) - slope*kp_prev
+            slope = zeta / (np.sqrt(kp_prev + 1.0))
+            intercept = 2*zeta*np.sqrt(kp_prev + 1.0) - slope*kp_prev
 
-            # Add as linear constraint: -kd_i + slope*kp_i ≤ -intercept
-            constraint_row = np.zeros(n_vars)
-            constraint_row[i] = slope
-            constraint_row[i + n_dims] = -1
-            G = np.vstack([G, constraint_row])
-            h = np.append(h, -intercept)
+            row = np.zeros(n_vars)
+            row[i] = slope
+            row[i + n_dims] = -1
+            G_list.append(row)
+            h_list.append(-intercept)
 
-        # Convert to cvxopt matrices
-        Q_mat = matrix(Q.astype(float))
-        p_mat = matrix(p.astype(float))
-        G_mat = matrix(G.astype(float))
-        h_mat = matrix(h.astype(float))
+        G = np.array(G_list)
+        h = np.array(h_list)
 
         try:
-            # Solve QP
+            Q_mat = matrix(Q.astype(np.double))
+            p_mat = matrix(p.astype(np.double))
+            G_mat = matrix(G.astype(np.double))
+            h_mat = matrix(h.astype(np.double))
+
+            solvers.options['maxiters'] = 200
+            solvers.options['abstol'] = 1e-4
+            solvers.options['reltol'] = 1e-4
+            solvers.options['feastol'] = 1e-4
+
             sol = solvers.qp(Q_mat, p_mat, G_mat, h_mat)
 
             if sol['status'] == 'optimal':
@@ -236,38 +268,145 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 kp = x[:n_dims]
                 kd = x[n_dims:]
 
-                # Store for next iteration (for linearized constraints)
-                self.last_kp = kp.copy()
-                self.last_kd = kd.copy()
-
-                # Ensure bounds (safety)
                 kp = np.clip(kp, kp_min, kp_max)
                 kd = np.clip(kd, kd_min, kd_max)
 
+                self.last_kp = kp.copy()
+                self.last_kd = kd.copy()
+
                 return kp, kd
             else:
-                # Fallback to heuristic
                 print(f"QP solver returned {sol['status']}, using heuristic gains")
-                kp, kd = super().get_variable_gains(error)
-                return kp, kd
+                return super().get_variable_gains(error)
 
         except Exception as e:
             print(f"QP solver failed: {e}, using heuristic gains")
-            kp, kd = super().get_variable_gains(error)
-            return kp, kd
-
-    def get_variable_gains(self, error, vel_error=None, desired_force=None, current_force=None):
-        """
-        Override parent method to use QP optimization when force data is available.
-        """
-        if desired_force is not None and current_force is not None and vel_error is not None:
-            return self.get_variable_gains_qp(error, vel_error, desired_force, current_force)
-        else:
             return super().get_variable_gains(error)
 
+    # ==================== OPTIMIZER 2: LEAST SQUARES ====================
+    def get_variable_gains_lsq(self, error, vel_error, desired_force, current_force):
+        """
+        Optimize gains using least squares with bounds (most robust).
+        """
+        if not SCIPY_AVAILABLE:
+            print("scipy.optimize not available, falling back to gradient descent")
+            return self.get_variable_gains_gd(error, vel_error, desired_force, current_force)
+
+        n_dims = 3
+
+        try:
+            kp = np.zeros(n_dims)
+            kd = np.zeros(n_dims)
+
+            for i in range(n_dims):
+                # Build system: [error_i, vel_error_i] * [kp_i; kd_i] = desired_force_i
+                A = np.array([[error[i], vel_error[i]]])
+                b = np.array([desired_force[i]])
+
+                # Check for degenerate case
+                if np.linalg.norm(A) < 1e-6:
+                    kp[i] = paramVIC.VIC_KP_MIN
+                    kd[i] = 0.001
+                    continue
+
+                # Solve with bounds
+                result = lsq_linear(A, b,
+                                   bounds=([paramVIC.VIC_KP_MIN, 0.001],
+                                          [paramVIC.VIC_KP_MAX, 0.1]),
+                                   method='trf',
+                                   max_iter=100,
+                                   tol=1e-4)
+
+                kp[i] = result.x[0]
+                kd[i] = result.x[1]
+
+            # Apply passivity constraint
+            zeta = 0.5
+            for i in range(n_dims):
+                min_kd = 2 * zeta * np.sqrt(kp[i])
+                kd[i] = max(kd[i], min_kd)
+
+            self.last_kp = kp.copy()
+            self.last_kd = kd.copy()
+
+            return kp, kd
+
+        except Exception as e:
+            print(f"LSQ solver failed: {e}, using heuristic gains")
+            return super().get_variable_gains(error)
+
+    # ==================== OPTIMIZER 3: GRADIENT DESCENT ====================
+    def get_variable_gains_gd(self, error, vel_error, desired_force, current_force):
+        """
+        Optimize gains using simple gradient descent.
+        """
+        n_dims = 3
+
+        # Initial gains from last solution or heuristic
+        if hasattr(self, 'last_kp'):
+            kp = self.last_kp.copy()
+            kd = self.last_kd.copy()
+        else:
+            kp, kd = super().get_variable_gains(error)
+
+        # Force tracking error
+        force_error = desired_force - current_force
+
+        # Gradient descent
+        for _ in range(self.gd_iterations):
+            # Current force from impedance
+            f_imp = kp * error + kd * vel_error
+
+            # Error gradient (simplified)
+            grad_kp = -2 * (desired_force - f_imp) * error
+            grad_kd = -2 * (desired_force - f_imp) * vel_error
+
+            # Update with clipping to prevent explosions
+            grad_kp = np.clip(grad_kp, -1e4, 1e4)
+            grad_kd = np.clip(grad_kd, -1e4, 1e4)
+
+            kp = kp - self.gd_learning_rate * grad_kp
+            kd = kd - self.gd_learning_rate * grad_kd
+
+            # Apply bounds
+            kp = np.clip(kp, paramVIC.VIC_KP_MIN, paramVIC.VIC_KP_MAX)
+            kd = np.clip(kd, 0.001, 0.1)
+
+        # Apply passivity constraint
+        zeta = 0.5
+        for i in range(n_dims):
+            min_kd = 2 * zeta * np.sqrt(kp[i])
+            kd[i] = max(kd[i], min_kd)
+
+        self.last_kp = kp.copy()
+        self.last_kd = kd.copy()
+
+        return kp, kd
+
+    # ==================== MAIN GAIN FUNCTION ====================
+    def get_variable_gains(self, error, vel_error=None, desired_force=None, current_force=None):
+        """
+        Main gain function that dispatches to the selected optimizer.
+        """
+        # If no force data, use heuristic
+        if desired_force is None or current_force is None or vel_error is None:
+            return super().get_variable_gains(error)
+
+        # Dispatch to selected optimizer
+        if self.optimizer == ImpedanceOptimizer.qp:
+            return self.get_variable_gains_qp(error, vel_error, desired_force, current_force)
+        elif self.optimizer == ImpedanceOptimizer.lsq:
+            return self.get_variable_gains_lsq(error, vel_error, desired_force, current_force)
+        elif self.optimizer == ImpedanceOptimizer.gd:
+            return self.get_variable_gains_gd(error, vel_error, desired_force, current_force)
+        else:
+            print(f"Unknown optimizer {self.optimizer}, using heuristic")
+            return super().get_variable_gains(error)
+
+    # ==================== TRAJECTORY EXECUTION ====================
     def follow_trajectory(self, phase_speed: float = paramVIC.PHASE_SPEED, viewer=None):
         """
-        Execute the entire GMR trajectory as one continuous motion with QP-optimized gains.
+        Execute the entire GMR trajectory as one continuous motion with optimized gains.
         """
         tcp_id = self.model.site("scalpel_tip").id
         q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159])
@@ -300,11 +439,9 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 self.data.qpos[self.mat_joint_id] = current_height
                 mujoco.mj_forward(self.model, self.data)
 
-                # Compute material velocity via finite difference
                 if prev_mat_height is None:
                     mat_vel = 0.0
                 else:
-                    # Actual time step for material is phase_speed * dt
                     mat_vel = (current_height - prev_mat_height) / (phase_speed * self.dt)
                 prev_mat_height = current_height
             else:
@@ -352,7 +489,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             # Contact detection
             self.in_contact = np.linalg.norm(self.filtered_force) > self.contact_threshold
 
-            # --- Get QP-optimized gains ---
+            # --- Get optimized gains ---
             kp, kd = self.get_variable_gains(
                 error=error,
                 vel_error=vel_error,
@@ -391,7 +528,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
             tau_nominal = tau_task + tau_null + self.data.qfrc_bias[:self.model.nv]
 
-            # Optional passivity QP (reuse your existing method)
+            # Passivity QP (reuse your existing method)
             tau_safe = self._solve_passivity_qp(tau_nominal, self.data.qvel)
 
             # --- Apply and step ---

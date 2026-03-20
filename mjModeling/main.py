@@ -2,6 +2,7 @@ import multiprocessing as mp
 from Oscillator import run_drawer
 from mjModeling.conf import ROBOT_SCENE
 from kuka_iiwa_14.iiwa14_model import iiwa14
+from mjModeling.conf.configs import ImpedanceOptimizer
 from mjModeling.controllers import JacobianIK, BpVariableImpedanceControl
 from mjModeling.controllers.vic_controller.continuous_trajectory_vic import ContinuousTrajectoryVIC
 from mjModeling.cutting_materials import Material
@@ -19,7 +20,7 @@ straight_cut: Experiment = straightCutting(robot)
 init_pos: Experiment = InitPos(robot)
 
 # Controllers
-vic = ContinuousTrajectoryVIC(robot, use_behaviour_priors=True)
+vic = ContinuousTrajectoryVIC(robot, use_behaviour_priors=True, optimizer=ImpedanceOptimizer.qp)
 vic.working_piece = work_piece
 
 jik = JacobianIK(robot)

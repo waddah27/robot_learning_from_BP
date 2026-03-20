@@ -31,6 +31,11 @@ class paramVIC:
     CONTINUOUS_TRAJ = True
     PHASE_SPEED = 1.0
 
+class ImpedanceOptimizer:
+    qp = "qp"
+    lsq = "lsq"
+    gd = "gd"
+
 # GMR Integration Parameters
 class GMRParams:
     FORCE_ERROR_THRESHOLD = 5.0  # N, threshold for triggering adaptation
