@@ -528,7 +528,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
             tau_nominal = tau_task + tau_null + self.data.qfrc_bias[:self.model.nv]
 
-            # Passivity QP (reuse your existing method)
+            # Passivity QP
             tau_safe = self._solve_passivity_qp(tau_nominal, self.data.qvel)
 
             # --- Apply and step ---
