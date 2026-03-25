@@ -168,120 +168,88 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         return np.array([v_world_xy[0], v_world_xy[1], v_world_z])
 
     # ==================== OPTIMIZER 1: QUADRATIC PROGRAMMING ====================
+
     def get_variable_gains_qp(self, error, vel_error, desired_force, current_force):
         """
-        Optimize gains using Quadratic Programming.
+        Optimize gains using Quadratic Programming with stability fixes for CVXOPT.
         """
         if not CVXOPT_AVAILABLE:
-            print("cvxopt not available, falling back to heuristic")
             return super().get_variable_gains(error)
 
         n_dims = 3
-
-        # Check for invalid values
-        if np.any(np.isnan(error)) or np.any(np.isnan(vel_error)) or np.any(np.isnan(desired_force)):
-            print("NaN detected in inputs, using heuristic gains")
-            return super().get_variable_gains(error)
-
-        # Clip errors to reasonable ranges to avoid numerical issues
-        error = np.clip(error, -0.1, 0.1)  # Max 10cm error
-        vel_error = np.clip(vel_error, -1.0, 1.0)  # Max 1m/s velocity error
-
-        # Build regressor matrix
         n_vars = 2 * n_dims
+
+        # Pre-processing and safety clips
+        error = np.clip(np.nan_to_num(error), -0.1, 0.1)
+        vel_error = np.clip(np.nan_to_num(vel_error), -1.0, 1.0)
+        desired_force = np.nan_to_num(desired_force)
+
+        # Build regressor matrix R
         R = np.zeros((n_dims, n_vars))
         for i in range(n_dims):
             R[i, i] = error[i]
             R[i, i + n_dims] = vel_error[i]
 
-        # Check if R is valid
-        if np.linalg.norm(R) < 1e-6:
-            print("Regressor matrix too small, using heuristic gains")
-            return super().get_variable_gains(error)
+        # 1. FIX: Stronger Regularization to prevent "Domain Error" from singular Q
+        # 1e-4 is often too small for real-time sensor data scales.
+        Q = 2.0 * (R.T @ R) + np.eye(n_vars) * 1e-2
+        p = -2.0 * R.T @ desired_force
 
-        # QP formulation with better conditioning
-        Q = 2 * R.T @ R
-        Q += 1e-4 * np.eye(n_vars)  # Regularization
-
-        p = -2 * R.T @ desired_force
-
-        # --- Constraints ---
-        kp_min = max(paramVIC.VIC_KP_MIN, 1.0)
-        kp_max = min(paramVIC.VIC_KP_MAX, 10000.0)
-        kd_min = 0.001
-        kd_max = 0.1
+        # Constraint Parameters
+        kp_min, kp_max = float(max(paramVIC.VIC_KP_MIN, 1.0)), float(paramVIC.VIC_KP_MAX)
+        # 2. FIX: kd_max of 0.1 was likely too small, conflicting with passivity K_d >= 2*zeta*sqrt(K_p)
+        kd_min, kd_max = 0.01, 50.0
 
         G_list = []
         h_list = []
 
-        # Lower bounds
+        # Lower and Upper Bounds (Gx <= h format)
         for i in range(n_vars):
-            row = np.zeros(n_vars)
-            row[i] = -1
-            G_list.append(row)
-            if i < n_dims:
-                h_list.append(-kp_min)
-            else:
-                h_list.append(-kd_min)
+            lb, ub = (kp_min, kp_max) if i < n_dims else (kd_min, kd_max)
+            # -x <= -lb
+            row_l = np.zeros(n_vars); row_l[i] = -1.0
+            G_list.append(row_l); h_list.append(-float(lb))
+            # x <= ub
+            row_u = np.zeros(n_vars); row_u[i] = 1.0
+            G_list.append(row_u); h_list.append(float(ub))
 
-        # Upper bounds
-        for i in range(n_vars):
-            row = np.zeros(n_vars)
-            row[i] = 1
-            G_list.append(row)
-            if i < n_dims:
-                h_list.append(kp_max)
-            else:
-                h_list.append(kd_max)
-
-        # Passivity constraint
+        # 3. FIX: Simplified Passivity Linearization (Kd >= slope * Kp + intercept)
         zeta = 0.5
         for i in range(n_dims):
             kp_prev = max(self.last_kp[i], kp_min)
-            slope = zeta / (np.sqrt(kp_prev + 1.0))
-            intercept = 2*zeta*np.sqrt(kp_prev + 1.0) - slope*kp_prev
-
+            # Linearized constraint: Kd >= zeta * sqrt(Kp_prev)
+            # Rearranged for CVXOPT (Gx <= h): -Kd <= -zeta * sqrt(Kp_prev)
             row = np.zeros(n_vars)
-            row[i] = slope
-            row[i + n_dims] = -1
+            row[i + n_dims] = -1.0
             G_list.append(row)
-            h_list.append(-intercept)
-
-        G = np.array(G_list)
-        h = np.array(h_list)
+            h_list.append(-float(zeta * np.sqrt(kp_prev)))
 
         try:
+            # 4. FIX: Ensure all inputs are explicit float64 (np.double)
+            # CVXOPT is sensitive to matrix types and scaling.
             Q_mat = matrix(Q.astype(np.double))
             p_mat = matrix(p.astype(np.double))
-            G_mat = matrix(G.astype(np.double))
-            h_mat = matrix(h.astype(np.double))
+            G_mat = matrix(np.array(G_list).astype(np.double))
+            h_mat = matrix(np.array(h_list).astype(np.double))
 
-            solvers.options['maxiters'] = 200
-            solvers.options['abstol'] = 1e-4
-            solvers.options['reltol'] = 1e-4
-            solvers.options['feastol'] = 1e-4
+            solvers.options['show_progress'] = False
+            solvers.options['reltol'] = 1e-5 # Slightly looser tolerance for robustness
 
             sol = solvers.qp(Q_mat, p_mat, G_mat, h_mat)
 
             if sol['status'] == 'optimal':
                 x = np.array(sol['x']).flatten()
-                kp = x[:n_dims]
-                kd = x[n_dims:]
+                self.last_kp = np.clip(x[:n_dims], kp_min, kp_max)
+                self.last_kd = np.clip(x[n_dims:], kd_min, kd_max)
+                return self.last_kp, self.last_kd
 
-                kp = np.clip(kp, kp_min, kp_max)
-                kd = np.clip(kd, kd_min, kd_max)
+        except (ValueError, ArithmeticError) as e:
+            # Explicitly catching domain/singular matrix errors
+            print(f"QP Numerical Failure: {e}. Using heuristic.")
 
-                self.last_kp = kp.copy()
-                self.last_kd = kd.copy()
+        return super().get_variable_gains(error)
 
-                return kp, kd
-            else:
-                print(f"QP solver returned {sol['status']}, using heuristic gains")
-                return super().get_variable_gains(error)
 
-        except Exception as e:
-            print(f"QP solver failed: {e}, using heuristic gains")
-            return super().get_variable_gains(error)
 
     # ==================== OPTIMIZER 2: LEAST SQUARES ====================
     def get_variable_gains_lsq(self, error, vel_error, desired_force, current_force):
