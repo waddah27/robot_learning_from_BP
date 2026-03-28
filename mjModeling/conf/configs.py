@@ -48,7 +48,7 @@ class GMRParams:
 paramVIC.GMR = GMRParams
 
 class workPiece:
-    MATERIAL_RESISTANCE = 27 #N
+    MATERIAL_RESISTANCE = 27 #N (OBSOLETE)
     MATERIAL_NAME ="cutting_material"
     MATERIAL_IS_SOLID = True
     POS = np.array([0.5, 0.0, 0.02])
