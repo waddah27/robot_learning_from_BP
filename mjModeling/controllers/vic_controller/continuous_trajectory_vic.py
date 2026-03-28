@@ -465,20 +465,19 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 current_force=self.filtered_force
             )
 
-            # Boost Z stiffness when penetrating (as in your original code)
-            if penetration_depth > 0.001:
-                kp[2] *= 5.0
-                kd[2] *= 3.0
-                kp = np.clip(kp, paramVIC.VIC_KP_MIN, paramVIC.VIC_KP_MAX)
+            # if penetration_depth > 0.001:
+            #     kp[2] *= 5.0
+            #     kd[2] *= 3.0
+            #     kp = np.clip(kp, paramVIC.VIC_KP_MIN, paramVIC.VIC_KP_MAX)
 
             # --- Control law with velocity tracking ---
             f_virtual = (kp * error) + paramVIC.VIC_KI * self.error_accumulated \
                         + kd * vel_error + f_ff_world
 
             # Update position integral (with phase speed scaling)
-            if penetration_depth < 0.005 and np.linalg.norm(error) < 0.05:
-                self.error_accumulated += error * self.dt * phase_speed
-                self.error_accumulated = np.clip(self.error_accumulated, -0.05, 0.05)
+            # if penetration_depth < 0.005 and np.linalg.norm(error) < 0.05:
+            #     self.error_accumulated += error * self.dt * phase_speed
+            #     self.error_accumulated = np.clip(self.error_accumulated, -0.05, 0.05)
 
             # --- Torque calculation (unchanged from your code) ---
             jjt = jac @ jac.T
