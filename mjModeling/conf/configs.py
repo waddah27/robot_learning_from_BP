@@ -20,13 +20,13 @@ class paramIK(Enum):
 
 
 class paramVIC:
-    VIC_MAX_STEPS = 5000 #configs["vic_params"]["vic_max_steps"]
-    VIC_TOL = 0.004 #configs["vic_params"]["tolerance"]
-    VIC_KP_MIN = 400.0 #configs["vic_params"]["kp"]["min"]
-    VIC_KP_MAX = 1500.0 #configs["vic_params"]["kp"]["max"]
-    VIC_M = 1 #configs["vic_params"]["m"]
-    VIC_KI = 200 #configs["vic_params"]["ki"]
-    VIC_LAMBDA_SQ = 1e-4 #configs["vic_params"]["lambda_sq"]
+    VIC_MAX_STEPS = 5000
+    VIC_TOL = 0.004
+    VIC_KP_MIN = 400.0
+    VIC_KP_MAX = 1500.0
+    VIC_M = 1 # mass
+    VIC_KI = 200
+    VIC_LAMBDA_SQ = 1e-4
     ADAPTIVE = True
     CONTINUOUS_TRAJ = True
     PHASE_SPEED = 1.0
@@ -48,13 +48,13 @@ class GMRParams:
 paramVIC.GMR = GMRParams
 
 class workPiece:
-    MATERIAL_RESISTANCE = configs["material_params"]["material_resistance"]
-    MATERIAL_NAME = configs["material_params"]["material_name"]
+    MATERIAL_RESISTANCE = 27 #N
+    MATERIAL_NAME ="cutting_material"
     MATERIAL_IS_SOLID = True
     POS = np.array([0.5, 0.0, 0.02])
     SIZE = np.array([0.3, 0.3, 0.02])
     SURFACE: float = SIZE[2] + POS[2]
-    MOBILE: bool = True
+    MOBILE: bool = False
 
 
 class Signal(IntEnum):
@@ -74,18 +74,18 @@ SCALPEL_HANDLER_1_PATH = os.path.join(root_dir, SCALPEL_HANDLER_PART1)
 SCALPEL_HANDLER_2_PATH = os.path.join(root_dir, SCALPEL_HANDLER_PART2)
 SCALPEL_PATH = os.path.join(root_dir, SCALPEL_DIRNAME)
 # flags for mujoco viewer
-VIS_SITE_FRAME = configs["vis_site_frame"]
-VIS_JOINTS = configs["vis_joints"]
-VIS_LABEL_NAME = configs["vis_label_name"]
+VIS_SITE_FRAME = False
+VIS_JOINTS = False
+VIS_LABEL_NAME = True
 # Basic robot and scene xml files
 ROBOT_DIR = os.path.join(root_dir, configs['robot_name'])
 ROBOT_XML_DIR = os.path.join(ROBOT_DIR, 'xml')
 ROBOT_SCENE = os.path.join(ROBOT_XML_DIR, 'scene.xml')
 
 # attached assets parameters
-MATERIAL_GEOM = configs["material_params"]["material_geom_name"]
-SCALPEL_GEOM = configs["scalpel_geom_name"]
+MATERIAL_GEOM = "material_geom"
+SCALPEL_GEOM = "scalpel_geom"
 # get robot state dict keys
-FORCE_HISTORY = configs["force_history"]
+FORCE_HISTORY = "force_history"
 
 
