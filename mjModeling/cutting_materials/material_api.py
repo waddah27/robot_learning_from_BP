@@ -7,6 +7,7 @@ class Material:
         super().__init__()
         self._cut_resistance = None
         self._surface_height = None
+        self._penetration_rate = None
         self._size = None
         self._center = None
         self._name = None
@@ -27,6 +28,7 @@ class Material:
         obj.name = workPiece.MATERIAL_NAME
         obj.is_solid = workPiece.MATERIAL_IS_SOLID
         obj.is_movable = workPiece.MOBILE
+        obj.penetration_rate = workPiece.PENETRATION_RATE
         return obj
 
     @property
@@ -44,6 +46,14 @@ class Material:
     @surface_height.setter
     def surface_height(self, value):
         self._surface_height = value
+
+    @property
+    def penetration_rate(self):
+        return self._penetration_rate
+
+    @penetration_rate.setter
+    def penetration_rate(self, val):
+        self._penetration_rate = val
 
     @property
     def size(self):

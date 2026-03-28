@@ -41,7 +41,7 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
 
         self.cut_width_x = robot.work_piece.size[0]
         self.cut_width_y = robot.work_piece.size[1]
-        self.cut_depth_z = robot.work_piece.size[2]
+        self.cut_depth_z = robot.work_piece.size[2] * (1 - robot.work_piece.penetration_rate)
 
         if self.use_bp:
             if isinstance(robot.work_piece.bp_data, NamedArray):
