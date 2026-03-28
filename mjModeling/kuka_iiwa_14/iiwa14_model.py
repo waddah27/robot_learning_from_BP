@@ -124,8 +124,9 @@ class iiwa14(Robot):
             pos=self.work_piece.center,
             rgba=[0.2, 0.8, 0.2, 0.7],
             contype=2,       # Bitmask: belongs to group 2
-            conaffinity=1 if self.work_piece.is_solid else 2,   # Bitmask: only collides with group 2
-            solref=[0.02, 1],
+            conaffinity=1 if self.work_piece.is_solid else 2,
+            solref=[0.10, 0.0],         # larger time constant = softer contact
+            solimp=[0.3, 0.6, 0.9, 0.1, 0.5],# impedance parameters for smooth contact
             margin=0.001
         )
         # 10. Compile model, forward it with data
