@@ -52,9 +52,9 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         self.in_contact = False
         self.contact_threshold = 2.0  # N
 
-        # Feedforward force scaling (from your original code)
-        self.ff_z_scale = 0.1
-        self.ff_xy_scale = 0.3
+        # Feedforward force scaling
+        # self.ff_z_scale = 0.1
+        # self.ff_xy_scale = 0.3
 
         # Gradient descent parameters
         self.gd_learning_rate = 1e-6
@@ -443,14 +443,14 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             # Transform feedforward force (tool frame to world)
             site_rot = self.data.site_xmat[tcp_id].reshape(3, 3)
             f_ff_world = site_rot @ force_des_gmr
-            f_ff_world[2] *= self.ff_z_scale
-            f_ff_world[:2] *= self.ff_xy_scale
+            # f_ff_world[2] *= self.ff_z_scale
+            # f_ff_world[:2] *= self.ff_xy_scale
 
             # --- Error and contact detection ---
             error = pos_des - current_pos
             vel_error = vel_des - v_cur
 
-            mat_pos = self.data.geom_xpos[self.mat_geom_id].copy()
+            # mat_pos = self.data.geom_xpos[self.mat_geom_id].copy()
             # surface_z = mat_pos[2] + self.cut_depth_z
             # penetration_depth = max(0.0, surface_z - current_pos[2])
 
@@ -508,7 +508,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             self.sim_time += self.dt
 
             # Record forces
-            self.record_contact_forces(kp)
+            self.record_contact_forces(Fd=f_ff_world, K=kp)
 
             # Log periodically
             if self.sim_time - last_log_time > 0.5:

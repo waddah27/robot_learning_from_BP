@@ -174,7 +174,7 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
             mujoco.mj_step(self.model, self.data)
             self.sim_time += self.dt
             K = np.array([kp, kp, kp])
-            self.record_contact_forces(kp)
+            self.record_contact_forces(Fd=f_ff_world, K=kp)
 
             if viewer and step % 4 == 0:
                 viewer.sync()

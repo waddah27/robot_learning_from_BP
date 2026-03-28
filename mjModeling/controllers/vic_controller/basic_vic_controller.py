@@ -153,20 +153,32 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
 
             # 7. STEP PHYSICS
             mujoco.mj_step(self.model, self.data)
-            self.record_contact_forces(kp_val)
+            self.record_contact_forces( K=kp_val)
 
             if viewer and step % 4 == 0:
                 viewer.sync()
 
         return False
 
-    def record_contact_forces(self, K:np.ndarray = None):
+    def record_contact_forces(self,Fd:np.ndarray = None, K:np.ndarray = None):
         if self.estimator:
             force = self.estimator.get_total_cutting_force()   # assume returns [fx, fy, fz]
-            if isinstance(K, np.ndarray):
+            if isinstance(Fd, np.ndarray) and isinstance(K, np.ndarray):
+                sample = np.append(Fd.flatten(), force)
+                sample = np.append(sample, K.flatten())
+                residual = np.zeros(self.robot.buffer.num_signals - len(sample))
+                sample = np.append(sample, residual)
+
+            elif isinstance(K, np.ndarray):
                 sample = np.append(force, K.flatten())
-            else:
                 residual =np.zeros(self.robot.buffer.num_signals - len(sample))
+                sample = np.append(residual, sample)
+            elif isinstance(Fd, np.ndarray):
+                sample = np.append(Fd.flatten(), force)
+                residual =np.zeros(self.robot.buffer.num_signals - len(sample))
+                sample = np.append(sample, residual)
+            else:
+                residual = np.zeros(self.robot.buffer.num_signals - len(sample))
                 sample = np.append(force, residual)
 
             self.robot.buffer.write_samples(sample)
