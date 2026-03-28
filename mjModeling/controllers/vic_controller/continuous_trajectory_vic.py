@@ -451,8 +451,8 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             vel_error = vel_des - v_cur
 
             mat_pos = self.data.geom_xpos[self.mat_geom_id].copy()
-            surface_z = mat_pos[2] + self.cut_depth_z
-            penetration_depth = max(0.0, surface_z - current_pos[2])
+            # surface_z = mat_pos[2] + self.cut_depth_z
+            # penetration_depth = max(0.0, surface_z - current_pos[2])
 
             # Contact detection
             self.in_contact = np.linalg.norm(self.filtered_force) > self.contact_threshold
