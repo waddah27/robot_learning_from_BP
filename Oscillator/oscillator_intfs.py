@@ -14,6 +14,17 @@ class RealTimeOscillator(QtWidgets.QWidget):
         self.signal_names = self.buffer.get_signal_names()
         self.num_signals = len(self.signal_names)
 
+        # --- Buttons ---
+        button_layout = QtWidgets.QHBoxLayout()
+        self.pause_button = QtWidgets.QPushButton("Pause")
+        self.pause_button.clicked.connect(self.toggle_pause)
+        button_layout.addWidget(self.pause_button)
+
+        self.screenshot_button = QtWidgets.QPushButton("Take Screenshot")
+        self.screenshot_button.clicked.connect(self.capture_screenshot)
+        button_layout.addWidget(self.screenshot_button)
+        self.layout.addLayout(button_layout)
+
         # Plot widget
         self.plot_widget = pg.PlotWidget(title="Scalpel Contact Forces")
         self.plot_widget.setLabel('left', 'Force', units='N')
@@ -43,16 +54,37 @@ class RealTimeOscillator(QtWidgets.QWidget):
         # Timer for updates
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_plot)
-        self.timer.start(16)
+        self.timer.start(16)          # ~60 fps
+
+        self.paused = False            # pause flag
+
+    def toggle_pause(self):
+        """Pause or resume the live updates."""
+        self.paused = not self.paused
+        self.pause_button.setText("Resume" if self.paused else "Pause")
+
+    def capture_screenshot(self):
+        """Save the current plot widget as a PNG image."""
+        # Use a timestamp to avoid overwriting
+        timestamp = QtCore.QDateTime.currentDateTime().toString("yyyyMMdd_hhmmss")
+        filename = f"screenshot_{timestamp}.png"
+        # Capture the plot widget
+        pixmap = self.plot_widget.grab()
+        pixmap.save(filename)
+        print(f"Screenshot saved as {filename}")
 
     def update_plot(self):
-        data = self.buffer.read_latest()   # now returns chronological order
+        """Update plot and values from shared memory, unless paused."""
+        if self.paused:
+            return                     # freeze display
+
+        data = self.buffer.read_latest()   # returns chronological order
         for i, curve in enumerate(self.curves):
             curve.setData(data[:, i])
         if data.shape[0] > 0:
             latest = data[-1, :]
             for i, label in enumerate(self.value_labels):
-                label.setText(f"{self.signal_names[i]}: {latest[i]:.3f} N")
+                # Updated label text
                 label.setText(f"{self.signal_names[i]}: {latest[i]:.3f} N")
 
     def closeEvent(self, event):
