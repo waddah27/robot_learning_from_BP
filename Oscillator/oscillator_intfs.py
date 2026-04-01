@@ -25,6 +25,18 @@ class RealTimeOscillator(QtWidgets.QWidget):
         button_layout.addWidget(self.screenshot_button)
         self.layout.addLayout(button_layout)
 
+        # --- Signal selection checkboxes ---
+        checkbox_layout = QtWidgets.QHBoxLayout()
+        self.checkboxes = []
+        for i, name in enumerate(self.signal_names):
+            cb = QtWidgets.QCheckBox(name)
+            cb.setChecked(True)   # all signals visible initially
+            # Use lambda with default argument to capture current index
+            cb.stateChanged.connect(lambda state, idx=i: self.toggle_signal_visibility(idx, state))
+            checkbox_layout.addWidget(cb)
+            self.checkboxes.append(cb)
+        self.layout.addLayout(checkbox_layout)
+
         # Plot widget
         self.plot_widget = pg.PlotWidget(title="Scalpel Contact Forces")
         self.plot_widget.setLabel('left', 'Force', units='N')
@@ -38,7 +50,7 @@ class RealTimeOscillator(QtWidgets.QWidget):
         self.value_labels = []
         self.layout.addWidget(info_panel)
 
-        # Create curves
+        # Create curves and value labels
         self.curves = []
         colours = [(255,0,0), (0,255,0), (0,0,255)] if self.num_signals == 3 else None
         for i, name in enumerate(self.signal_names):
@@ -56,7 +68,12 @@ class RealTimeOscillator(QtWidgets.QWidget):
         self.timer.timeout.connect(self.update_plot)
         self.timer.start(16)          # ~60 fps
 
-        self.paused = False            # pause flag
+        self.paused = False
+
+    def toggle_signal_visibility(self, index, state):
+        """Show/hide a curve based on checkbox state."""
+        visible = (state == QtCore.Qt.CheckState.Checked)
+        self.curves[index].setVisible(visible)
 
     def toggle_pause(self):
         """Pause or resume the live updates."""
@@ -65,10 +82,8 @@ class RealTimeOscillator(QtWidgets.QWidget):
 
     def capture_screenshot(self):
         """Save the current plot widget as a PNG image."""
-        # Use a timestamp to avoid overwriting
         timestamp = QtCore.QDateTime.currentDateTime().toString("yyyyMMdd_hhmmss")
         filename = f"screenshot_{timestamp}.png"
-        # Capture the plot widget
         pixmap = self.plot_widget.grab()
         pixmap.save(filename)
         print(f"Screenshot saved as {filename}")
@@ -76,7 +91,7 @@ class RealTimeOscillator(QtWidgets.QWidget):
     def update_plot(self):
         """Update plot and values from shared memory, unless paused."""
         if self.paused:
-            return                     # freeze display
+            return
 
         data = self.buffer.read_latest()   # returns chronological order
         for i, curve in enumerate(self.curves):
@@ -84,7 +99,6 @@ class RealTimeOscillator(QtWidgets.QWidget):
         if data.shape[0] > 0:
             latest = data[-1, :]
             for i, label in enumerate(self.value_labels):
-                # Updated label text
                 label.setText(f"{self.signal_names[i]}: {latest[i]:.3f} N")
 
     def closeEvent(self, event):
