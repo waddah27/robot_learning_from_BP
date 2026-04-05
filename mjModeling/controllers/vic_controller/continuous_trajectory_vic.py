@@ -52,10 +52,6 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         self.in_contact = False
         self.contact_threshold = 2.0  # N
 
-        # Feedforward force scaling (commented out – kept for potential use)
-        # self.ff_z_scale = 0.1
-        # self.ff_xy_scale = 0.3
-
         # Gradient descent parameters
         self.gd_learning_rate = 1e-6
         self.gd_iterations = 10
@@ -517,7 +513,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             #     self.error_accumulated += error * self.dt * phase_speed
             #     self.error_accumulated = np.clip(self.error_accumulated, -0.05, 0.05)
 
-            # --- Torque calculation (unchanged) ---
+            # --- Torque calculation ---
             jjt = jac @ jac.T
             lambda_sq = paramVIC.VIC_LAMBDA_SQ
             tau_task = jac.T @ np.linalg.solve(jjt + lambda_sq * np.eye(3), f_virtual)
@@ -533,7 +529,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
             tau_nominal = tau_task + tau_null + self.data.qfrc_bias[:self.model.nv]
 
-            # Passivity QP (reuse your existing method)
+            # Passivity QP 
             tau_safe = self._solve_passivity_qp(tau_nominal, self.data.qvel)
 
             # --- Apply and step ---
