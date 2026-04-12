@@ -382,7 +382,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             # Update tank energy (for logging)
             self.update_tank_energy(kp, kd, error, vel_error, self.dt * phase_speed)
 
-            self.record_contact_forces(Fd=f_des_world, K=kp)
+            self.record_contact_forces(Pd = pos_des, P = current_pos, Fd=f_des_world, K=kp)
 
             # Logging
             if self.sim_time - last_log_time > 0.5:
