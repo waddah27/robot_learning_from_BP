@@ -155,61 +155,41 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
     # ---------- Optimization objective (from old VICController) ----------
     def objective(self, params, x_tilde, x_tilde_dot, F_d, dt):
-        """
-        Objective function for the optimizer.
-        params: [k1, k2, k3, xi1_scaled, xi2_scaled, xi3_scaled]
-        """
         k_d = np.diag(params[:3])
         xi_d_scaled = params[3:6]
         xi_d = xi_d_scaled / self.Xi_scaler
-        # Damping matrix from xi and k
+
         sqrt_k = np.sqrt(np.diag(k_d))
-        d_d = 2 * np.diag(xi_d) @ sqrt_k
 
-        # Estimated force
-        F_ext = k_d @ x_tilde + d_d @ x_tilde_dot
+        # FIXED damping
+        d_d = 2.0 * np.diag(xi_d * sqrt_k)
 
-        # Force tracking error
-        force_error = F_ext - F_d
+        # FIXED stable force model
+        F_est = (np.diag(k_d) @ x_tilde) + (np.diag(d_d) @ x_tilde_dot)
+
+        force_error = F_est - F_d
         norm_F = force_error.T @ self.Q @ force_error
 
-        # Regularization: deviation from min stiffness
         k_vec = np.diag(k_d)
         norm_k = (k_vec - self.k_min).T @ self.R @ (k_vec - self.k_min)
 
-        # Force limits penalty
-        force_penalty = np.sum(np.maximum(0, F_ext - self.f_max) ** 2) + \
-                        np.sum(np.maximum(0, self.f_min - F_ext) ** 2)
+        force_penalty = np.sum(np.maximum(0, F_est - self.f_max) ** 2) + \
+                        np.sum(np.maximum(0, self.f_min - F_est) ** 2)
 
-        # Tank energy penalty (simplified version, using dt)
-        # We'll approximate the tank dynamics as in the old code
-        # Compute energy change
-        K_v = np.diag(k_vec - self.k_min)  # not exactly, but keep old logic
-        # For simplicity, we use the same energy penalty as before
-        # We'll compute tank energy derivative using the old formula
-        # But since we are inside objective, we cannot update global state; we'll approximate
-        # We'll skip the full tank dynamics in the objective and only apply a penalty on low energy.
-        # A full implementation would require storing tank state across iterations, which is complex.
-        # We'll use a simple penalty: encourage that the energy (computed from k and damping) stays positive.
-        # For now, we'll set passivity_penalty = 0 to avoid complications.
-        passivity_penalty = 0.0
-        energy_penalty = 0.0
-
-        return norm_k + norm_F + force_penalty + energy_penalty + passivity_penalty
+        return norm_k + norm_F + force_penalty
 
     # ---------- Gain optimization using scipy.minimize ----------
-    def get_variable_gains_optimizer(self, error, vel_error, desired_force, current_force, dt):
-        """
-        Optimize stiffness and damping ratio using L-BFGS-B.
-        Returns (kp, kd) where kd is the damping matrix diagonal.
-        """
-        # Initial guess
-        xi_initial = self.xi_init * self.Xi_scaler
-        initial_guess = [self.k_init, self.k_init, self.k_init,
-                         xi_initial, xi_initial, xi_initial]
+    def get_variable_gains_optimizer(self, error, vel_error, desired_force, dt):
+
+        initial_guess = [
+            self.k_init, self.k_init, self.k_init,
+            self.xi_init * self.Xi_scaler,
+            self.xi_init * self.Xi_scaler,
+            self.xi_init * self.Xi_scaler
+        ]
 
         bounds = [(self.k_min[i], self.k_max[i]) for i in range(3)] + \
-                 [(self.D_min[i], self.D_max[i]) for i in range(3)]
+                [(self.D_min[i], self.D_max[i]) for i in range(3)]
 
         try:
             result = minimize(
@@ -218,35 +198,35 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 args=(error, vel_error, desired_force, dt),
                 bounds=bounds,
                 method='L-BFGS-B',
-                options={'maxiter': 100, 'ftol': 1e-6}
+                options={'maxiter': 50, 'ftol': 1e-5}
             )
+
             if result.success:
                 kp = np.array(result.x[:3])
                 xi_scaled = np.array(result.x[3:6])
                 xi = xi_scaled / self.Xi_scaler
-                # Compute damping matrix
-                kd = 2 * xi * np.sqrt(kp)
-                # Store for next call
+
+                kd = 2.0 * xi * np.sqrt(kp)
+
                 self.prev_kd = kp
                 self.prev_xi = xi
                 return kp, kd
-            else:
-                Logger.debug("Optimization failed, using previous gains")
-                return self.prev_kd, 2 * self.prev_xi * np.sqrt(self.prev_kd)
+
+            return self.prev_kd, 2.0 * self.prev_xi * np.sqrt(self.prev_kd)
+
         except Exception as e:
-            Logger.debug(f"Optimization exception: {e}, using previous gains")
-            return self.prev_kd, 2 * self.prev_xi * np.sqrt(self.prev_kd)
+            return self.prev_kd, 2.0 * self.prev_xi * np.sqrt(self.prev_kd)
 
     # ---------- Main gain dispatcher (now uses optimizer) ----------
-    def get_variable_gains(self, error, vel_error=None, desired_force=None, current_force=None, dt=None):
+    def get_variable_gains(self, error, vel_error=None, desired_force=None, dt=None):
         """
         Main gain function. If force data available, use optimizer; else heuristic.
         """
-        if desired_force is None or current_force is None or vel_error is None:
+        if desired_force is None or vel_error is None:
             return super().get_variable_gains(error)
         if dt is None:
             dt = self.dt
-        return self.get_variable_gains_optimizer(error, vel_error, desired_force, current_force, dt)
+        return self.get_variable_gains_optimizer(error, vel_error, desired_force, dt)
 
     # ---------- Energy modulation (optional, from old code) ----------
     def update_tank_energy(self, kp, kd, error, vel_error, dt):
@@ -334,7 +314,6 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 error=error,
                 vel_error=vel_error,
                 desired_force=f_des_world,
-                current_force=self.filtered_force,
                 dt=self.dt * phase_speed
             )
 
