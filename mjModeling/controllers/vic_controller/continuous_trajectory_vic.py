@@ -5,6 +5,7 @@ from mjModeling.cutting_materials.utils import wp_sine_motion
 from mjModeling.controllers.vic_controller.bp_based_controller import BpVariableImpedanceControl
 from mjModeling.kuka_iiwa_14.iiwa14_model import iiwa14
 from scipy.optimize import minimize
+from logger import Logger
 
 __all__ = ["ContinuousTrajectoryVIC"]
 
@@ -19,7 +20,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         super().__init__(robot, use_behaviour_priors)
 
         self.optimizer = optimizer
-        print(f"Using optimizer: {self.optimizer} (optimization-based)")
+        Logger.debug(f"Using optimizer: {self.optimizer} (optimization-based)")
 
         # ---------- Optimization parameters (from old VICController) ----------
         self.Xi_scaler = 5000
@@ -145,10 +146,10 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         if hasattr(self, 'traj_force'):
             mean_force = np.mean(np.linalg.norm(self.traj_force, axis=1))
             max_force = np.max(np.linalg.norm(self.traj_force, axis=1))
-            print(f"GMR forces - mean: {mean_force:.1f}N, max: {max_force:.1f}N")
+            Logger.debug(f"GMR forces - mean: {mean_force:.1f}N, max: {max_force:.1f}N")
             if max_force > 100:
                 self.force_scale = 60.0 / max_force
-                print(f"Auto-scaling forces by {self.force_scale:.3f}")
+                Logger.debug(f"Auto-scaling forces by {self.force_scale:.3f}")
             else:
                 self.force_scale = 1.0
 
@@ -230,10 +231,10 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 self.prev_xi = xi
                 return kp, kd
             else:
-                print("Optimization failed, using previous gains")
+                Logger.debug("Optimization failed, using previous gains")
                 return self.prev_kd, 2 * self.prev_xi * np.sqrt(self.prev_kd)
         except Exception as e:
-            print(f"Optimization exception: {e}, using previous gains")
+            Logger.debug(f"Optimization exception: {e}, using previous gains")
             return self.prev_kd, 2 * self.prev_xi * np.sqrt(self.prev_kd)
 
     # ---------- Main gain dispatcher (now uses optimizer) ----------
@@ -399,12 +400,12 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
         if force_log:
             phases, f_des, f_act = zip(*force_log)
-            print(f"\n{'='*60}")
-            print(f"FORCE TRACKING SUMMARY")
-            print(f"{'='*60}")
-            print(f"Mean desired force: {np.mean(f_des):.1f}N")
-            print(f"Mean actual force: {np.mean(f_act):.1f}N")
-            print(f"RMSE: {np.sqrt(np.mean((np.array(f_des) - np.array(f_act))**2)):.1f}N")
-            print(f"{'='*60}")
+            Logger.debug(f"\n{'='*60}")
+            Logger.debug(f"FORCE TRACKING SUMMARY")
+            Logger.debug(f"{'='*60}")
+            Logger.debug(f"Mean desired force: {np.mean(f_des):.1f}N")
+            Logger.debug(f"Mean actual force: {np.mean(f_act):.1f}N")
+            Logger.debug(f"RMSE: {np.sqrt(np.mean((np.array(f_des) - np.array(f_act))**2)):.1f}N")
+            Logger.debug(f"{'='*60}")
 
         return True

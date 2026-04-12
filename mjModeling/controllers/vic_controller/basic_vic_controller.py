@@ -160,10 +160,25 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
 
         return False
 
-    def record_contact_forces(self,Fd:np.ndarray = None, K:np.ndarray = None):
+    def record_contact_forces(self, Pd: np.ndarray=None, P: np.ndarray=None, Fd:np.ndarray = None, K:np.ndarray = None):
         if self.estimator:
             force = self.estimator.get_total_cutting_force()   # assume returns [fx, fy, fz]
-            if isinstance(Fd, np.ndarray) and isinstance(K, np.ndarray):
+            if isinstance(P, np.ndarray) and isinstance(Pd, np.ndarray) and isinstance(Fd, np.ndarray) and isinstance(K, np.ndarray):
+                sample = np.append(Pd.flatten(), P.flatten())
+                sample = np.append(sample, Fd.flatten())
+                sample = np.append(sample, force)
+                sample = np.append(sample, K.flatten())
+                residual = np.zeros(self.robot.buffer.num_signals - len(sample))
+                sample = np.append(sample, residual)
+
+            elif isinstance(Pd, np.ndarray) and isinstance(Fd, np.ndarray) and isinstance(K, np.ndarray):
+                sample = np.append(Pd.flatten(), Fd.flatten())
+                sample = np.append(sample, force)
+                sample = np.append(sample, K.flatten())
+                residual = np.zeros(self.robot.buffer.num_signals - len(sample))
+                sample = np.append(sample, residual)
+
+            elif isinstance(Fd, np.ndarray) and isinstance(K, np.ndarray):
                 sample = np.append(Fd.flatten(), force)
                 sample = np.append(sample, K.flatten())
                 residual = np.zeros(self.robot.buffer.num_signals - len(sample))
