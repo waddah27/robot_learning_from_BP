@@ -24,18 +24,18 @@ class InitPos(Experiment):
         mat_id = self.robot.model.geom(MATERIAL_GEOM).id
         mat_center = self.robot.model.geom_pos[mat_id].copy()
         mat_size = self.robot.model.geom_size[mat_id]
-        Logger.debug(f"Material: center={mat_center}, size={mat_size}")
+        Logger.debug(f"\n Material: center={mat_center}, size={mat_size}\n")
         # Position 1: Safe approach (30cm above)
         approach_pos = mat_center.copy()
         approach_pos[2] = mat_center[2] + mat_size[2] + 0.3  # Top + 30cm
-        Logger.debug(f"\n1.1. Moving to approach position: {approach_pos}")
+        Logger.debug(f"\n1.1. Moving to approach position: {approach_pos}\n")
         # Visualized move
         success1 = self.controller.move_to_position(target_pos=approach_pos, viewer=viewer)
         if success1:
-            Logger.debug("✓ Approach position reached")
+            Logger.debug("\n 1.1 SUCCESS: Approach position reached \n")
         else:
-            Logger.debug("✗ Failed to reach approach position")
-       
+            Logger.error("\n 1.1 FAILURE: Failed to reach approach position\n")
+
         return 0
 
     def execute(self, viewer):

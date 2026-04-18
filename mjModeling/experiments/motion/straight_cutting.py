@@ -26,20 +26,22 @@ class straightCutting(InitPos):
             # Align to start
             p_start = self.controller.traj_loader.pos[0, 0:3]
             start_world = self.controller._gmr_to_world(p_start)
-            Logger.debug(f"\n2.1. Aligning to Start: {start_world} ---")
-            self.controller.move_to_position(target_pos=start_world, viewer=viewer)
-
+            Logger.debug(f"\n2.1. Aligning to Start: {start_world} ---\n")
+            if self.controller.move_to_position(target_pos=start_world, viewer=viewer):
+                Logger.debug("\n 2.1 SUCESS: Reached pos successfully .. !\n")
+            else:
+                Logger.error("\n 2.1 FAILURE: failed to reach commanded position!\n")
             if self.use_continuous and hasattr(self.controller, 'follow_trajectory'):
                 # Use continuous trajectory tracking
-                Logger.debug("\n 2.2 Executing Continuous GMR Trajectory ---")
+                Logger.debug("\n 2.2 Executing Continuous GMR Trajectory ---\n")
                 success = self.controller.follow_trajectory(phase_speed=paramVIC.PHASE_SPEED, viewer=viewer)
                 if success:
                     Logger.info(f"\n{'*'*100}\nEND CUTTING\n{'*'*100}\n")
                 else:
-                    Logger.error("Trajectory execution did not complete.")
+                    Logger.error("\n Trajectory execution did not complete.\n")
             else:
                 # Fallback to per‑waypoint (original behaviour)
-                Logger.debug("\n 2.2 Executing Per‑Waypoint GMR Cut ---")
+                Logger.debug("\n 2.2 Executing Per‑Waypoint GMR Cut ---\n")
                 traj_iter = iter(self.controller.traj_loader)
                 for i, move in enumerate(traj_iter):
                     p_raw, v_raw, f_raw = move
@@ -48,7 +50,7 @@ class straightCutting(InitPos):
                                                                 v_raw=v_raw,
                                                                 f_raw=f_raw,
                                                                 viewer=viewer)
-                    Logger.debug(f"move {i} {'done' if success else 'failed'}!")
+                    Logger.debug(f"\n move {i} {'done' if success else 'failed'}!\n")
                 Logger.info(f"\n{'*'*100}\nEND CUTTING\n{'*'*100}\n")
         else:
             self._execute_default_straight_cut(viewer, length_m=0.15, num_waypoints=1)

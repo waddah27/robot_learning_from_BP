@@ -121,8 +121,8 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
             f_raw_array = np.asarray(f_raw).flatten()
             f_ff_world = site_rot @ f_raw_array
             # Scale feedforward: reduce Z component significantly
-            f_ff_world[2] *= 0.1   # only 10% in Z
-            f_ff_world[:2] *= 0.3  # keep 30% in XY (or as desired)
+            # f_ff_world[2] *= 0.1   # only 10% in Z
+            # f_ff_world[:2] *= 0.3  # keep 30% in XY (or as desired)
 
             v_tip = jac @ self.data.qvel
 
