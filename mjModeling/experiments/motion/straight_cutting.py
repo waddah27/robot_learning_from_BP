@@ -17,9 +17,8 @@ class straightCutting(InitPos):
 
     def execute(self, viewer):
         # Phase 1: Approach
-        status = self._init_position_for_cutting(viewer)
-        if status != 0:
-            return status
+        if not self._init_position_for_cutting(viewer):
+            return False
         Logger.info(f"\n{'*'*100}\nCUTTING PHASE\n{'*'*100}\n")
 
         if isinstance(self.controller, BpVariableImpedanceControl) and self.controller.use_bp:
@@ -34,11 +33,12 @@ class straightCutting(InitPos):
             if self.use_continuous and hasattr(self.controller, 'follow_trajectory'):
                 # Use continuous trajectory tracking
                 Logger.debug("\n 2.2 Executing Continuous GMR Trajectory ---\n")
-                success = self.controller.follow_trajectory(phase_speed=paramVIC.PHASE_SPEED, viewer=viewer)
-                if success:
+                if self.controller.follow_trajectory(phase_speed=paramVIC.PHASE_SPEED, viewer=viewer):
                     Logger.info(f"\n{'*'*100}\nEND CUTTING\n{'*'*100}\n")
+                    return True
                 else:
                     Logger.error("\n Trajectory execution did not complete.\n")
+                    return False
             else:
                 # Fallback to per‑waypoint (original behaviour)
                 Logger.debug("\n 2.2 Executing Per‑Waypoint GMR Cut ---\n")

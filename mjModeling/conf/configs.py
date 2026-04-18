@@ -86,5 +86,5 @@ MATERIAL_GEOM = "material_geom"
 SCALPEL_GEOM = "scalpel_geom"
 # get robot state dict keys
 FORCE_HISTORY = "force_history"
-
+TCP_POS = "tcp_pos"
 

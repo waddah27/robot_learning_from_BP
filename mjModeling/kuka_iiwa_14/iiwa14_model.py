@@ -13,6 +13,7 @@ from mjModeling.conf import (
     SCALPEL_HANDLER_2_PATH,
     SCALPEL_PATH,
     FORCE_HISTORY,
+    TCP_POS
 )
 import mujoco
 
@@ -26,7 +27,7 @@ class iiwa14(Robot):
     def __init__(self):
         self._model = None
         self._data = None
-        self.robot_state = {}
+        self.state = {}
         self.work_piece: Material = None
         # for iiwa14 there are 7 DOFs
         self.nq_robot = 7
@@ -34,7 +35,7 @@ class iiwa14(Robot):
         self.reset_state()
 
     def set_shm_buffer(self):
-        self.robot_state["shared_array"] = self.buffer.data
+        self.state["shared_array"] = self.buffer.data
 
     @classmethod
     def create(cls, xml_path: str, work_piece: Material):
@@ -149,8 +150,8 @@ class iiwa14(Robot):
         return self
 
     def shutdown(self):
-        if hasattr(self, 'robot_state') and 'shared_array' in self.robot_state:
-            self.robot_state['shared_array'] = None   # release reference
+        if hasattr(self, 'robot_state') and 'shared_array' in self.state:
+            self.state['shared_array'] = None   # release reference
         if self.buffer:
             self.buffer.close()
             self.buffer.unlink()
@@ -171,10 +172,11 @@ class iiwa14(Robot):
 
     def reset_state(self):
         """Reset the state dictionary"""
-        if not self.robot_state.get(FORCE_HISTORY):
-            self.robot_state[FORCE_HISTORY] = []  # Store cutting forces
+        if not self.state.get(FORCE_HISTORY):
+            self.state[FORCE_HISTORY] = []  # Store cutting forces
         else:
-            self.robot_state.get(FORCE_HISTORY).clear()
+            self.state.get(FORCE_HISTORY).clear()
+        self.state[TCP_POS] = None
 
     def experiment_exeucte_wrapper(self, callback: Callable[[], None], *args):
         if callable(callback):

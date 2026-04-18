@@ -1,12 +1,12 @@
 from logger import Logger
+from mjModeling.conf.configs import TCP_POS
 from mjModeling.cutting_materials import Material
 from mjModeling.kuka_iiwa_14.iiwa14_model import iiwa14
 import numpy as np
 import mujoco
-from mjModeling.conf import paramVIC, workPiece
+from mjModeling.conf import paramVIC
 from mjModeling.controllers.controller_api import Controller
 from mjModeling.estimators import ImpedanceEstimator
-from mjModeling.mjRobot import Robot
 import sys
 __all__ = ["BasicVariableImpedanceControl"]
 
@@ -71,7 +71,7 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
 
             # here estimated contact force is registered to shared memory if the material is not solid
             # this whole function should be refactored to consider estimating forces for 3d directions
-            self.robot.robot_state["shared_array"][-1] = np.linalg.norm(f_res)
+            self.robot.state["shared_array"][-1] = np.linalg.norm(f_res)
             return f_res
 
         return f_res
@@ -88,13 +88,12 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
 
         for step in range(self.opt_max_steps):
             mujoco.mj_forward(self.model, self.data)
-
-            current_pos = self.data.site_xpos[tcp_id].copy()
-            error = target_pos - current_pos
+            self.robot.state[TCP_POS] = self.data.site_xpos[tcp_id].copy()
+            error = target_pos - self.robot.state.get(TCP_POS)
             dist = np.linalg.norm(error)
 
             if not step % int(self.opt_max_steps/10):
-                Logger.debug(f"default VIC: opt_step {step}: target = {target_pos} -- current = {current_pos} --err = {dist}")
+                Logger.debug(f"default VIC: opt_step {step}: target = {target_pos} -- current = {self.robot.state.get(TCP_POS)} --err = {dist}")
 
             # 2mm tolerance for 2026 surgical/precision tasks
             if dist < paramVIC.VIC_TOL:
@@ -116,11 +115,9 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
             jac = np.zeros((3, self.model.nv))
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
             v_tip = jac @ self.data.qvel
-            # f_res = self.compensate_cutting_resistance(current_pos, v_tip)
 
             # F = Kp*e + Ki*∫e - Kd*v
             f_virtual = (kp_val * error) + (ki_val * self.error_accumulated) - (kd_val * v_tip)
-            # f_virtual +=  f_res #  self.sim_cutting_resistance(current_pos, v_tip)
             # 4. STABLE MAPPING (Damped Least Squares)
             # Solves: tau = J^T * inv(JJ^T + λ^2I) * F
             jjt = jac @ jac.T

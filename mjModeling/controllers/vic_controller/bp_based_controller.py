@@ -90,7 +90,7 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
     def move_to_position(self, use_default=True, target_pos=None, v_raw=None, f_raw=None, viewer=None):
         if use_default:
             return super().move_to_position(target_pos, viewer)
-
+        # OBSOLETE: to be deleted
         tcp_id = self.model.site("scalpel_tip").id
         q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159])
         self.error_accumulated = np.zeros(3)
