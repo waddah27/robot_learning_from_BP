@@ -16,8 +16,8 @@ class JacobianIK(Controller):
         self.model = robot.model
         self.data = robot.data
 
-    def move_to_position(self, target_pos, viewer=None, max_steps=500,
-                         tolerance=paramIK.IK_TOL.value, kp=paramIK.IK_KP.value, 
+    def move_to_position(self, target_pos, viewer=None, max_steps=paramIK.IK_MAX_STEPS,
+                         tolerance=paramIK.IK_TOL.value, kp=paramIK.IK_KP.value,
                          kd=paramIK.IK_KD.value):
         """
         Move TCP to target position using Jacobian IK
@@ -69,10 +69,10 @@ class JacobianIK(Controller):
         print(f"  Final error: {error_norm:.6f}")
         return False
 
-    def move_with_orientation(self, target_pos, target_quat=None, 
+    def move_with_orientation(self, target_pos, target_quat=None,
                               max_steps=500, kp_pos=5.0, kp_ori=1.0):
         """
-        Move to position AND orientation 
+        Move to position AND orientation
         target_quat: [w, x, y, z] quaternion
         """
         tcp_id = self.model.site("scalpel_tip").id

@@ -3,25 +3,22 @@ import re
 import json
 from enum import Enum, IntEnum
 import numpy as np
-# load configs
+
 file_dir = os.path.dirname(__file__)
 root_dir = os.path.dirname(file_dir)
-
-# Load configs from json igonring comments
-configs = json.loads(re.sub(r'//.*|/\*[\s\S]*?\*/', '', open(os.path.join(file_dir,'configs.json')).read()))
 
 
 # IK parameters
 class paramIK(Enum):
-    IK_MAX_STEPS = configs["IK_params"]["ik_max_steps"]
-    IK_KP = configs["IK_params"]["kp"]
-    IK_KD = configs["IK_params"]["kd"]
-    IK_TOL = configs["IK_params"]["tolerance"]
+    IK_MAX_STEPS = 500
+    IK_KP = 50
+    IK_KD = 0.1
+    IK_TOL = 0.04
 
 
 class paramVIC:
-    VIC_MAX_STEPS = 5000
-    VIC_TOL = 0.004
+    VIC_MAX_STEPS = 50000
+    VIC_TOL = 0.001
     VIC_KP_MIN = 400.0
     VIC_KP_MAX = 1500.0
     VIC_M = 1 # mass
@@ -68,9 +65,9 @@ class oscillatorConfigs:
     N_SIGS = len(Signal)
 
 # Construct the full absolute path to the STL
-SCALPEL_HANDLER_PART1 = configs["scalpel_handler_dir"]["part1"]
-SCALPEL_HANDLER_PART2 = configs["scalpel_handler_dir"]["part2"]
-SCALPEL_DIRNAME = configs["scalpel_dir"]
+SCALPEL_HANDLER_PART1 = "scalpel_model/scalpel/scalpelHandler1.STL"
+SCALPEL_HANDLER_PART2 = "scalpel_model/scalpel/scalpelHandler2.STL"
+SCALPEL_DIRNAME = "scalpel_model/scalpel/Scalpel.stl"
 SCALPEL_HANDLER_1_PATH = os.path.join(root_dir, SCALPEL_HANDLER_PART1)
 SCALPEL_HANDLER_2_PATH = os.path.join(root_dir, SCALPEL_HANDLER_PART2)
 SCALPEL_PATH = os.path.join(root_dir, SCALPEL_DIRNAME)
@@ -79,7 +76,8 @@ VIS_SITE_FRAME = False
 VIS_JOINTS = False
 VIS_LABEL_NAME = True
 # Basic robot and scene xml files
-ROBOT_DIR = os.path.join(root_dir, configs['robot_name'])
+ROBOT_NAME = "kuka_iiwa_14"
+ROBOT_DIR = os.path.join(root_dir, ROBOT_NAME)
 ROBOT_XML_DIR = os.path.join(ROBOT_DIR, 'xml')
 ROBOT_SCENE = os.path.join(ROBOT_XML_DIR, 'scene.xml')
 
