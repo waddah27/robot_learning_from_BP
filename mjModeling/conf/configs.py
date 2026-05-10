@@ -20,7 +20,7 @@ class paramVIC:
     VIC_MAX_STEPS = 50000
     VIC_TOL = 0.001
     VIC_KP_MIN = 400.0
-    VIC_KP_MAX = 1500.0
+    VIC_KP_MAX = 2000.0
     VIC_M = 1 # mass
     VIC_KI = 200
     VIC_LAMBDA_SQ = 1e-4

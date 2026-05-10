@@ -78,10 +78,12 @@ class bpTrajDataLoader:
         _vel_idxs = np.s_[12:15]
         _force_idxs = np.s_[6:9]
         _pos = data_gmr.data[:, _pos_idxs]
+        _vel = data_gmr.data[:, _vel_idxs]
         # Transform ZXY to ZYX
-        self.pos = _pos#[:, [1, 0, 2]]
-        self.vel = data_gmr.data[:, _vel_idxs]
-        self.force = data_gmr.data[:, _force_idxs]
+        self.pos = _pos[:, [2, 0, 1]]
+        self.vel = _vel[:, [2, 0, 1]]
+        force_zxy = data_gmr.data[:, _force_idxs]
+        self.force = force_zxy[:,[2,0,1]]
         self.F_max = np.max(self.force, axis=0)
         self.F_min = np.min(self.force, axis=0)
         self.step = 0
