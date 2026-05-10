@@ -12,3 +12,4 @@ pyqt6
 pyqtgraph
 dotenv
 qpsolvers==2.3.0
+cvxopt
