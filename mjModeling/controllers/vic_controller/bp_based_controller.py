@@ -41,7 +41,6 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
 
         self.cut_width_x = robot.work_piece.size[0]
         self.cut_width_y = robot.work_piece.size[1]
-        self.cut_depth_z = robot.work_piece.size[2] * (1 - robot.work_piece.penetration_rate)
 
         if self.use_bp:
             if isinstance(robot.work_piece.bp_data, NamedArray):
@@ -60,7 +59,7 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
 
     def _gmr_to_world(self, gmr_point):
         mat_pos = self.data.geom_xpos[self.mat_geom_id].copy()
-        surface_z = mat_pos[2] + self.cut_depth_z   # top of moving material
+        surface_z = mat_pos[2]
 
         p_safe = np.zeros(3)
         p_safe[:min(len(gmr_point), 3)] = gmr_point[:min(len(gmr_point), 3)]
@@ -112,7 +111,7 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
 
             mujoco.mj_forward(self.model, self.data)
             current_pos = self.data.site_xpos[tcp_id].copy()
-            surface_z = self.data.geom_xpos[self.mat_geom_id][2] + self.cut_depth_z
+            surface_z = self.data.geom_xpos[self.mat_geom_id][2]
 
             jac = np.zeros((3, self.model.nv))
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)

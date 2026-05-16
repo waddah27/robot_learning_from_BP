@@ -118,7 +118,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
     def _gmr_to_world(self, gmr_point, mat_pos=None):
         if mat_pos is None:
             mat_pos = self.data.geom_xpos[self.mat_geom_id].copy()
-        surface_z = mat_pos[2] - self.cut_depth_z
+        surface_z = mat_pos[2]
         p_safe = np.zeros(3)
         p_safe[:min(len(gmr_point), 3)] = gmr_point[:min(len(gmr_point), 3)]
         norm = (p_safe - self.gmr_min) / self.gmr_range
