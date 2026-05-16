@@ -48,34 +48,6 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
 
         return kp, kd
 
-    def compensate_cutting_resistance(self, current_pos, v_tip):
-        """OBSOLETE to be deleted later"""
-        if not self.working_piece:
-            print("No material was set to working piece or No working piece was added!")
-            return np.zeros(3)
-        # Material surface is at center_z + size_z = 0.04
-        f_res = np.zeros(3)
-        surface_z = self.working_piece.surface_height
-        magnitude = self.working_piece.cut_resistance
-
-        depth = surface_z - current_pos[2]
-
-        if depth > 0:
-            # 1. Damping (The 'v_tip' part - only active while moving)
-            f_damping = -magnitude * v_tip
-
-            # 2. Stiffness (The 'depth' part - active even when stopped)
-            # Use a constant like 500 N/m to simulate material pushing back up
-            f_stiffness = np.array([0, 0, 500.0 * depth])
-            f_res = f_damping + f_stiffness
-
-            # here estimated contact force is registered to shared memory if the material is not solid
-            # this whole function should be refactored to consider estimating forces for 3d directions
-            self.robot.state["shared_array"][-1] = np.linalg.norm(f_res)
-            return f_res
-
-        return f_res
-
 
     def move_to_position(self, target_pos, viewer=None):
         tcp_id = self.model.site("scalpel_tip").id
