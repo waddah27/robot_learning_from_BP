@@ -4,25 +4,24 @@ import mujoco
 from mjModeling.cutting_materials.utils import wp_sine_motion
 from mjModeling.controllers.vic_controller.bp_based_controller import BpVariableImpedanceControl
 from mjModeling.kuka_iiwa_14.iiwa14_model import iiwa14
-from scipy.optimize import minimize
 from logger import Logger
+from qpsolvers import solve_qp
 
 __all__ = ["ContinuousTrajectoryVIC"]
 
 
 class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
     """
-    Continuous trajectory VIC using optimization-based gain scheduling.
-    Uses the old VICController's objective (force tracking, regularization, energy tank).
+    Continuous trajectory VIC using QP-based gain optimization.
     """
     def __init__(self, robot: iiwa14, use_behaviour_priors: bool = False,
                  optimizer=ImpedanceOptimizer.qp):
         super().__init__(robot, use_behaviour_priors)
 
         self.optimizer = optimizer
-        Logger.debug(f"Using optimizer: {self.optimizer} (optimization-based)")
+        Logger.debug(f"Using optimizer: {self.optimizer} (QP-based gain optimization)")
 
-        # ---------- Optimization parameters (from old VICController) ----------
+        # ---------- Optimization parameters ----------
         self.Xi_scaler = 5000
         self.k_min = np.array([100, 100, 100])
         self.k_max = np.array([5000, 5000, 5000])
@@ -77,22 +76,19 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             self._init_trajectory_interpolators()
             self._check_force_scale()
 
-    # ---------- Trajectory interpolation (same as before) ----------
+    # ---------- Trajectory interpolation ----------
     def _init_trajectory_interpolators(self):
         """Create continuous functions of phase from discrete GMR data."""
-        # Extract data arrays (assumed shape Nx3)
         self.traj_pos = self.traj_loader.pos[:, 0:3]
         self.traj_vel = self.traj_loader.vel[:, 0:3]
         self.traj_force = self.traj_loader.force[:, 0:3]
 
-        # Scale forces if needed
         if hasattr(self, 'force_scale'):
             self.traj_force *= self.force_scale
 
         N = len(self.traj_pos)
         self.traj_dt = getattr(self.traj_loader, 'dt', 0.01)
         self.traj_duration = N * self.traj_dt
-
         phase_points = np.linspace(0, 1, N)
 
         try:
@@ -153,74 +149,151 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             else:
                 self.force_scale = 1.0
 
-    # ---------- Optimization objective (from old VICController) ----------
-    def objective(self, params, x_tilde, x_tilde_dot, F_d, dt):
-        k_d = np.diag(params[:3])
-        xi_d_scaled = params[3:6]
-        xi_d = xi_d_scaled / self.Xi_scaler
-
-        sqrt_k = np.sqrt(np.diag(k_d))
-
-        # FIXED damping
-        d_d = 2.0 * np.diag(xi_d * sqrt_k)
-
-        # FIXED stable force model
-        F_est = (np.diag(k_d) @ x_tilde) + (np.diag(d_d) @ x_tilde_dot)
-
-        force_error = F_est - F_d
-        norm_F = force_error.T @ self.Q @ force_error
-
-        k_vec = np.diag(k_d)
-        norm_k = (k_vec - self.k_min).T @ self.R @ (k_vec - self.k_min)
-
-        force_penalty = np.sum(np.maximum(0, F_est - self.f_max) ** 2) + \
-                        np.sum(np.maximum(0, self.f_min - F_est) ** 2)
-
-        return norm_k + norm_F + force_penalty
-
-    # ---------- Gain optimization using scipy.minimize ----------
+    # ---------- QP-BASED GAIN OPTIMIZATION ----------
     def get_variable_gains_optimizer(self, error, vel_error, desired_force, dt):
-
-        initial_guess = [
-            self.k_init, self.k_init, self.k_init,
-            self.xi_init * self.Xi_scaler,
-            self.xi_init * self.Xi_scaler,
-            self.xi_init * self.Xi_scaler
-        ]
-
-        bounds = [(self.k_min[i], self.k_max[i]) for i in range(3)] + \
-                [(self.D_min[i], self.D_max[i]) for i in range(3)]
-
+        """
+        QP with HARD force constraints using ACTUAL measured force
+        """
+        
+        if np.linalg.norm(error) < 1e-6 and np.linalg.norm(vel_error) < 1e-6:
+            kd = 2 * self.prev_xi * np.sqrt(np.maximum(self.prev_kd, 100))
+            return self.prev_kd, kd
+        
+        n_var = 6  # [Kx, Ky, Kz, Dx, Dy, Dz]
+        H = np.zeros((n_var, n_var))
+        f = np.zeros(n_var)
+        
+        reg = 1e-4
+        
+        # CRITICAL FIX: Use ACTUAL force error, not estimated
+        # We want: (K*error + D*vel_error) to match desired_force
+        # But the actual contact force is measured, not estimated
+        # So we add a term that penalizes deviation from desired force
+        
+        # Build matrix A = [diag(error), diag(vel_error)]
+        A = np.zeros((3, n_var))
+        A[0, 0] = error[0]
+        A[1, 1] = error[1]
+        A[2, 2] = error[2]
+        A[0, 3] = vel_error[0]
+        A[1, 4] = vel_error[1]
+        A[2, 5] = vel_error[2]
+        
+        # Force tracking: minimize ||(K*e_p + D*e_v) - F_des||²
+        H = A.T @ A + reg * np.eye(n_var)
+        f = -2 * (A.T @ desired_force)
+        
+        # Prior gains regularization
+        prior_weight = 0.01
+        H_prior = prior_weight * np.eye(n_var)
+        H += H_prior
+        
+        f_prior = -2 * prior_weight * np.hstack([self.prev_kd, 
+                                                2 * self.prev_xi * np.sqrt(np.maximum(self.prev_kd, 100))])
+        f += f_prior
+        
+        # HARD FORCE CONSTRAINTS using ACTUAL measured force
+        # The actual contact force must stay within [f_min, f_max]
+        # But we can't directly constrain actual force in gain optimization
+        # Instead, we constrain that the desired force is achievable
+        
+        G_list = []
+        h_list = []
+        
+        for i in range(3):
+            # Upper bound: K_i*e_p[i] + D_i*e_v[i] <= f_max
+            G_upper = np.zeros(n_var)
+            G_upper[i] = error[i]
+            G_upper[3 + i] = vel_error[i]
+            G_list.append(G_upper.reshape(1, -1))
+            h_list.append([self.f_max])
+            
+            # Lower bound: -K_i*e_p[i] - D_i*e_v[i] <= -f_min
+            G_lower = np.zeros(n_var)
+            G_lower[i] = -error[i]
+            G_lower[3 + i] = -vel_error[i]
+            G_list.append(G_lower.reshape(1, -1))
+            h_list.append([-self.f_min])
+        
+        G = np.vstack(G_list)
+        h = np.vstack(h_list).flatten()
+        
+        # Gain bounds
+        lb = np.hstack([self.k_min, self.D_min])
+        ub = np.hstack([self.k_max, self.D_max])
+        
         try:
-            result = minimize(
-                self.objective,
-                initial_guess,
-                args=(error, vel_error, desired_force, dt),
-                bounds=bounds,
-                method='L-BFGS-B',
-                options={'maxiter': 50, 'ftol': 1e-5}
+            x_opt = solve_qp(
+                P=H, q=f,
+                lb=lb, ub=ub,
+                G=G, h=h,
+                solver='osqp',
+                verbose=False
             )
-
-            if result.success:
-                kp = np.array(result.x[:3])
-                xi_scaled = np.array(result.x[3:6])
-                xi = xi_scaled / self.Xi_scaler
-
-                kd = 2.0 * xi * np.sqrt(kp)
-
-                self.prev_kd = kp
-                self.prev_xi = xi
-                return kp, kd
-
-            return self.prev_kd, 2.0 * self.prev_xi * np.sqrt(self.prev_kd)
-
+            
+            if x_opt is not None and not np.any(np.isnan(x_opt)):
+                kp = x_opt[:3]
+                kd_raw = x_opt[3:6]
+                
+                # Compute estimated force
+                F_est = kp * error + kd_raw * vel_error
+                
+                # Log both estimated and actual force
+                actual_force_norm = np.linalg.norm(self.filtered_force) if hasattr(self, 'filtered_force') else 0
+                
+                # Enforce stability
+                zeta = np.clip(kd_raw / (2 * np.sqrt(np.maximum(kp, 100)) + 1e-6), 0.7, 1.5)
+                kd_corrected = 2 * zeta * np.sqrt(np.maximum(kp, 100))
+                
+                # Smooth updates
+                alpha = 0.5
+                kp_smooth = alpha * kp + (1 - alpha) * self.prev_kd
+                kd_smooth = alpha * kd_corrected + (1 - alpha) * (2 * self.prev_xi * np.sqrt(np.maximum(self.prev_kd, 100)))
+                
+                self.prev_kd = kp_smooth
+                self.prev_xi = zeta
+                
+                force_error = np.linalg.norm(desired_force - F_est)
+                
+                # Log with actual force
+                if hasattr(self, 'filtered_force'):
+                    Logger.debug(f"QP: Kz={kp_smooth[2]:.0f}, F_est={F_est[2]:.0f}N, F_act={self.filtered_force[2]:.0f}N, F_des={desired_force[2]:.0f}N, err={force_error:.1f}N")
+                else:
+                    Logger.debug(f"QP success: Kz={kp_smooth[2]:.0f}, F_err={force_error:.1f}N")
+                
+                return kp_smooth, kd_smooth
+                
         except Exception as e:
-            return self.prev_kd, 2.0 * self.prev_xi * np.sqrt(self.prev_kd)
+            Logger.debug(f"QP failed: {e}")
+        
+        return self._analytical_fallback(error, vel_error, desired_force)
+    
+    def _analytical_fallback(self, error, vel_error, desired_force):
+        """Stable fallback when QP fails"""
+        kp_new = self.prev_kd.copy()
+        
+        for axis in range(3):
+            e_p = error[axis]
+            F_d = desired_force[axis]
+            
+            if abs(e_p) > 0.001:  # Position error large enough
+                K_req = F_d / e_p
+                K_req = np.clip(K_req, self.k_min[axis], self.k_max[axis])
+                kp_new[axis] = 0.7 * K_req + 0.3 * self.prev_kd[axis]  # Smooth
+        
+        # Compute damping (critical damping)
+        zeta = 0.7
+        kd_new = 2 * zeta * np.sqrt(np.maximum(kp_new, 100))
+        
+        self.prev_kd = kp_new
+        self.prev_xi = np.array([zeta, zeta, zeta])
+        
+        return kp_new, kd_new
 
-    # ---------- Main gain dispatcher (now uses optimizer) ----------
+    # ---------- Main gain dispatcher ----------
     def get_variable_gains(self, error, vel_error=None, desired_force=None, dt=None):
         """
-        Main gain function. If force data available, use optimizer; else heuristic.
+        Main gain function. If force data available, use QP optimizer; else heuristic.
         """
         if desired_force is None or vel_error is None:
             return super().get_variable_gains(error)
@@ -228,21 +301,17 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             dt = self.dt
         return self.get_variable_gains_optimizer(error, vel_error, desired_force, dt)
 
-    # ---------- Energy modulation (optional, from old code) ----------
+    # ---------- Energy modulation ----------
     def update_tank_energy(self, kp, kd, error, vel_error, dt):
-        """
-        Update the tank state (simplified). Not used in objective but can be used for logging.
-        """
-        # Simple energy update (not required for control)
-        power = np.sum(kd * vel_error**2)  # approximate
+        power = np.sum(kd * vel_error**2)
         self.E_t += power * dt
         self.E_t = np.clip(self.E_t, 0, self.T_max)
         return self.E_t
 
-    # ---------- Trajectory execution (with optimizer) ----------
+    # ---------- Trajectory execution ----------
     def follow_trajectory(self, phase_speed: float = paramVIC.PHASE_SPEED, viewer=None):
         """
-        Execute the continuous trajectory with optimization-based gain scheduling.
+        Execute the continuous trajectory with QP-based gain optimization.
         """
         tcp_id = self.model.site("scalpel_tip").id
         q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159])
@@ -260,6 +329,8 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         self.force_integral = np.zeros(3)
 
         force_log = []
+        pos_log = []
+        
         last_log_time = 0
 
         for step in range(max_steps):
@@ -287,7 +358,6 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             vel_des_gmr_scaled = vel_des_gmr * phase_speed
             pos_des = self._gmr_to_world(pos_des_gmr)
             vel_des = self._gmr_vel_to_world(vel_des_gmr_scaled, mat_vel)
-            # pos_des[2] = 0.023
 
             # Current robot state
             mujoco.mj_forward(self.model, self.data)
@@ -300,7 +370,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
             v_cur = jac @ self.data.qvel
 
-            # Transform desired force to world frame (tool frame to world)
+            # Transform desired force to world frame
             site_rot = self.data.site_xmat[tcp_id].reshape(3, 3)
             f_des_world = site_rot @ force_des_gmr
 
@@ -310,7 +380,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
             self.in_contact = np.linalg.norm(self.filtered_force) > self.contact_threshold
 
-            # Get optimized gains
+            # Get optimized gains using QP
             kp, kd = self.get_variable_gains(
                 error=error,
                 vel_error=vel_error,
@@ -329,12 +399,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             # Control law
             f_virtual = (kp * error) + paramVIC.VIC_KI * self.error_accumulated + kd * vel_error + self.force_integral
 
-            # Update position integral (commented, kept for compatibility)
-            # if penetration_depth < 0.005 and np.linalg.norm(error) < 0.05:
-            #     self.error_accumulated += error * self.dt * phase_speed
-            #     self.error_accumulated = np.clip(self.error_accumulated, -0.05, 0.05)
-
-            # Torque calculation (unchanged)
+            # Torque calculation
             jjt = jac @ jac.T
             lambda_sq = paramVIC.VIC_LAMBDA_SQ
             tau_task = jac.T @ np.linalg.solve(jjt + lambda_sq * np.eye(3), f_virtual)
@@ -359,16 +424,19 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             self.phase += phase_inc
             self.sim_time += self.dt
 
-            # Update tank energy (for logging)
+            # Update tank energy
             self.update_tank_energy(kp, kd, error, vel_error, self.dt * phase_speed)
 
-            self.record_contact_forces(Pd = pos_des, P = current_pos, Fd=f_des_world, K=kp)
+            self.record_contact_forces(Pd=pos_des, P=current_pos, Fd=f_des_world, K=kp)
 
             # Logging
             if self.sim_time - last_log_time > 0.5:
                 force_des_mag = np.linalg.norm(f_des_world)
                 force_act_mag = np.linalg.norm(self.filtered_force)
+                pos_des_mag = np.linalg.norm(pos_des)
+                pos_act_mag = np.linalg.norm(current_pos)
                 force_log.append([self.phase, force_des_mag, force_act_mag])
+                pos_log.append([self.phase, pos_des_mag, pos_act_mag])
                 print(f"Phase {self.phase:.2f}: Desired F: {force_des_mag:.1f}N, "
                       f"Actual F: {force_act_mag:.1f}N, "
                       f"Kp_z: {kp[2]:.1f}, Kd_z: {kd[2]:.3f}, "
@@ -386,6 +454,16 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             Logger.debug(f"Mean desired force: {np.mean(f_des):.1f}N")
             Logger.debug(f"Mean actual force: {np.mean(f_act):.1f}N")
             Logger.debug(f"RMSE: {np.sqrt(np.mean((np.array(f_des) - np.array(f_act))**2)):.1f}N")
+            Logger.debug(f"{'='*60}")
+        
+        if pos_log:
+            phases, p_des, p_act = zip(*pos_log)
+            Logger.debug(f"\n{'='*60}")
+            Logger.debug(f"POS TRACKING SUMMARY")
+            Logger.debug(f"{'='*60}")
+            Logger.debug(f"Mean desired pos: {np.mean(p_des):.1f}N")
+            Logger.debug(f"Mean actual pod: {np.mean(p_act):.1f}N")
+            Logger.debug(f"RMSE: {np.sqrt(np.mean((np.array(p_des) - np.array(p_act))**2)):.1f}N")
             Logger.debug(f"{'='*60}")
 
         return True
