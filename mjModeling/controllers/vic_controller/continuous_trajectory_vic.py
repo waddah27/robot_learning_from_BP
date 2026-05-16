@@ -23,8 +23,8 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
         # ---------- Optimization parameters ----------
         self.Xi_scaler = 5000
-        self.k_min = np.array([100, 100, 100])
-        self.k_max = np.array([5000, 5000, 5000])
+        self.k_min = np.array([paramVIC.VIC_KP_MIN, paramVIC.VIC_KP_MIN, paramVIC.VIC_KP_MIN])
+        self.k_max = np.array([paramVIC.VIC_KP_MAX, paramVIC.VIC_KP_MAX, paramVIC.VIC_KP_MAX])
         self.k_init = 2000
         self.xi_init = 0.7
         self.D_min = np.array([0, 0, 0])
@@ -152,121 +152,89 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
     # ---------- QP-BASED GAIN OPTIMIZATION ----------
     def get_variable_gains_optimizer(self, error, vel_error, desired_force, dt):
         """
-        QP with HARD force constraints using ACTUAL measured force
+        QP that minimises stiffness while tracking position and velocity.
+        Decision variable: k = [Kx, Ky, Kz]
+        Objective: minimise ||Kp * error_pos - F_target||^2 + small regularisation
+        where F_target = Kp_high * error_pos + Kd_high * error_vel
+        Subject to: f_min <= Kp * error_pos <= f_max
         """
-        
         if np.linalg.norm(error) < 1e-6 and np.linalg.norm(vel_error) < 1e-6:
             kd = 2 * self.prev_xi * np.sqrt(np.maximum(self.prev_kd, 100))
             return self.prev_kd, kd
-        
-        n_var = 6  # [Kx, Ky, Kz, Dx, Dy, Dz]
+
+        n_var = 3
         H = np.zeros((n_var, n_var))
         f = np.zeros(n_var)
-        
-        reg = 1e-4
-        
-        # CRITICAL FIX: Use ACTUAL force error, not estimated
-        # We want: (K*error + D*vel_error) to match desired_force
-        # But the actual contact force is measured, not estimated
-        # So we add a term that penalizes deviation from desired force
-        
-        # Build matrix A = [diag(error), diag(vel_error)]
-        A = np.zeros((3, n_var))
-        A[0, 0] = error[0]
-        A[1, 1] = error[1]
-        A[2, 2] = error[2]
-        A[0, 3] = vel_error[0]
-        A[1, 4] = vel_error[1]
-        A[2, 5] = vel_error[2]
-        
-        # Force tracking: minimize ||(K*e_p + D*e_v) - F_des||²
-        H = A.T @ A + reg * np.eye(n_var)
-        f = -2 * (A.T @ desired_force)
-        
-        # Prior gains regularization
-        prior_weight = 0.01
-        H_prior = prior_weight * np.eye(n_var)
-        H += H_prior
-        
-        f_prior = -2 * prior_weight * np.hstack([self.prev_kd, 
-                                                2 * self.prev_xi * np.sqrt(np.maximum(self.prev_kd, 100))])
-        f += f_prior
-        
-        # HARD FORCE CONSTRAINTS using ACTUAL measured force
-        # The actual contact force must stay within [f_min, f_max]
-        # But we can't directly constrain actual force in gain optimization
-        # Instead, we constrain that the desired force is achievable
-        
+
+        # High gains for desired tracking (tune these)
+        Kp_high = paramVIC.VIC_KP_MAX  # N/m
+        Kd_high = 200    # N·s/m
+        F_target = Kp_high * error + Kd_high * vel_error
+
+        # Objective: minimise (Kp*error - F_target)^2
+        # This is quadratic in Kp: (error^2) * Kp^2 - 2 * (error*F_target) * Kp
+        for i in range(3):
+            H[i, i] = 2.0 * (error[i]**2)
+            f[i] = -2.0 * error[i] * F_target[i]
+
+        # Regularisation (keep stiffness low)
+        reg_weight = 0.001
+        for i in range(3):
+            H[i, i] += 2.0 * reg_weight
+
+        # Force constraints: f_min <= Kp_i * error_i <= f_max
         G_list = []
         h_list = []
-        
         for i in range(3):
-            # Upper bound: K_i*e_p[i] + D_i*e_v[i] <= f_max
-            G_upper = np.zeros(n_var)
-            G_upper[i] = error[i]
-            G_upper[3 + i] = vel_error[i]
-            G_list.append(G_upper.reshape(1, -1))
-            h_list.append([self.f_max])
-            
-            # Lower bound: -K_i*e_p[i] - D_i*e_v[i] <= -f_min
-            G_lower = np.zeros(n_var)
-            G_lower[i] = -error[i]
-            G_lower[3 + i] = -vel_error[i]
-            G_list.append(G_lower.reshape(1, -1))
-            h_list.append([-self.f_min])
-        
+            if abs(error[i]) > 1e-6:
+                G_up = np.zeros(3)
+                G_up[i] = error[i]
+                G_list.append(G_up.reshape(1, -1))
+                h_list.append([self.f_max])
+
+                G_low = np.zeros(3)
+                G_low[i] = -error[i]
+                G_list.append(G_low.reshape(1, -1))
+                h_list.append([-self.f_min])
+            else:
+                # No position error: we can't constrain force, so constrain gain directly
+                G_up = np.zeros(3)
+                G_up[i] = 1.0
+                G_list.append(G_up.reshape(1, -1))
+                h_list.append([self.k_max[i]])
+
+                G_low = np.zeros(3)
+                G_low[i] = -1.0
+                G_list.append(G_low.reshape(1, -1))
+                h_list.append([-self.k_min[i]])
+
         G = np.vstack(G_list)
         h = np.vstack(h_list).flatten()
-        
+
         # Gain bounds
-        lb = np.hstack([self.k_min, self.D_min])
-        ub = np.hstack([self.k_max, self.D_max])
-        
+        lb = self.k_min
+        ub = self.k_max
+
         try:
-            x_opt = solve_qp(
-                P=H, q=f,
-                lb=lb, ub=ub,
-                G=G, h=h,
-                solver='osqp',
-                verbose=False
-            )
-            
-            if x_opt is not None and not np.any(np.isnan(x_opt)):
-                kp = x_opt[:3]
-                kd_raw = x_opt[3:6]
-                
-                # Compute estimated force
-                F_est = kp * error + kd_raw * vel_error
-                
-                # Log both estimated and actual force
-                actual_force_norm = np.linalg.norm(self.filtered_force) if hasattr(self, 'filtered_force') else 0
-                
-                # Enforce stability
-                zeta = np.clip(kd_raw / (2 * np.sqrt(np.maximum(kp, 100)) + 1e-6), 0.7, 1.5)
-                kd_corrected = 2 * zeta * np.sqrt(np.maximum(kp, 100))
-                
-                # Smooth updates
+            k_opt = solve_qp(P=H, q=f, G=G, h=h, lb=lb, ub=ub, solver='osqp', verbose=False)
+            if k_opt is not None and not np.any(np.isnan(k_opt)):
+                kp = k_opt[:3]
+                # Damping derived from stiffness
+                M_eff = 2.0
+                zeta = 0.7
+                kd = 2.0 * zeta * np.sqrt(np.maximum(kp, 100) * M_eff)
+                # Smooth update
                 alpha = 0.5
                 kp_smooth = alpha * kp + (1 - alpha) * self.prev_kd
-                kd_smooth = alpha * kd_corrected + (1 - alpha) * (2 * self.prev_xi * np.sqrt(np.maximum(self.prev_kd, 100)))
-                
+                kd_smooth = alpha * kd + (1 - alpha) * (2 * self.prev_xi * np.sqrt(np.maximum(self.prev_kd, 100)))
                 self.prev_kd = kp_smooth
-                self.prev_xi = zeta
-                
-                force_error = np.linalg.norm(desired_force - F_est)
-                
-                # Log with actual force
-                if hasattr(self, 'filtered_force'):
-                    Logger.debug(f"QP: Kz={kp_smooth[2]:.0f}, F_est={F_est[2]:.0f}N, F_act={self.filtered_force[2]:.0f}N, F_des={desired_force[2]:.0f}N, err={force_error:.1f}N")
-                else:
-                    Logger.debug(f"QP success: Kz={kp_smooth[2]:.0f}, F_err={force_error:.1f}N")
-                
+                self.prev_xi = np.array([zeta, zeta, zeta])
                 return kp_smooth, kd_smooth
-                
         except Exception as e:
             Logger.debug(f"QP failed: {e}")
-        
+
         return self._analytical_fallback(error, vel_error, desired_force)
+    
     
     def _analytical_fallback(self, error, vel_error, desired_force):
         """Stable fallback when QP fails"""
