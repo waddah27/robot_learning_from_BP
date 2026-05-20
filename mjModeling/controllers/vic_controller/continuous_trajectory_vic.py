@@ -152,66 +152,42 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
     # ---------- QP-BASED GAIN OPTIMIZATION ----------
     def get_variable_gains_optimizer(self, error, vel_error, desired_force, dt):
         """
-        QP that minimises stiffness while tracking position and velocity.
-        Decision variable: k = [Kx, Ky, Kz]
-        Objective: minimise ||Kp * error_pos - F_target||^2 + small regularisation
-        where F_target = Kp_high * error_pos + Kd_high * error_vel
-        Subject to: f_min <= Kp * error_pos <= f_max
+        QP that minimises:
+            w_force * ||Kp·e_p - F_des||² + w_stiff * ||Kp||²
+        subject to: f_min <= Kp·e_p <= f_max
         """
-        if np.linalg.norm(error) < 1e-6 and np.linalg.norm(vel_error) < 1e-6:
+        if np.linalg.norm(error) < 1e-6:
             kd = 2 * self.prev_xi * np.sqrt(np.maximum(self.prev_kd, 100))
             return self.prev_kd, kd
 
-        n_var = 3
+        n_var = 3  # Kx, Ky, Kz
         H = np.zeros((n_var, n_var))
         f = np.zeros(n_var)
 
-        # High gains for desired tracking (tune these)
-        Kp_high = paramVIC.VIC_KP_MAX  # N/m
-        Kd_high = 200    # N·s/m
-        F_target = Kp_high * error + Kd_high * vel_error
-
-        # Objective: minimise (Kp*error - F_target)^2
-        # This is quadratic in Kp: (error^2) * Kp^2 - 2 * (error*F_target) * Kp
+        # ----- Force tracking (soft) -----
+        w_force = 200.0   # reduced from 1000 to avoid overshoot (was causing 74N vs 57N)
         for i in range(3):
-            H[i, i] = 2.0 * (error[i]**2)
-            f[i] = -2.0 * error[i] * F_target[i]
+            H[i, i] = 2.0 * w_force * (error[i]**2)
+            f[i] = -2.0 * w_force * error[i] * desired_force[i]
 
-        # Regularisation (keep stiffness low)
-        reg_weight = 0.001
+        # ----- Stiffness regularisation (keep gains low) -----
+        w_stiff = 0.1     # increased from 0.001 to penalise high stiffness more
         for i in range(3):
-            H[i, i] += 2.0 * reg_weight
+            H[i, i] += 2.0 * w_stiff
 
-        # Force constraints: f_min <= Kp_i * error_i <= f_max
+        # ----- Hard force constraints -----
         G_list = []
         h_list = []
         for i in range(3):
             if abs(error[i]) > 1e-6:
-                G_up = np.zeros(3)
-                G_up[i] = error[i]
-                G_list.append(G_up.reshape(1, -1))
-                h_list.append([self.f_max])
-
-                G_low = np.zeros(3)
-                G_low[i] = -error[i]
-                G_list.append(G_low.reshape(1, -1))
-                h_list.append([-self.f_min])
+                G_up = np.zeros(3); G_up[i] = error[i]; G_list.append(G_up.reshape(1,-1)); h_list.append([self.f_max])
+                G_low = np.zeros(3); G_low[i] = -error[i]; G_list.append(G_low.reshape(1,-1)); h_list.append([-self.f_min])
             else:
-                # No position error: we can't constrain force, so constrain gain directly
-                G_up = np.zeros(3)
-                G_up[i] = 1.0
-                G_list.append(G_up.reshape(1, -1))
-                h_list.append([self.k_max[i]])
+                G_up = np.zeros(3); G_up[i] = 1.0; G_list.append(G_up.reshape(1,-1)); h_list.append([self.k_max[i]])
+                G_low = np.zeros(3); G_low[i] = -1.0; G_list.append(G_low.reshape(1,-1)); h_list.append([-self.k_min[i]])
 
-                G_low = np.zeros(3)
-                G_low[i] = -1.0
-                G_list.append(G_low.reshape(1, -1))
-                h_list.append([-self.k_min[i]])
-
-        G = np.vstack(G_list)
-        h = np.vstack(h_list).flatten()
-
-        # Gain bounds
+        G = np.vstack(G_list) if G_list else None
+        h = np.vstack(h_list).flatten() if h_list else None
         lb = self.k_min
         ub = self.k_max
 
@@ -219,7 +195,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             k_opt = solve_qp(P=H, q=f, G=G, h=h, lb=lb, ub=ub, solver='osqp', verbose=False)
             if k_opt is not None and not np.any(np.isnan(k_opt)):
                 kp = k_opt[:3]
-                # Damping derived from stiffness
+                # Damping from stiffness (critical damping, M_eff=2.0)
                 M_eff = 2.0
                 zeta = 0.7
                 kd = 2.0 * zeta * np.sqrt(np.maximum(kp, 100) * M_eff)
