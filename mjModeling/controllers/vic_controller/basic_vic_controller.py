@@ -30,21 +30,25 @@ class BasicVariableImpedanceControl(Controller): # Removed parent for standalone
             kp : np.ndarray (3,) – proportional gains for each axis.
             kd : np.ndarray (3,) – derivative gains for each axis.
         """
-        # These can later be made per‑axis arrays (e.g., self.kp_min = [x_min, y_min, z_min])
-        k_min = paramVIC.VIC_KP_MIN
-        k_max = paramVIC.VIC_KP_MAX
-        if adaptive:
-            alpha = 0.02  # tune this – error scale at which stiffness reaches halfway to max
-
-            # Per‑axis proportional gain using saturating function
-            abs_e = np.abs(error)
-            kp = k_min + (k_max - k_min) * (abs_e / (alpha + abs_e))
+        if paramVIC.DISABLE_PTP_VIC:
+            kp = np.array([2000]*3)
+            kd = 0.5 * np.sqrt(kp)
         else:
-            error_norm = np.linalg.norm(error)
-            kp = np.clip(k_max * (error_norm / 0.2), k_min, k_max) * np.ones(len(error))
+            # These can later be made per‑axis arrays (e.g., self.kp_min = [x_min, y_min, z_min])
+            k_min = paramVIC.VIC_KP_MIN
+            k_max = paramVIC.VIC_KP_MAX
+            if adaptive:
+                alpha = 0.02  # tune this – error scale at which stiffness reaches halfway to max
 
-        # Derivative gain
-        kd = 0.5 * np.sqrt(kp)
+                # Per‑axis proportional gain using saturating function
+                abs_e = np.abs(error)
+                kp = k_min + (k_max - k_min) * (abs_e / (alpha + abs_e))
+            else:
+                error_norm = np.linalg.norm(error)
+                kp = np.clip(k_max * (error_norm / 0.2), k_min, k_max) * np.ones(len(error))
+
+            # Derivative gain
+            kd = 2* 0.7 * np.sqrt(kp)
 
         return kp, kd
 

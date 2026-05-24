@@ -27,6 +27,8 @@ class paramVIC:
     ADAPTIVE = True
     CONTINUOUS_TRAJ = True
     PHASE_SPEED = 1.0
+    # Disable using variable gains for other motion phases than cutting
+    DISABLE_PTP_VIC = True
 
 class ImpedanceOptimizer:
     qp = "qp"
