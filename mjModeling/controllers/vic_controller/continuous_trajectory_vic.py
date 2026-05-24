@@ -118,19 +118,18 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
     def _gmr_to_world(self, gmr_point, mat_pos=None):
         if mat_pos is None:
             mat_pos = self.data.geom_xpos[self.mat_geom_id].copy()
-        surface_z = mat_pos[2]
         p_safe = np.zeros(3)
         p_safe[:min(len(gmr_point), 3)] = gmr_point[:min(len(gmr_point), 3)]
         norm = (p_safe - self.gmr_min) / self.gmr_range
         norm = np.clip(norm, 0, 1)
-        world_x = mat_pos[0] + (norm[0] - 0.5) * self.cut_width_x
-        world_y = mat_pos[1] + (norm[1] - 0.5) * self.cut_width_y
-        world_z = surface_z
+        world_x = mat_pos[0] + (norm[0] - 0.5) * self.cut_dim_x
+        world_y = mat_pos[1] + (norm[1] - 0.5) * self.cut_dim_y
+        world_z = mat_pos[2] + (norm[2] - 0.5) * self.cut_dim_z
         return np.array([world_x, world_y, world_z])
 
     def _gmr_vel_to_world(self, gmr_vel, mat_vel, mat_pos=None):
-        scale_xy = np.array([self.cut_width_x / self.gmr_range[0],
-                             self.cut_width_y / self.gmr_range[1]])
+        scale_xy = np.array([self.cut_dim_x / self.gmr_range[0],
+                             self.cut_dim_y / self.gmr_range[1]])
         v_world_xy = gmr_vel[:2] * scale_xy
         if np.isscalar(mat_vel):
             v_world_z = mat_vel
@@ -210,28 +209,28 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             Logger.debug(f"QP failed: {e}")
 
         return self._analytical_fallback(error, vel_error, desired_force)
-    
-    
+
+
     def _analytical_fallback(self, error, vel_error, desired_force):
         """Stable fallback when QP fails"""
         kp_new = self.prev_kd.copy()
-        
+
         for axis in range(3):
             e_p = error[axis]
             F_d = desired_force[axis]
-            
+
             if abs(e_p) > 0.001:  # Position error large enough
                 K_req = F_d / e_p
                 K_req = np.clip(K_req, self.k_min[axis], self.k_max[axis])
                 kp_new[axis] = 0.7 * K_req + 0.3 * self.prev_kd[axis]  # Smooth
-        
+
         # Compute damping (critical damping)
         zeta = 0.7
         kd_new = 2 * zeta * np.sqrt(np.maximum(kp_new, 100))
-        
+
         self.prev_kd = kp_new
         self.prev_xi = np.array([zeta, zeta, zeta])
-        
+
         return kp_new, kd_new
 
     # ---------- Main gain dispatcher ----------
@@ -274,7 +273,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
         force_log = []
         pos_log = []
-        
+
         last_log_time = 0
 
         for step in range(max_steps):
@@ -399,7 +398,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             Logger.debug(f"Mean actual force: {np.mean(f_act):.1f}N")
             Logger.debug(f"RMSE: {np.sqrt(np.mean((np.array(f_des) - np.array(f_act))**2)):.1f}N")
             Logger.debug(f"{'='*60}")
-        
+
         if pos_log:
             phases, p_des, p_act = zip(*pos_log)
             Logger.debug(f"\n{'='*60}")

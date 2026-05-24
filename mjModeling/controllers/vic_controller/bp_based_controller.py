@@ -39,8 +39,9 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
         else:
             Logger.info(f"Material joint ID = {self.mat_joint_id} – motion enabled")
 
-        self.cut_width_x = robot.work_piece.size[0]
-        self.cut_width_y = robot.work_piece.size[1]
+        self.cut_dim_x = robot.work_piece.size[0]
+        self.cut_dim_y = robot.work_piece.size[1]
+        self.cut_dim_z = robot.work_piece.size[2]
 
         if self.use_bp:
             if isinstance(robot.work_piece.bp_data, NamedArray):
@@ -59,7 +60,6 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
 
     def _gmr_to_world(self, gmr_point):
         mat_pos = self.data.geom_xpos[self.mat_geom_id].copy()
-        surface_z = mat_pos[2]
 
         p_safe = np.zeros(3)
         p_safe[:min(len(gmr_point), 3)] = gmr_point[:min(len(gmr_point), 3)]
@@ -67,9 +67,9 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
         norm = (p_safe - self.gmr_min) / self.gmr_range
         norm = np.clip(norm, 0, 1)
 
-        world_x = mat_pos[0] + (norm[0] - 0.5) * self.cut_width_x
-        world_y = mat_pos[1] + (norm[1] - 0.5) * self.cut_width_y
-        world_z = surface_z   # desired Z is always at the surface
+        world_x = mat_pos[0] + (norm[0] - 0.5) * self.cut_dim_x
+        world_y = mat_pos[1] + (norm[1] - 0.5) * self.cut_dim_y
+        world_z = mat_pos[2] +  (norm[2] - 0.5) * self.cut_dim_z
 
         return np.array([world_x, world_y, world_z])
 
@@ -111,7 +111,6 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
 
             mujoco.mj_forward(self.model, self.data)
             current_pos = self.data.site_xpos[tcp_id].copy()
-            surface_z = self.data.geom_xpos[self.mat_geom_id][2]
 
             jac = np.zeros((3, self.model.nv))
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
@@ -119,9 +118,6 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
             site_rot = self.data.site_xmat[tcp_id].reshape(3, 3)
             f_raw_array = np.asarray(f_raw).flatten()
             f_ff_world = site_rot @ f_raw_array
-            # Scale feedforward: reduce Z component significantly
-            # f_ff_world[2] *= 0.1   # only 10% in Z
-            # f_ff_world[:2] *= 0.3  # keep 30% in XY (or as desired)
 
             v_tip = jac @ self.data.qvel
 
@@ -134,22 +130,8 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
             # variable gains scheduling
             kp, kd = self.get_variable_gains(error)
 
-            # Optional: boost Z gain if penetrating (as before)
-            penetration_depth = max(0.0, surface_z - current_pos[2])
-            if penetration_depth > 0.001:
-                kp[2] *= 5.0
-                kd[2] *= 3.0
-                # Re‑clamp to bounds (optional)
-                kp = np.clip(kp, paramVIC.VIC_KP_MIN, paramVIC.VIC_KP_MAX)
-                kd = np.clip(kd, 0.5*np.sqrt(paramVIC.VIC_KP_MIN), None)
-
             # Virtual force (now with vector gains)
             f_virtual = kp * error + paramVIC.VIC_KI * self.error_accumulated - kd * v_tip + f_ff_world
-
-            # Integral update (unchanged)
-            if penetration_depth < 0.005 and dist < 0.05:
-                self.error_accumulated += error * self.dt
-                self.error_accumulated = np.clip(self.error_accumulated, -0.05, 0.05)
 
             # Torque calculation
             jjt = jac @ jac.T
