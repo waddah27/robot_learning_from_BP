@@ -128,14 +128,15 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         return np.array([world_x, world_y, world_z])
 
     def _gmr_vel_to_world(self, gmr_vel, mat_vel, mat_pos=None):
-        scale_xy = np.array([self.cut_dim_x / self.gmr_range[0],
-                             self.cut_dim_y / self.gmr_range[1]])
-        v_world_xy = gmr_vel[:2] * scale_xy
+        v_scale = np.array([self.cut_dim_x / self.gmr_range[0],
+                             self.cut_dim_y / self.gmr_range[1],
+                             self.cut_dim_z / self.gmr_range[2]])
+        v_world = gmr_vel[:3] * v_scale
         if np.isscalar(mat_vel):
-            v_world_z = mat_vel
+            v_world_z = v_world[2] + mat_vel
         else:
-            v_world_z = mat_vel[2]
-        return np.array([v_world_xy[0], v_world_xy[1], v_world_z])
+            v_world_z = v_world[2] + mat_vel[2]
+        return np.array([v_world[0], v_world[1], v_world_z])
 
     def _check_force_scale(self):
         if hasattr(self, 'traj_force'):
