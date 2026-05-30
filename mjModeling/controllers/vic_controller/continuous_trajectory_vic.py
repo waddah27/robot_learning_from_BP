@@ -153,62 +153,103 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
     def get_variable_gains_optimizer(self, error, vel_error, desired_force, dt):
         """
         QP that minimises:
-            w_force * ||Kp·e_p - F_des||² + w_stiff * ||Kp||²
-        subject to: f_min <= Kp·e_p <= f_max
+            ½ ( ||K·error - F_des||²_Q  +  ||K - K_min||²_R )
+        subject to:
+            K_min <= K <= K_max
+            -F_max <= K·error <= F_max
         """
+        # If position error is negligible, return previous gains
         if np.linalg.norm(error) < 1e-6:
             kd = 2 * self.prev_xi * np.sqrt(np.maximum(self.prev_kd, 100))
             return self.prev_kd, kd
 
-        n_var = 3  # Kx, Ky, Kz
+        n_var = 3                     # [Kx, Ky, Kz]
         H = np.zeros((n_var, n_var))
         f = np.zeros(n_var)
 
-        # ----- Force tracking (soft) -----
-        w_force = 200.0   # reduced from 1000 to avoid overshoot (was causing 74N vs 57N)
+        # ----- Force‑tracking cost: ||K·error - F_des||²_Q -----
+        Q = np.diag([500.0, 500.0, 500.0])   # diagonal weighting matrix (tune)
         for i in range(3):
-            H[i, i] = 2.0 * w_force * (error[i]**2)
-            f[i] = -2.0 * w_force * error[i] * desired_force[i]
+            H[i, i] = 2.0 * Q[i, i] * (error[i]**2)
+            f[i]    = -2.0 * Q[i, i] * error[i] * desired_force[i]
 
-        # ----- Stiffness regularisation (keep gains low) -----
-        w_stiff = 0.1     # increased from 0.001 to penalise high stiffness more
+        # ----- Regularisation: ||K - K_min||²_R -----
+        R = np.diag([1.0, 1.0, 1.0])         # diagonal weighting matrix (tune)
         for i in range(3):
-            H[i, i] += 2.0 * w_stiff
+            H[i, i] += 2.0 * R[i, i]
+            f[i]    += -2.0 * R[i, i] * self.k_min[i]
 
-        # ----- Hard force constraints -----
+        # ----- Hard constraints: K_min <= K <= K_max -----
+        lb = self.k_min
+        ub = self.k_max
+
+        # ----- Hard constraints: -F_max <= K·error <= F_max -----
         G_list = []
         h_list = []
         for i in range(3):
             if abs(error[i]) > 1e-6:
-                G_up = np.zeros(3); G_up[i] = error[i]; G_list.append(G_up.reshape(1,-1)); h_list.append([self.f_max])
-                G_low = np.zeros(3); G_low[i] = -error[i]; G_list.append(G_low.reshape(1,-1)); h_list.append([-self.f_min])
+                # Upper bound: K_i * error[i] <= F_max
+                G_up = np.zeros(3)
+                G_up[i] = error[i]
+                G_list.append(G_up.reshape(1, -1))
+                h_list.append([self.f_max])
+
+                # Lower bound: -K_i * error[i] <= -F_min
+                G_low = np.zeros(3)
+                G_low[i] = -error[i]
+                G_list.append(G_low.reshape(1, -1))
+                h_list.append([-self.f_min])
             else:
-                G_up = np.zeros(3); G_up[i] = 1.0; G_list.append(G_up.reshape(1,-1)); h_list.append([self.k_max[i]])
-                G_low = np.zeros(3); G_low[i] = -1.0; G_list.append(G_low.reshape(1,-1)); h_list.append([-self.k_min[i]])
+                # When position error is zero, the force constraint is meaningless.
+                # Instead, bound the gain directly.
+                G_up = np.zeros(3)
+                G_up[i] = 1.0
+                G_list.append(G_up.reshape(1, -1))
+                h_list.append([self.k_max[i]])
 
-        G = np.vstack(G_list) if G_list else None
-        h = np.vstack(h_list).flatten() if h_list else None
-        lb = self.k_min
-        ub = self.k_max
+                G_low = np.zeros(3)
+                G_low[i] = -1.0
+                G_list.append(G_low.reshape(1, -1))
+                h_list.append([-self.k_min[i]])
 
+        G = np.vstack(G_list)
+        h = np.vstack(h_list).flatten()
+
+        # Solve QP
         try:
-            k_opt = solve_qp(P=H, q=f, G=G, h=h, lb=lb, ub=ub, solver='osqp', verbose=False)
+            k_opt = solve_qp(
+                P=H, q=f,
+                G=G, h=h,
+                lb=lb, ub=ub,
+                solver='osqp',
+                verbose=False
+            )
             if k_opt is not None and not np.any(np.isnan(k_opt)):
                 kp = k_opt[:3]
-                # Damping from stiffness (critical damping, M_eff=2.0)
-                M_eff = 2.0
+
+                # Compute damping from stiffness (critical damping)
+                M_eff = 2.0               # effective mass (tune)
                 zeta = 0.7
                 kd = 2.0 * zeta * np.sqrt(np.maximum(kp, 100) * M_eff)
-                # Smooth update
+
+                # Smooth update (optional)
                 alpha = 0.5
                 kp_smooth = alpha * kp + (1 - alpha) * self.prev_kd
-                kd_smooth = alpha * kd + (1 - alpha) * (2 * self.prev_xi * np.sqrt(np.maximum(self.prev_kd, 100)))
+                kd_smooth = alpha * kd + (1 - alpha) * (
+                            2 * self.prev_xi * np.sqrt(np.maximum(self.prev_kd, 100)))
                 self.prev_kd = kp_smooth
                 self.prev_xi = np.array([zeta, zeta, zeta])
+
+                # Log (optional)
+                F_est = kp_smooth * error
+                Logger.debug(f"QP: Kz={kp_smooth[2]:.0f}, "
+                            f"F_est_z={F_est[2]:.1f}N, F_des_z={desired_force[2]:.1f}N, "
+                            f"err={np.linalg.norm(desired_force - F_est):.1f}N")
                 return kp_smooth, kd_smooth
         except Exception as e:
             Logger.debug(f"QP failed: {e}")
 
+        # Fallback
         return self._analytical_fallback(error, vel_error, desired_force)
 
 
