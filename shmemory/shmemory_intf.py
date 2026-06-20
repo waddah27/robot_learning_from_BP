@@ -148,6 +148,16 @@ class SharedMemoryBuffer:
                 # Stack so that oldest is first: part2 (older) then part1 (newer)
                 return np.vstack((part2, part1))
 
+    def get_write_index(self):
+        """Total number of samples written so far (read live from the header)."""
+        return struct.unpack('<I', self.shm.buf[16:20])[0]
+
+    def reset(self):
+        """Restart recording at sample 0 (e.g. at the beginning of the cut, so
+        the monitor shows the cut rather than the long approach/IK phase)."""
+        self.write_index = 0
+        self.shm.buf[16:20] = struct.pack('<I', 0)
+
     def get_signal_names(self):
         return self.signal_names
 

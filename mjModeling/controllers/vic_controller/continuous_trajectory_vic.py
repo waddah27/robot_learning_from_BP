@@ -32,6 +32,12 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         self.D_max = np.array([self.Xi_scaler, self.Xi_scaler, self.Xi_scaler])
         self.f_min = -70
         self.f_max = 70
+        # Per-axis force-saturation bounds for the QP: the commanded impedance
+        # force K·error is constrained to ±f_bound per axis, so it never violates
+        # the demonstrated min/max force. Set from the demonstration in
+        # follow_trajectory (world frame); default to the legacy scalar bound.
+        self.f_bound = np.array([70.0, 70.0, 70.0])
+        self.f_motion_floor = 40.0   # min per-axis force authority for free motion
         self.epsilon = 0.675   # minimum tank energy
         self.Q = np.eye(3)     # force error weight
         self.R = np.eye(3) * 1e-9   # regularization weight
@@ -69,6 +75,25 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         self.traj_duration = 0.0
         self.traj_dt = 0.01
 
+        # State-driven phase estimation
+        self.k_phase = 0.3            # correction gain: 0 = pure clock, 1 = pure state
+        self.phase_search_window = 0.1  # max forward-look (fraction of total trajectory)
+        self._phase_points = None
+        self._traj_pos_world = None
+        self._traj_force_mag = None
+
+        # ----- Learned-variability gains (minimal-intervention) -----
+        # Per-phase, per-axis position stiffness K_pos(φ) and force-tracking
+        # weight q_force(φ) derived from demonstration precision.  When enabled,
+        # the QP blends force tracking and position stiffness by these learned
+        # weights instead of a fixed Q.  variance_mode lets the killer experiment
+        # use the true / inverted / shuffled precision structure.
+        self.use_learned_gains = True
+        self.variance_mode = "true"      # {"true","inverted","shuffled","off"}
+        self._lg_phase = None            # (N,)
+        self._lg_K_pos = None            # (N,3)
+        self._lg_q_force = None          # (N,3)
+
         # Debug
         self.last_print_time = 0
         self.print_interval = 0.2
@@ -76,6 +101,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         if self.use_bp:
             self._init_trajectory_interpolators()
             self._check_force_scale()
+            self._load_learned_gains()
 
     # ---------- Trajectory interpolation ----------
     def _init_trajectory_interpolators(self):
@@ -149,57 +175,154 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 Logger.debug(f"Auto-scaling forces by {self.force_scale:.3f}")
             else:
                 self.force_scale = 1.0
+            # Per-axis force-saturation bound = max |demonstrated force| per axis.
+            # The QP keeps the commanded force within these limits, so the applied
+            # force respects the demonstrated min/max in X, Y and Z.
+            scaled = self.traj_force * self.force_scale
+            self.f_bound = np.maximum(np.abs(scaled.min(axis=0)),
+                                      np.abs(scaled.max(axis=0)))
+            self.f_bound = np.maximum(self.f_bound, 5.0)   # numeric floor
+            Logger.debug(f"Per-axis force bounds (N): {np.round(self.f_bound, 1)}")
+
+    # ---------- Learned-variability gains ----------
+    _MAT_ALIAS = {"cork": "cork", "corck": "cork", "penoplex": "peno",
+                  "peno": "peno", "pvc": "pvc", "PVC": "pvc"}
+
+    def _load_learned_gains(self):
+        """Load precision-derived K_pos(φ), q_force(φ) for the current material."""
+        try:
+            from variability_control.variance_gains import load_profile
+            mat = self._MAT_ALIAS.get(getattr(self.traj_loader, "material_name", ""),
+                                      "cork")
+            prof = load_profile(mat)
+            self._lg_phase = prof["phase"]
+            self._lg_K_pos = prof["K_pos"]
+            self._lg_q_force = prof["q_force"]
+            Logger.debug(f"Loaded learned-variability gains for '{mat}' "
+                         f"(mean K_pos={self._lg_K_pos.mean():.0f} N/m, "
+                         f"mean q_force={self._lg_q_force.mean():.3f})")
+        except Exception as e:
+            self.use_learned_gains = False
+            Logger.warning(f"Learned gains unavailable ({e}); using fixed QP weights.")
+
+    def _learned_gains_at_phase(self, phase):
+        """Return (K_pos[3], q_force[3]) at the given phase under variance_mode."""
+        if self._lg_phase is None:
+            return None, None
+        K_pos = np.array([np.interp(phase, self._lg_phase, self._lg_K_pos[:, i])
+                          for i in range(3)])
+        q_force = np.array([np.interp(phase, self._lg_phase, self._lg_q_force[:, i])
+                            for i in range(3)])
+        if self.variance_mode == "inverted":
+            # swap the regulation roles: track force where we'd track position
+            q_force = 1.0 - q_force
+            K_pos = self.k_min + (self.k_max - self.k_min) * (1.0 - (
+                (K_pos - self.k_min) / (self.k_max - self.k_min)))
+        elif self.variance_mode == "shuffled":
+            rng = np.random.default_rng(int(phase * 1e6) % (2**32))
+            perm = rng.permutation(3)
+            q_force = q_force[perm]
+            K_pos = K_pos[perm]
+        return K_pos, q_force
+
+    # ---------- State-driven phase estimation ----------
+    def _estimate_phase(self, current_pos, current_force):
+        """
+        Find the phase value φ̂ ∈ [φ, φ+window] whose reference state best
+        matches the current robot state. Returns the nominal phase when the
+        cache is not ready (before the first follow_trajectory call).
+        """
+        if self._phase_points is None or self._traj_pos_world is None:
+            return self.phase
+
+        phi_hi = min(1.0, self.phase + self.phase_search_window)
+        mask = (self._phase_points >= self.phase) & (self._phase_points <= phi_hi)
+        if not np.any(mask):
+            return self.phase
+
+        pos_window = self._traj_pos_world[mask]
+        pos_errors = np.linalg.norm(pos_window - current_pos, axis=1)
+        pos_range = np.linalg.norm(self._traj_pos_world[-1] - self._traj_pos_world[0]) + 1e-6
+
+        if self.in_contact:
+            force_mag = np.linalg.norm(current_force)
+            force_errors = np.abs(self._traj_force_mag[mask] - force_mag)
+            force_range = np.max(self._traj_force_mag) + 1e-6
+            cost = 0.5 * pos_errors / pos_range + 0.5 * force_errors / force_range
+        else:
+            cost = pos_errors / pos_range
+
+        return self._phase_points[mask][np.argmin(cost)]
 
     # ---------- QP-BASED GAIN OPTIMIZATION ----------
-    def get_variable_gains_optimizer(self, error, vel_error, desired_force, dt):
+    def get_variable_gains_optimizer(self, error, vel_error, desired_force, dt,
+                                     phase=None):
         """
-        QP that minimises:
-            ½ ( ||K·error - F_des||²_Q  +  ||K - K_min||²_R )
+        QP that minimises a learned-variability blend:
+            ½ ( q_force(φ)·||K·error - F_des||²  +  (1-q_force(φ))·||K - K_pos(φ)||² )
         subject to:
             K_min <= K <= K_max
             -F_max <= K·error <= F_max
+
+        q_force(φ) and K_pos(φ) are the demonstration-precision weights
+        (minimal-intervention principle).  Where the human regulated FORCE
+        (q_force→1) the QP tracks force; where they regulated POSITION
+        (q_force→0) K is pulled to the precision-derived stiffness K_pos.
+        Falls back to fixed weights when learned gains are disabled.
         """
         # If position error is negligible, return previous gains
         if np.linalg.norm(error) < 1e-6:
             kd = 2 * self.prev_xi * np.sqrt(np.maximum(self.prev_kd, 100))
             return self.prev_kd, kd
 
+        # ----- per-axis learned weights (or fixed fallback) -----
+        if self.use_learned_gains and phase is not None:
+            K_pos, q_force = self._learned_gains_at_phase(phase)
+            # force-tracking weight scaled to QP magnitude; position pull = complement
+            Q_diag = 500.0 * q_force                       # force tracking weight
+            R_diag = 500.0 * (1.0 - q_force) + 1.0         # position-stiffness pull
+            K_target = K_pos
+        else:
+            Q_diag = np.array([500.0, 500.0, 500.0])
+            R_diag = np.array([1.0, 1.0, 1.0])
+            K_target = self.k_min
+
         n_var = 3                     # [Kx, Ky, Kz]
         H = np.zeros((n_var, n_var))
         f = np.zeros(n_var)
 
-        # ----- Force‑tracking cost: ||K·error - F_des||²_Q -----
-        Q = np.diag([500.0, 500.0, 500.0])   # diagonal weighting matrix (tune)
+        # ----- Force‑tracking cost: q_force·||K·error - F_des||² -----
         for i in range(3):
-            H[i, i] = 2.0 * Q[i, i] * (error[i]**2)
-            f[i]    = -2.0 * Q[i, i] * error[i] * desired_force[i]
+            H[i, i] = 2.0 * Q_diag[i] * (error[i]**2)
+            f[i]    = -2.0 * Q_diag[i] * error[i] * desired_force[i]
 
-        # ----- Regularisation: ||K - K_min||²_R -----
-        R = np.diag([1.0, 1.0, 1.0])         # diagonal weighting matrix (tune)
+        # ----- Position-stiffness pull: (1-q_force)·||K - K_pos(φ)||² -----
         for i in range(3):
-            H[i, i] += 2.0 * R[i, i]
-            f[i]    += -2.0 * R[i, i] * self.k_min[i]
+            H[i, i] += 2.0 * R_diag[i]
+            f[i]    += -2.0 * R_diag[i] * K_target[i]
 
         # ----- Hard constraints: K_min <= K <= K_max -----
         lb = self.k_min
         ub = self.k_max
 
-        # ----- Hard constraints: -F_max <= K·error <= F_max -----
+        # ----- Hard constraints: |K_i · error_i| <= f_bound_i (per axis) -----
+        # f_bound_i is the demonstrated max |force| in axis i, so the commanded
+        # impedance force never violates the demonstrated min/max force.
         G_list = []
         h_list = []
         for i in range(3):
             if abs(error[i]) > 1e-6:
-                # Upper bound: K_i * error[i] <= F_max
+                # Upper bound: K_i * error[i] <= f_bound[i]
                 G_up = np.zeros(3)
                 G_up[i] = error[i]
                 G_list.append(G_up.reshape(1, -1))
-                h_list.append([self.f_max])
+                h_list.append([self.f_bound[i]])
 
-                # Lower bound: -K_i * error[i] <= -F_min
+                # Lower bound: -K_i * error[i] <= f_bound[i]
                 G_low = np.zeros(3)
                 G_low[i] = -error[i]
                 G_list.append(G_low.reshape(1, -1))
-                h_list.append([-self.f_min])
+                h_list.append([self.f_bound[i]])
             else:
                 # When position error is zero, the force constraint is meaningless.
                 # Instead, bound the gain directly.
@@ -223,7 +346,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 G=G, h=h,
                 lb=lb, ub=ub,
                 solver='osqp',
-                verbose=False
+                verbose=False, polish=False
             )
             if k_opt is not None and not np.any(np.isnan(k_opt)):
                 kp = k_opt[:3]
@@ -277,7 +400,8 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         return kp_new, kd_new
 
     # ---------- Main gain dispatcher ----------
-    def get_variable_gains(self, error, vel_error=None, desired_force=None, dt=None):
+    def get_variable_gains(self, error, vel_error=None, desired_force=None, dt=None,
+                           phase=None):
         """
         Main gain function. If force data available, use QP optimizer; else heuristic.
         """
@@ -285,7 +409,8 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             return super().get_variable_gains(error)
         if dt is None:
             dt = self.dt
-        return self.get_variable_gains_optimizer(error, vel_error, desired_force, dt)
+        return self.get_variable_gains_optimizer(error, vel_error, desired_force, dt,
+                                                 phase=phase)
 
     # ---------- Energy modulation ----------
     def update_tank_energy(self, kp, kd, error, vel_error, dt):
@@ -303,9 +428,27 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         q_home = np.array([0.0, -0.7, 0.0, 1.5, 0.0, 0.7, 3.14159])
         self.error_accumulated = np.zeros(3)
 
+        # Per-axis force bound in the WORLD frame (the QP frame): transform the
+        # demonstrated force envelope through the current cutting-pose orientation
+        # so the bound on each world axis matches the desired world force there.
+        mujoco.mj_forward(self.model, self.data)
+        site_rot0 = self.data.site_xmat[tcp_id].reshape(3, 3)
+        fw = (site_rot0 @ self.traj_force.T).T            # demo force in world
+        # Bound = max demonstrated |force| per world axis, floored so the arm
+        # still has the authority to MOVE itself (the demonstrated force is the
+        # small interaction force; free-motion needs more than that).
+        self.f_bound = np.maximum(np.abs(fw).max(axis=0), self.f_motion_floor)
+        Logger.debug(f"World-frame per-axis force bounds (N): {np.round(self.f_bound, 1)}")
+
         self.phase = 0.0
         self.mat_time = 0.0
         phase_inc = phase_speed * self.dt / self.traj_duration
+
+        # Precompute world-frame reference trajectory for state-driven phase estimation
+        mujoco.mj_forward(self.model, self.data)
+        self._phase_points = np.linspace(0, 1, len(self.traj_pos))
+        self._traj_pos_world = np.array([self._gmr_to_world(p) for p in self.traj_pos])
+        self._traj_force_mag = np.linalg.norm(self.traj_force, axis=1)
 
         prev_mat_height = None
         actual_duration = self.traj_duration / phase_speed
@@ -313,15 +456,44 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
         self.filtered_force = np.zeros(3)
         self.force_integral = np.zeros(3)
+        self.adm_s          = 0.0
+        self.adm_sdot       = 0.0
+        self.fz_integral    = 0.0
 
         force_log = []
         pos_log = []
+
+        # Full-resolution per-step recorder (for the experiment harness/metrics)
+        # pos_des_nom = nominal GMR reference (same across conditions -> fair
+        # position-tracking comparison); pos_des = admittance-corrected reference.
+        self.episode_log = {k: [] for k in
+                            ["phase", "pos_des_nom", "pos_des", "pos_act",
+                             "f_des", "f_act", "f_raw", "kp", "tank", "tau"]}
+
+        # Restart the live monitor's recording at sample 0 so it shows the CUT,
+        # not the long approach/IK phase that precedes it.
+        buf = getattr(self.robot, "buffer", None)
+        if buf is not None and hasattr(buf, "reset"):
+            buf.reset()
 
         last_log_time = 0
 
         for step in range(max_steps):
             if self.phase >= 1.0:
                 break
+
+            # Viewer control: pause/resume and quit, polled from the keyboard
+            vc = getattr(self.robot, "viewer_control", None)
+            if vc is not None:
+                if vc.quit:
+                    break
+                while vc.paused and viewer is not None and viewer.is_running():
+                    viewer.sync()
+                    time.sleep(0.02)
+                    if vc.quit:
+                        break
+                if vc.quit:
+                    break
 
             # Update material position (if moving)
             if self.mat_joint_id is not None and self.wp_mobile:
@@ -360,30 +532,29 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             site_rot = self.data.site_xmat[tcp_id].reshape(3, 3)
             f_des_world = site_rot @ force_des_gmr
 
-            # Errors
-            error = pos_des - current_pos
-            vel_error = vel_des - v_cur
-
             self.in_contact = np.linalg.norm(self.filtered_force) > self.contact_threshold
 
-            # Get optimized gains using QP
+            # Position tracking error (pure VIC — no force loop)
+            error     = pos_des - current_pos
+            vel_error = vel_des - v_cur
+
+            # Variable-impedance gains from the learned-variability QP. The QP
+            # bounds the commanded force K·error to the per-axis desired force
+            # limits, so the applied force never violates the demonstrated min/max.
             kp, kd = self.get_variable_gains(
                 error=error,
                 vel_error=vel_error,
                 desired_force=f_des_world,
-                dt=self.dt * phase_speed
+                dt=self.dt * phase_speed,
+                phase=self.phase
             )
 
-            # Optional force integral term
-            if self.in_contact:
-                force_error_world = f_des_world - self.filtered_force
-                self.force_integral += force_error_world * self.dt * phase_speed * self.kf_i
-                self.force_integral = np.clip(self.force_integral, -self.force_integral_max, self.force_integral_max)
-            else:
-                self.force_integral = np.zeros(3)
-
-            # Control law
-            f_virtual = (kp * error) + paramVIC.VIC_KI * self.error_accumulated + kd * vel_error + self.force_integral
+            # VIC control law (impedance only)
+            f_virtual = (kp * error) + paramVIC.VIC_KI * self.error_accumulated + kd * vel_error
+            # Force saturation: strictly cap the commanded force to the per-axis
+            # demonstrated bound so it never violates the desired min/max force
+            # (the QP enforces this softly; this makes it a hard guarantee).
+            f_virtual = np.clip(f_virtual, -self.f_bound, self.f_bound)
 
             # Torque calculation
             jjt = jac @ jac.T
@@ -405,13 +576,30 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             self.data.ctrl[:self.model.nu] = np.clip(tau_safe[:self.model.nu], -300, 300)
             mujoco.mj_step(self.model, self.data)
 
-            # Advance time
+            # Advance time – state-driven phase correction
             self.mat_time += phase_speed * self.dt
-            self.phase += phase_inc
             self.sim_time += self.dt
+            phi_hat = self._estimate_phase(current_pos, self.filtered_force)
+            phase_correction = np.clip(
+                self.k_phase * (phi_hat - self.phase),
+                -phase_inc, 2.0 * phase_inc
+            )
+            self.phase = np.clip(self.phase + phase_inc + phase_correction, 0.0, 1.0)
 
             # Update tank energy
             self.update_tank_energy(kp, kd, error, vel_error, self.dt * phase_speed)
+
+            # Full-resolution episode record for metrics
+            self.episode_log["phase"].append(self.phase)
+            self.episode_log["pos_des_nom"].append(pos_des.copy())
+            self.episode_log["pos_des"].append(pos_des.copy())
+            self.episode_log["pos_act"].append(current_pos.copy())
+            self.episode_log["f_des"].append(f_des_world.copy())
+            self.episode_log["f_act"].append(self.filtered_force.copy())
+            self.episode_log["f_raw"].append(np.asarray(current_force_raw).copy())
+            self.episode_log["kp"].append(np.asarray(kp).copy())
+            self.episode_log["tank"].append(float(self.E_t))
+            self.episode_log["tau"].append(float(np.linalg.norm(tau_safe[:self.model.nu])))
 
             self.record_contact_forces(Pd=pos_des, P=current_pos, Fd=f_des_world, K=kp)
 
@@ -423,10 +611,12 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 pos_act_mag = np.linalg.norm(current_pos)
                 force_log.append([self.phase, force_des_mag, force_act_mag])
                 pos_log.append([self.phase, pos_des_mag, pos_act_mag])
-                print(f"Phase {self.phase:.2f}: Desired F: {force_des_mag:.1f}N, "
-                      f"Actual F: {force_act_mag:.1f}N, "
-                      f"Kp_z: {kp[2]:.1f}, Kd_z: {kd[2]:.3f}, "
-                      f"{'CONTACT' if self.in_contact else 'NO_CONTACT'}")
+                force_err_mag = force_des_mag - force_act_mag
+                Logger.debug(f"Phase {self.phase:.3f}(est:{phi_hat:.3f}): "
+                      f"F_des={force_des_mag:.1f}N  F_act={force_act_mag:.1f}N  "
+                      f"F_err={force_err_mag:.1f}N  pen={self.adm_s*1e3:.1f}mm  "
+                      f"Kp_z={kp[2]:.0f}  "
+                      f"{'CONTACT' if self.in_contact else 'free'}")
                 last_log_time = self.sim_time
 
             if viewer and step % 4 == 0:

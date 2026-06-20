@@ -138,7 +138,7 @@ class iiwa14(Robot):
             name=None,                       # anonymous
             create=True,
             num_signals=15,
-            buffer_size=5000,                 # use your config value
+            buffer_size=30000,                # large enough to hold a full run without wrapping
             signal_names=["Xd", "Yd", "Zd", "X", "Y", "Z", "Fdx (N)", "Fdy (N)", "Fdz (N)", "Fx (N)", "Fy (N)", "Fz (N)", "Kdx", "Kdy", "Kdz"]
         )
         # self.robot_state["shared_memory"] = self.buffer.data

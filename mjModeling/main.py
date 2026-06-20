@@ -29,8 +29,11 @@ print(f"Gravity = {robot.model.opt.gravity}")
 visualizer = Visualize(robot)
 
 if __name__ == '__main__':
-    #  Start Oscillator Process
-    drawer_proc = mp.Process(target=run_drawer, args=(robot.shm.name,))
+    #  Start Oscillator Process.
+    #  daemon=True ⇒ it is killed automatically if the main process dies for any
+    #  reason; the finally-block below terminates it *immediately* on a clean
+    #  MuJoCo-window close. Either path closes the monitor with the simulator.
+    drawer_proc = mp.Process(target=run_drawer, args=(robot.shm.name,), daemon=True)
     drawer_proc.start()
     controllers = {
         "vic": vic,
@@ -44,4 +47,10 @@ if __name__ == '__main__':
     current_experiment = experiments.get("straight_cut")
 
     current_experiment.controller = vic
-    visualizer.run(callback=lambda x: current_experiment.execute(x))
+    try:
+        visualizer.run(callback=lambda x: current_experiment.execute(x))
+    finally:
+        # Close the oscilloscope as soon as the MuJoCo viewer is closed.
+        if drawer_proc.is_alive():
+            drawer_proc.terminate()
+            drawer_proc.join(timeout=2)

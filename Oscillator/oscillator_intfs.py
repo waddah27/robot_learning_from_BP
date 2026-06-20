@@ -1,105 +1,216 @@
+"""
+Real-time controller monitor (refactored).
+
+Replaces the single-axis "everything in Newtons" oscilloscope with a professional
+multi-panel monitor that groups signals by physical quantity, each with its own
+correctly-labelled axis:
+
+    Panel 1  Position (m)      desired (dashed) vs actual (solid), per axis X/Y/Z
+    Panel 2  Force (N)         desired (dashed) vs actual (solid), per axis
+    Panel 3  Stiffness (N/m)   commanded K per axis
+    Panel 4  Tracking error (mm)  |desired - actual| position error per axis
+
+Axes are colour-coded (X=red, Y=green, Z=blue) and share a common time axis.
+Signal grouping is derived from the buffer's signal names, so it adapts if the
+layout changes.
+"""
 import sys
+import numpy as np
 import pyqtgraph as pg
 from PyQt6 import QtWidgets, QtCore
 from shmemory import SharedMemoryBuffer
 
+# axis -> colour (R/G/B for X/Y/Z)
+_AXIS_COLOUR = {"x": (200, 40, 40), "y": (40, 160, 60), "z": (40, 90, 210), "?": (120, 120, 120)}
+
+
+def classify(name):
+    """Map a signal name to (group, axis, is_desired)."""
+    n = name.replace("(N)", "").strip()
+    low = n.lower()
+    axis = "x" if "x" in low else ("y" if "y" in low else ("z" if "z" in low else "?"))
+    if n.startswith("K"):
+        return "stiffness", axis, False
+    if "F" in n:
+        return "force", axis, n.startswith("Fd")
+    return "position", axis, n.endswith("d")
+
+
 class RealTimeOscillator(QtWidgets.QWidget):
     def __init__(self, shm_name):
         super().__init__()
-        self.setWindowTitle("Contact Force Monitor")
-        self.layout = QtWidgets.QVBoxLayout(self)
+        self.setWindowTitle("Learnt-Skill Controller Monitor")
+        self.resize(1100, 900)
 
-        # Attach to shared memory buffer (reader side)
         self.buffer = SharedMemoryBuffer(name=shm_name, create=False)
         self.signal_names = self.buffer.get_signal_names()
         self.num_signals = len(self.signal_names)
+        self.meta = [classify(n) for n in self.signal_names]
 
-        # --- Buttons ---
-        button_layout = QtWidgets.QHBoxLayout()
+        pg.setConfigOptions(antialias=True, background="w", foreground="k")
+        root = QtWidgets.QVBoxLayout(self)
+
+        # --- controls ---
+        bar = QtWidgets.QHBoxLayout()
         self.pause_button = QtWidgets.QPushButton("Pause")
         self.pause_button.clicked.connect(self.toggle_pause)
-        button_layout.addWidget(self.pause_button)
+        bar.addWidget(self.pause_button)
+        self.shot_button = QtWidgets.QPushButton("Take Screenshot")
+        self.shot_button.clicked.connect(self.capture_screenshot)
+        bar.addWidget(self.shot_button)
+        # per-axis visibility toggles (X/Y/Z) instead of 15 checkboxes
+        self.axis_visible = {"x": True, "y": True, "z": True}
+        for ax in ("x", "y", "z"):
+            cb = QtWidgets.QCheckBox(f"{ax.upper()} axis")
+            cb.setChecked(True)
+            cb.stateChanged.connect(lambda s, a=ax: self._toggle_axis(a, s))
+            c = _AXIS_COLOUR[ax]
+            cb.setStyleSheet(f"color: rgb{c}; font: bold 10pt;")
+            bar.addWidget(cb)
+        bar.addStretch(1)
+        root.addLayout(bar)
 
-        self.screenshot_button = QtWidgets.QPushButton("Take Screenshot")
-        self.screenshot_button.clicked.connect(self.capture_screenshot)
-        button_layout.addWidget(self.screenshot_button)
-        self.layout.addLayout(button_layout)
+        # --- 4 stacked, x-linked plots ---
+        self.glw = pg.GraphicsLayoutWidget()
+        root.addWidget(self.glw)
+        specs = [("position", "Position", "m"),
+                 ("force", "Contact force", "N"),
+                 ("stiffness", "Stiffness", "N/m"),
+                 ("error", "Position tracking error", "mm")]
+        self.plots, self.curves, self.err_curves = {}, {}, {}
+        prev = None
+        for r, (key, title, unit) in enumerate(specs):
+            p = self.glw.addPlot(row=r, col=0, title=title)
+            p.setLabel("left", title, units=unit)
+            p.showGrid(x=True, y=True, alpha=0.25)
+            p.addLegend(offset=(10, 5), labelTextSize="8pt")
+            if prev is not None:
+                p.setXLink(prev)
+            prev = p
+            self.plots[key] = p
+        self.plots["error"].setLabel("bottom", "Sample")
 
-        # --- Signal selection checkboxes ---
-        checkbox_layout = QtWidgets.QHBoxLayout()
-        self.checkboxes = []
+        # build curves for the three native groups
         for i, name in enumerate(self.signal_names):
-            cb = QtWidgets.QCheckBox(name)
-            cb.setChecked(True)   # all signals visible initially
-            # Use lambda with default argument to capture current index
-            cb.stateChanged.connect(lambda state, idx=i: self.toggle_signal_visibility(idx, state))
-            checkbox_layout.addWidget(cb)
-            self.checkboxes.append(cb)
-        self.layout.addLayout(checkbox_layout)
+            group, axis, desired = self.meta[i]
+            p = self.plots[group]
+            col = _AXIS_COLOUR[axis]
+            pen = pg.mkPen(color=col, width=1.6,
+                           style=QtCore.Qt.PenStyle.DashLine if desired else QtCore.Qt.PenStyle.SolidLine)
+            self.curves[i] = p.plot(pen=pen, name=name)
 
-        # Plot widget
-        self.plot_widget = pg.PlotWidget(title="Scalpel Contact Forces")
-        self.plot_widget.setLabel('left', 'Force', units='N')
-        self.plot_widget.setLabel('bottom', 'Sample')
-        self.plot_widget.addLegend()
-        self.layout.addWidget(self.plot_widget)
+        # error curves: one per axis (computed = desired - actual position)
+        self._pos_idx = self._pair_position_indices()
+        for axis, (id_des, id_act) in self._pos_idx.items():
+            pen = pg.mkPen(color=_AXIS_COLOUR[axis], width=1.8)
+            self.err_curves[axis] = self.plots["error"].plot(pen=pen, name=f"|e_{axis}|")
 
-        # Info panel for current values
-        info_panel = QtWidgets.QWidget()
-        info_layout = QtWidgets.QGridLayout(info_panel)
-        self.value_labels = []
-        self.layout.addWidget(info_panel)
+        for p in self.plots.values():
+            p.setDownsampling(auto=True, mode="peak")
+            p.setClipToView(True)
 
-        # Create curves and value labels
-        self.curves = []
-        colours = [(255,0,0), (0,255,0), (0,0,255)] if self.num_signals == 3 else None
-        for i, name in enumerate(self.signal_names):
-            pen = colours[i] if colours else pg.intColor(i)
-            curve = self.plot_widget.plot(pen=pen, name=name)
-            self.curves.append(curve)
+        # --- hover readout: crosshair + value label on each panel ---
+        self._units = {"position": "mm", "force": "N", "stiffness": "kN/m", "error": "mm"}
+        self._vlines, self._readouts, self._proxies = {}, {}, {}
+        for key, p in self.plots.items():
+            vline = pg.InfiniteLine(angle=90, movable=False,
+                                    pen=pg.mkPen((100, 100, 100), width=0.8,
+                                                 style=QtCore.Qt.PenStyle.DashLine))
+            p.addItem(vline, ignoreBounds=True)
+            self._vlines[key] = vline
+            txt = pg.TextItem(anchor=(0, 1), color=(20, 20, 20),
+                              fill=pg.mkBrush(255, 255, 255, 200))
+            p.addItem(txt, ignoreBounds=True)
+            self._readouts[key] = txt
+            self._proxies[key] = pg.SignalProxy(
+                p.scene().sigMouseMoved, rateLimit=60,
+                slot=lambda ev, k=key: self._on_mouse_move(ev, k))
 
-            label = QtWidgets.QLabel(f"{name}: 0.000 N")
-            label.setStyleSheet("font: bold 10pt;")
-            info_layout.addWidget(label, i, 0)
-            self.value_labels.append(label)
+        # display limits so the GUI never chokes regardless of buffer fill
+        self._max_read = 8000    # most-recent samples read per frame
+        self._max_draw = 4000    # points actually rendered per curve (decimated)
 
-        # Timer for updates
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_plot)
-        self.timer.start(16)          # ~60 fps
-
+        self.timer.start(33)          # ~30 fps
         self.paused = False
 
-    def toggle_signal_visibility(self, index, state):
-        """Show/hide a curve based on checkbox state."""
-        visible = (state == QtCore.Qt.CheckState.Checked)
-        self.curves[index].setVisible(visible)
+    def _pair_position_indices(self):
+        """Find (desired_idx, actual_idx) of position signals per axis."""
+        out = {}
+        for axis in ("x", "y", "z"):
+            des = act = None
+            for i, (g, a, d) in enumerate(self.meta):
+                if g == "position" and a == axis:
+                    if d:
+                        des = i
+                    else:
+                        act = i
+            if des is not None and act is not None:
+                out[axis] = (des, act)
+        return out
+
+    def _toggle_axis(self, axis, state):
+        visible = (state == QtCore.Qt.CheckState.Checked.value) or bool(state)
+        self.axis_visible[axis] = visible
+        for i, (g, a, d) in enumerate(self.meta):
+            if a == axis:
+                self.curves[i].setVisible(visible)
+        if axis in self.err_curves:
+            self.err_curves[axis].setVisible(visible)
 
     def toggle_pause(self):
-        """Pause or resume the live updates."""
         self.paused = not self.paused
         self.pause_button.setText("Resume" if self.paused else "Pause")
 
     def capture_screenshot(self):
-        """Save the current plot widget as a PNG image."""
-        timestamp = QtCore.QDateTime.currentDateTime().toString("yyyyMMdd_hhmmss")
-        filename = f"screenshot_{timestamp}.png"
-        pixmap = self.plot_widget.grab()
-        pixmap.save(filename)
-        print(f"Screenshot saved as {filename}")
+        ts = QtCore.QDateTime.currentDateTime().toString("yyyyMMdd_hhmmss")
+        fn = f"monitor_{ts}.png"
+        self.glw.grab().save(fn)
+        print(f"Screenshot saved as {fn}")
 
     def update_plot(self):
-        """Update plot and values from shared memory, unless paused."""
         if self.paused:
             return
+        # Guard the whole update: a single bad frame must NEVER kill the QTimer
+        # (an unhandled exception in this slot would stop all future plotting).
+        try:
+            wcount = self.buffer.get_write_index()        # total samples written
+            if wcount <= 0:
+                return
+            # Cap how many recent samples we READ each frame so the GUI can never
+            # choke (e.g. during the long approach phase) — and free of zero-pad.
+            n_read = min(wcount, self.buffer.buffer_size, self._max_read)
+            data = self.buffer.read_latest(n_points=n_read)
+            if data is None or len(data) == 0:
+                return
+            x = np.arange(wcount - len(data), wcount)     # real sample numbers
+            # Decimate for rendering speed (keeps ~_max_draw points on screen).
+            if len(x) > self._max_draw:
+                s = len(x) // self._max_draw + 1
+                data = data[::s]
+                x = x[::s]
+            for i, curve in self.curves.items():
+                curve.setData(x, data[:, i])
+            for axis, (id_des, id_act) in self._pos_idx.items():
+                e = np.abs(data[:, id_des] - data[:, id_act]) * 1e3
+                self.err_curves[axis].setData(x, e)
+        except Exception as ex:                            # keep the timer alive
+            print(f"[monitor] update skipped this frame: {ex}")
 
-        data = self.buffer.read_latest()   # returns chronological order
-        for i, curve in enumerate(self.curves):
-            curve.setData(data[:, i])
-        if data.shape[0] > 0:
-            latest = data[-1, :]
-            for i, label in enumerate(self.value_labels):
-                label.setText(f"{self.signal_names[i]}: {latest[i]:.3f} N")
+    def _on_mouse_move(self, event, key):
+        """Show sample index + value at the cursor on the hovered panel."""
+        pos = event[0]
+        p = self.plots[key]
+        if not p.sceneBoundingRect().contains(pos):
+            return
+        mp = p.getViewBox().mapSceneToView(pos)
+        x, y = mp.x(), mp.y()
+        self._vlines[key].setPos(x)
+        unit = self._units.get(key, "")
+        self._readouts[key].setText(f"sample={x:.0f}\n{y:.2f} {unit}")
+        # place the label near the cursor, just inside the view
+        self._readouts[key].setPos(x, y)
 
     def closeEvent(self, event):
         self.buffer.close()
