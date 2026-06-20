@@ -1,4 +1,5 @@
 from mjModeling.conf.configs import ImpedanceOptimizer, paramVIC
+import time
 import numpy as np
 import mujoco
 from mjModeling.cutting_materials.utils import wp_sine_motion
