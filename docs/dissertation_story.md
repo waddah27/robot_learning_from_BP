@@ -5,13 +5,13 @@ from the 12-seed experiment; preliminary values are marked *(prelim)*.
 
 ---
 
-## 1. The problem you set out to solve
+## 1. The problem statement to solve
 Teach a robot a delicate, high-precision human skill — cutting (toward scalpel /
 surgical tasks) — by learning from human demonstrations ("behaviour priors"),
 rather than hand-programming it. The hard part is *contact*: the blade must
 follow a path **and** interact with the material correctly.
 
-## 2. The key insight (what your data actually showed)
+## 2. The key insight (what data actually showed)
 When the demonstrations are examined carefully, one fact dominates:
 
 > **Humans were highly consistent in the cutting *path* (position), but highly

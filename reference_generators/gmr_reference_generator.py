@@ -28,7 +28,7 @@ class GMRReferenceGenerator:
         if self.time_elapsed > self.trajectory[-1, 0]:
             raise StopIteration
 
-        # Predict using your interpolation logic
+        # Predict using interpolation logic
         refs = self.predict(self.time_elapsed)
         self.time_elapsed += self.dt
         return refs

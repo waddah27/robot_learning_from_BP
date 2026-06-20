@@ -9,26 +9,26 @@ class PlotterOfflineSameRange:
         self.title = title
         self.fig = None
         self.axs = None
-        
+
         # Store the configuration
         self.positions = [r'$\tilde{X}$', r'$\tilde{Y}$', r'$\tilde{Z}$']
         self.forces = [r'$F_x$', r'$F_y$', r'$F_z$']
         self.stiffness = [r'$k^d_x$', r'$k^d_y$', r'$k^d_z$']
         self.damping = [r'$\xi^{d}_{x}$', r'$\xi^{d}_{y}$', r'$\xi^{d}_{z}$']
-        
+
         # Data lists
         self.pos_list = []
         self.fd_list = []
         self.fext_list = []
         self.k_list = []
         self.d_list = []
-    
+
     def _create_figure(self):
         """Create figure only when needed"""
         if self.fig is None:
             self.fig, self.axs = plt.subplots(4, 3, figsize=(30, 20))
             self.fig.suptitle(self.title, fontsize=14)
-            
+
             # Configure axes
             for ax, pos in zip(self.axs[0], self.positions):
                 ax.set_title(f'Position[m] - {pos}')
@@ -58,38 +58,36 @@ class PlotterOfflineSameRange:
                 ax.set_ylim(0, 1.1)
 
             self.fig.tight_layout()
-            self.fig.subplots_adjust(bottom=0.1, top=0.93, left=0.05, right=0.95, 
+            self.fig.subplots_adjust(bottom=0.1, top=0.93, left=0.05, right=0.95,
                                    hspace=0.635, wspace=0.223)
-    
+
     def collect_data(self, x, Fd, Fext, k, d):
-        # Keep your exact same method
         self.pos_list.append(x)
         self.fd_list.append(Fd)
         self.fext_list.append(Fext)
         self.k_list.append(k)
         self.d_list.append(d)
-    
+
     def plot_data(self):
         # Create figure if it doesn't exist
         self._create_figure()
-        
+
         # Clear previous plots
         for ax in self.axs.flatten():
             ax.clear()
-        
+
         # Re-apply formatting
         self._reapply_formatting()
-        
-        # YOUR EXACT SAME plot_data() CODE HERE
+
         # Plot positions
         if len(self.pos_list) > 0:
-            for ax, data, label, color in zip(self.axs.flatten()[:3], 
-                                             np.array(self.pos_list).T, 
+            for ax, data, label, color in zip(self.axs.flatten()[:3],
+                                             np.array(self.pos_list).T,
                                              self.positions, ['r', 'g', 'b']):
                 ax.plot(data, label=f'Position - {label}', color=color)
                 ax.legend()
                 ax.set_ylim(-1, 1)
-        
+
         # Plot forces
         if len(self.fd_list) > 0 and len(self.fext_list) > 0:
             for i, force in enumerate(self.forces):
@@ -101,36 +99,36 @@ class PlotterOfflineSameRange:
                 var_error = np.var(errors)
 
                 ax.plot(fd_series, label='Desired Force [N]', color='b')
-                ax.plot(fext_series, label='Actual Force [N]', color='r', 
+                ax.plot(fext_series, label='Actual Force [N]', color='r',
                        linestyle=':', linewidth=3)
-                ax.fill_between(range(len(fd_series)), fd_series, fext_series, 
-                               where=(fd_series >= fext_series), 
+                ax.fill_between(range(len(fd_series)), fd_series, fext_series,
+                               where=(fd_series >= fext_series),
                                color='lightgray', alpha=0.5)
                 ax.fill_between(range(len(fd_series)), fd_series, fext_series,
-                               where=(fd_series < fext_series), 
+                               where=(fd_series < fext_series),
                                color='red', alpha=0.5)
 
                 ax.set_title(f'Force - {force} [N] ($\\epsilon_{{\mu}}$: {mean_error:.2f}, $\\epsilon_{{\sigma}}^2$: {var_error:.2f})')
                 ax.legend()
                 ax.set_ylim(0, 100)
-        
+
         # Plot stiffness
         if len(self.k_list) > 0:
-            for ax, data, label in zip(self.axs.flatten()[6:9], 
-                                      np.array(self.k_list).T, 
+            for ax, data, label in zip(self.axs.flatten()[6:9],
+                                      np.array(self.k_list).T,
                                       self.stiffness):
                 ax.plot(data, label=f'Gain - {label}', color='k')
                 ax.legend()
-        
+
         # Plot damping
         if len(self.d_list) > 0:
-            for ax, data, label in zip(self.axs.flatten()[9:], 
-                                      np.array(self.d_list).T, 
+            for ax, data, label in zip(self.axs.flatten()[9:],
+                                      np.array(self.d_list).T,
                                       self.damping):
                 ax.plot(data, label=f'Gain - {label}', color='k')
                 ax.legend()
                 ax.set_ylim(0, 1.1)
-    
+
     def _reapply_formatting(self):
         """Reapply axis formatting after clearing"""
         for ax, pos in zip(self.axs[0], self.positions):
@@ -156,16 +154,16 @@ class PlotterOfflineSameRange:
             ax.set_xlabel('Step')
             ax.set_ylabel(damp)
             ax.grid(True)
-        
+
         self.fig.tight_layout()
         self.fig.subplots_adjust(bottom=0.1, top=0.93, left=0.05, right=0.95,
                                hspace=0.635, wspace=0.223)
-    
+
     def show(self):
         """Show the plot"""
         self.plot_data()
         plt.show()
-    
+
     def save(self, filename):
         """Save the plot to file"""
         pass

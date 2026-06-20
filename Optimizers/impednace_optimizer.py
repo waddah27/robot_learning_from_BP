@@ -20,7 +20,7 @@ class ImpedanceProfileOptimizer:
 
     def setup_constraints(self):
         """Define physical and stability limits"""
-        self.K_min = np.array([50, 50, 50])      # N/m (softer than your current)
+        self.K_min = np.array([50, 50, 50])      # N/m
         self.K_max = np.array([2000, 2000, 2000]) # N/m
         self.D_min = np.array([5, 5, 5])         # Ns/m
         self.D_max = np.array([100, 100, 100])   # Ns/m
