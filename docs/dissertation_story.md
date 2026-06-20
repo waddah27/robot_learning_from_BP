@@ -1,7 +1,6 @@
 # The Dissertation Story (plain-language narrative)
 
-A readable account of the contribution, the evidence, and the honest limits.
-Written for you to react to and take to your advisor. Final numbers are filled
+A readable account of the contribution, the evidence, and the honest limits. Final numbers are filled
 from the 12-seed experiment; preliminary values are marked *(prelim)*.
 
 ---
