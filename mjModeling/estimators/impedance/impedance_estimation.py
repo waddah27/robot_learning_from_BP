@@ -9,6 +9,12 @@ class ImpedanceEstimator(Estimator):
 
     def get_total_cutting_force(self):
         """Standardizes force estimation by combining contact and constraints."""
+        # If the analytical cutting-force model is active, it IS the cutting force
+        # (the box-on-box geometric contact has been disabled).
+        f_cut = getattr(self.robot, "_applied_cut_force", None)
+        if f_cut is not None:
+            return np.asarray(f_cut, dtype=float).copy()
+
         total_force = np.zeros(3)
         scalpel_geom_id = self.robot.model.geom(SCALPEL_GEOM).id
 
@@ -20,16 +26,13 @@ class ImpedanceEstimator(Estimator):
                 mujoco.mj_contactForce(self.robot.model, self.robot.data, i, force)
                 total_force += force[:3]
 
-        # 2. Constraint Forces (Essential for sliding/penetration)
-        # If geometric contacts are zero, read the solver's internal constraint forces
-        if np.linalg.norm(total_force) < 0.01:
-            jac = np.zeros((3, self.robot.model.nv))
-            tcp_id = self.robot.model.site("scalpel_tip").id
-            mujoco.mj_jacSite(self.robot.model, self.robot.data, jac, None, tcp_id)
-            # F = (J^T)^+ * qfrc_constraint
-            q_force = self.robot.data.qfrc_constraint[:self.robot.model.nv]
-            total_force = np.linalg.pinv(jac.T) @ q_force
-
+        # When there is NO geometric scalpel↔material contact the true cutting
+        # force is ~0 (the blade is in free space / the open groove). The old
+        # fallback mapped the FULL joint constraint vector (joint limits, the
+        # material slide-joint limit, posture/null-space constraints) to the tip
+        # via pinv(J^T)·qfrc_constraint — i.e. it reported non-cutting constraint
+        # reactions as "cutting force" (spikes to ~118N when the real contact is
+        # zero). That is a measurement artifact, so we report 0 instead.
         return total_force
 
     def get_force_magnitude(self):

@@ -74,7 +74,7 @@ class RealTimeOscillator(QtWidgets.QWidget):
         self.glw = pg.GraphicsLayoutWidget()
         root.addWidget(self.glw)
         specs = [("position", "Position", "m"),
-                 ("force", "Contact force", "N"),
+                 ("force", "Contact force |F| per axis (desired vs actual)", "N"),
                  ("stiffness", "Stiffness", "N/m"),
                  ("error", "Position tracking error", "mm")]
         self.plots, self.curves, self.err_curves = {}, {}, {}
@@ -191,7 +191,14 @@ class RealTimeOscillator(QtWidgets.QWidget):
                 data = data[::s]
                 x = x[::s]
             for i, curve in self.curves.items():
-                curve.setData(x, data[:, i])
+                yi = data[:, i]
+                # Force channels: plot MAGNITUDE so the demonstrated (desired) and
+                # measured forces are directly comparable despite the action vs
+                # reaction / frame sign convention (they don't relate by a single
+                # global sign). |Fd_i| vs |F_i| overlap when tracking is good.
+                if self.meta[i][0] == "force":
+                    yi = np.abs(yi)
+                curve.setData(x, yi)
             for axis, (id_des, id_act) in self._pos_idx.items():
                 e = np.abs(data[:, id_des] - data[:, id_act]) * 1e3
                 self.err_curves[axis].setData(x, e)

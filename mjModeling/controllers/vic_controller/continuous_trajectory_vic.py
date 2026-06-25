@@ -3,6 +3,8 @@ import time
 import numpy as np
 import mujoco
 from mjModeling.cutting_materials.utils import wp_sine_motion
+from mjModeling.cutting_materials.cutting_force import CuttingForceModel
+from mjModeling.conf import SCALPEL_GEOM
 from mjModeling.controllers.vic_controller.bp_based_controller import BpVariableImpedanceControl
 from mjModeling.kuka_iiwa_14.iiwa14_model import iiwa14
 from logger import Logger
@@ -92,6 +94,10 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         self.variance_mode = "true"      # {"true","inverted","shuffled","off"}
         self._lg_phase = None            # (N,)
         self._lg_K_pos = None            # (N,3)
+
+        # Analytical cutting-force model: replaces the erratic box-on-box contact
+        # with a smooth, bounded depth-based cutting resistance. Toggle for ablation.
+        self.use_cutting_model = True
         self._lg_q_force = None          # (N,3)
 
         # Debug
@@ -440,6 +446,23 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         self.f_bound = np.maximum(np.abs(fw).max(axis=0), self.f_motion_floor)
         Logger.debug(f"World-frame per-axis force bounds (N): {np.round(self.f_bound, 1)}")
 
+        # ----- Analytical cutting-force model (replaces box-on-box contact) -----
+        # The box scalpel↔material collision produced erratic 100s-of-N forces.
+        # Disable that geometric contact and instead apply a smooth, bounded
+        # cutting resistance. The controller is untouched; this is material physics.
+        self.cut_model = None
+        self.robot._applied_cut_force = None
+        if self.use_cutting_model:
+            sgid = self.model.geom(SCALPEL_GEOM).id
+            self._scalpel_body = int(self.model.geom_bodyid[sgid])
+            self.model.geom_contype[sgid] = 0
+            self.model.geom_conaffinity[sgid] = 0
+            self.cut_model = CuttingForceModel()   # reproduces desired force when engaged
+            self.cut_model.set_material(self.data.geom_xpos[self.mat_geom_id].copy(),
+                                        self.model.geom_size[self.mat_geom_id].copy())
+            self.robot._applied_cut_force = np.zeros(3)
+            Logger.debug("Cutting-force model active (calibrated to desired force)")
+
         self.phase = 0.0
         self.mat_time = 0.0
         phase_inc = phase_speed * self.dt / self.traj_duration
@@ -482,6 +505,8 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             if self.phase >= 1.0:
                 break
 
+            step_start = time.time()   # for real-time pacing (live viewer only)
+
             # Viewer control: pause/resume and quit, polled from the keyboard
             vc = getattr(self.robot, "viewer_control", None)
             if vc is not None:
@@ -505,6 +530,15 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 else:
                     mat_vel = (current_height - prev_mat_height) / (phase_speed * self.dt)
                 prev_mat_height = current_height
+            elif self.mat_joint_id is not None:
+                # STATIC material: hold it at its design height every step. Its
+                # slide joint otherwise lets it SINK under gravity (~11mm), which
+                # drops the surface below the demonstrated cut path so the blade
+                # loses contact mid-cut. Holding qpos=0 keeps the surface fixed.
+                self.data.qpos[self.mat_joint_id] = 0.0
+                self.data.qvel[self.mat_joint_id] = 0.0
+                mujoco.mj_forward(self.model, self.data)
+                mat_vel = 0.0
             else:
                 mat_vel = 0.0
 
@@ -574,6 +608,20 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             tau_safe = self._solve_passivity_qp(tau_nominal, self.data.qvel)
 
             self.data.ctrl[:self.model.nu] = np.clip(tau_safe[:self.model.nu], -300, 300)
+
+            # Apply the analytical cutting resistance to the blade (material
+            # physics, not the controller). This is the environment reaction the
+            # blade feels; the force estimator reports it.
+            if self.cut_model is not None:
+                # Refresh the cutting surface from the LIVE material position each
+                # step (the material can drift/move) so depth is computed against
+                # where the surface actually is — not a stale setup value.
+                self.cut_model.set_material(self.data.geom_xpos[self.mat_geom_id],
+                                            self.model.geom_size[self.mat_geom_id])
+                fcut = self.cut_model.compute(current_pos, v_cur, f_des_world)
+                self.data.xfrc_applied[self._scalpel_body, :3] = fcut
+                self.robot._applied_cut_force = fcut
+
             mujoco.mj_step(self.model, self.data)
 
             # Advance time – state-driven phase correction
@@ -619,8 +667,15 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                       f"{'CONTACT' if self.in_contact else 'free'}")
                 last_log_time = self.sim_time
 
-            if viewer and step % 4 == 0:
-                viewer.sync()
+            if viewer is not None:
+                if step % 4 == 0:
+                    viewer.sync()
+                # Real-time pacing: run the cut at sim-time so the live monitor
+                # stays synced with the robot (otherwise the cut finishes in ~1-2s
+                # flat-out and the monitor can't keep up). Headless runs skip this.
+                sleep_t = self.dt - (time.time() - step_start)
+                if sleep_t > 0:
+                    time.sleep(sleep_t)
 
         if force_log:
             phases, f_des, f_act = zip(*force_log)
