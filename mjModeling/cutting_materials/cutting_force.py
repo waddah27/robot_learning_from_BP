@@ -1,22 +1,25 @@
 """
-Calibrated cutting-force model.
+Per-material cutting-force model (identified from each material's demonstration).
 
-The demonstrated forces are what the REAL material exerted on the tool while the
-human executed the demonstrated motion. A faithful simulated material must
-therefore reproduce those forces at that motion — this is material/contact system
-identification calibrated to the demonstration, not fabrication.
+Cutting force is not proportional to depth — it loads up elastically, then
+*plateaus* at the material's cutting strength (the blade fractures/cuts the
+material). The textbook model is therefore a SATURATING law:
 
-Rigid box-on-box MuJoCo contact does not do this (it produces erratic, unbounded
-collision forces). This model instead has the material react on the blade with
-the DESIRED force, ramped in by a contact-engagement factor of penetration depth:
+    |F_react| = min(k_material * depth, F_cut_material)
 
-    F_react_on_blade = -F_des_world * engage(depth)
-    engage(depth)    = smoothstep(depth / d_engage) in [0, 1]
+applied along the demonstrated reaction direction. `depth` is how far the blade
+tip is below the (live) material surface. Both parameters are identified PER
+MATERIAL from its own demonstration:
 
-So once the blade is engaged in the material (depth >= d_engage), the measured
-contact force equals the desired force the real material would have produced; if
-the blade is only partly in (or above) the surface, the force ramps to 0. The VIC
-controller then tracks position against this physically-consistent reaction.
+  - F_cut_material : the demonstrated cutting-force level (a high percentile of
+    the demonstrated reaction magnitude). Different per material -> cork, PVC and
+    penoplex react with different forces.
+  - k_material : loading stiffness, set so the force reaches F_cut at a small
+    fraction of the typical demonstrated penetration.
+
+The fit is APPROXIMATE (a physical saturating law, not an exact replay): the
+simulated force matches the demonstrated cutting level to within the model's
+residual, and expresses material-specific behaviour.
 """
 import numpy as np
 
@@ -24,30 +27,45 @@ __all__ = ["CuttingForceModel"]
 
 
 class CuttingForceModel:
-    def __init__(self, d_engage=0.004):
-        self.d_engage = d_engage          # m: penetration over which force ramps in
-        self.last_force = np.zeros(3)     # world reaction last applied to the blade
+    def __init__(self, k=8000.0, f_cut=50.0):
+        self.k = float(k)            # N/m loading stiffness (per material)
+        self.f_cut = float(f_cut)    # N   cutting-force plateau (per material)
+        self.last_force = np.zeros(3)
+
+    @staticmethod
+    def identify(depth_demo, react_demo_world):
+        """Identify (k, f_cut) from a material's demonstration.
+
+        react_demo_world: reaction-on-blade in world frame, per phase (N,3).
+        depth_demo: demonstrated penetration depth, per phase (N,).
+        """
+        d = np.asarray(depth_demo, float)
+        mag = np.linalg.norm(np.asarray(react_demo_world, float), axis=1)
+        m = d > 1e-4
+        if m.sum() < 3:
+            return 8000.0, 50.0
+        f_cut = float(np.percentile(mag[m], 75))          # cutting-force level
+        d_typ = float(np.median(d[m]))                    # typical penetration
+        k = f_cut / max(0.3 * d_typ, 1e-3)                # reach F_cut at 30% of it
+        return k, max(f_cut, 1.0)
 
     def set_material(self, geom_center, geom_halfsize):
-        c = np.asarray(geom_center); h = np.asarray(geom_halfsize)
-        self.top = c[2] + h[2]
-        self.x0, self.x1 = c[0] - h[0], c[0] + h[0]
-        self.y0, self.y1 = c[1] - h[1], c[1] + h[1]
+        cc = np.asarray(geom_center); h = np.asarray(geom_halfsize)
+        self.top = cc[2] + h[2]
+        self.x0, self.x1 = cc[0] - h[0], cc[0] + h[0]
+        self.y0, self.y1 = cc[1] - h[1], cc[1] + h[1]
 
-    def compute(self, tip_pos, tip_vel, f_des_world):
-        """World reaction on the blade = -F_des * engagement(depth).
-
-        f_des_world is the desired force (the force the real material produced at
-        this point of the motion). The material reacts with it once engaged.
-        """
+    def compute(self, tip_pos, tip_vel=None, f_des_world=None):
+        """World reaction on the blade: saturating magnitude along desired dir."""
         x, y, z = tip_pos
         inside = (self.x0 <= x <= self.x1) and (self.y0 <= y <= self.y1)
         depth = (self.top - z) if (inside and z < self.top) else 0.0
-        if depth <= 0.0:
+        if depth <= 0.0 or f_des_world is None:
             self.last_force = np.zeros(3)
             return self.last_force
-        r = min(depth / self.d_engage, 1.0)
-        engage = r * r * (3.0 - 2.0 * r)            # smoothstep in [0,1]
-        # reaction on the blade is opposite the action force it exerts on material
-        self.last_force = -np.asarray(f_des_world, dtype=float) * engage
+        mag = min(self.k * depth, self.f_cut)               # saturating cutting force
+        fdir = np.asarray(f_des_world, float)
+        n = np.linalg.norm(fdir)
+        direction = (-fdir / n) if n > 1e-6 else np.zeros(3)  # demonstrated reaction dir
+        self.last_force = direction * mag
         return self.last_force

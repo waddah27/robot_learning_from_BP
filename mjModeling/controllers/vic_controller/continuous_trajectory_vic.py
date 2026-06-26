@@ -457,11 +457,19 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             self._scalpel_body = int(self.model.geom_bodyid[sgid])
             self.model.geom_contype[sgid] = 0
             self.model.geom_conaffinity[sgid] = 0
-            self.cut_model = CuttingForceModel()   # reproduces desired force when engaged
-            self.cut_model.set_material(self.data.geom_xpos[self.mat_geom_id].copy(),
-                                        self.model.geom_size[self.mat_geom_id].copy())
+            # Identify a PER-MATERIAL linear cutting law from this material's
+            # demonstration: reaction-on-blade(world) = c * penetration_depth.
+            mat_c = self.data.geom_xpos[self.mat_geom_id].copy()
+            mat_h = self.model.geom_size[self.mat_geom_id].copy()
+            top0 = mat_c[2] + mat_h[2]
+            zref = np.array([self._gmr_to_world(p)[2] for p in self.traj_pos])
+            depth_demo = np.clip(top0 - zref, 0.0, None)             # demo penetration (m)
+            react_demo = -(site_rot0 @ self.traj_force.T).T          # reaction on blade (world)
+            k_mat, f_cut = CuttingForceModel.identify(depth_demo, react_demo)
+            self.cut_model = CuttingForceModel(k=k_mat, f_cut=f_cut)
+            self.cut_model.set_material(mat_c, mat_h)
             self.robot._applied_cut_force = np.zeros(3)
-            Logger.debug("Cutting-force model active (calibrated to desired force)")
+            Logger.debug(f"Cutting law identified: k={k_mat:.0f} N/m  F_cut={f_cut:.0f} N")
 
         self.phase = 0.0
         self.mat_time = 0.0
