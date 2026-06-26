@@ -165,7 +165,7 @@ Passivity, exponential stability, and adaptive task parametrization are therefor
 - Disturbance recovery (ISS): impulse perturbation ⇒ exponential return, both
   static and moving material.
 
-## 8. Honest scope / conditions
+## 8. scope / conditions
 - The rate `λ` is a *lower bound* (conservative) from the Lyapunov argument;
   measured `λ̂` may be larger.
 - Exponential-to-the-origin requires regulation (`ẍ_d→0`); under a moving

@@ -144,7 +144,7 @@ A figure of the passivity residual staying ≤ 0 for the tanked controller, besi
 it going positive (energy generation) for the un-tanked one, is the defensible
 artifact for the stability chapter.
 
-## 8. Honest scope
+## 8. Assumptions
 - The argument assumes the environment is passive (true for elastic/dissipative
   materials; cutting/fracture is dissipative, so this holds for the contact).
 - `M` (Cartesian inertia) is treated as constant over a step; the discrete-time

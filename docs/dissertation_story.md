@@ -1,15 +1,15 @@
 # The Dissertation Story (plain-language narrative)
 
-A readable account of the contribution, the evidence, and the honest limits. Final numbers are filled
+A readable account of the contribution, the evidence, and the limits. Final numbers are filled
 from the 12-seed experiment; preliminary values are marked *(prelim)*.
 
 ---
 
 ## 1. The problem statement to solve
 Teach a robot a delicate, high-precision human skill — cutting (toward scalpel /
-surgical tasks) — by learning from human demonstrations ("behaviour priors"),
-rather than hand-programming it. The hard part is *contact*: the blade must
-follow a path **and** interact with the material correctly.
+surgical tasks or soft skills tasks) — by learning from human demonstrations ("behaviour priors"),
+rather than hand-programming it.
+The hard part is *contact*: the blade must follow a path **and** interact with the material correctly.
 
 ## 2. The key insight (what data actually showed)
 When the demonstrations are examined carefully, one fact dominates:
@@ -88,7 +88,7 @@ depth** — what governs cut quality and safety, and the one dimension the human
 minimal-intervention controller by error in directions it intentionally releases
 is the wrong lens.
 
-## 7. Honest limitations (state these; they make the work stronger)
+## 7. limitations and open questions:
 - **Force is not a trackable target in this data** — we regulate it as a loose
   envelope, not a trajectory. (This is a finding, not a weakness.)
 - **Sim-only.** Compensated by randomizing the simulated physics and showing the
@@ -98,16 +98,16 @@ is the wrong lens.
 - **The passivity/energy-tank stability mechanism** is currently not actually
   closing the loop in code (it uses a constant budget); the fix is specified.
 
-## 8. Suggested thesis structure
+## 8. Questions to address in the thesis
 - **Ch. A — What transfers and what doesn't:** the variability analysis
-  (position reproducible, force not). Motivates everything.
+  (position reproducible, force not). Hence, track position maintain force within the desired constraints.
 - **Ch. B — Learned-variability control:** the method (stiffness = demonstration
-  precision) and the killer experiment.
+  precision) and the experiment.
 - **Ch. C — Robustness & generalization:** does the learned skill survive
   disturbances and transfer cork → PVC / penoplex (the remaining experiment).
 - **Ch. D — Stability:** the passivity guarantee (theory + the tank fix + demo).
 
-## 9. The defense in one breath
+## 9. Summary
 *"I learned a precision skill from human demonstrations by letting the
 demonstrations' own variability decide what the robot controls. The data shows
 position is a reliable skill and force is not, so the robot tracks the cut path
