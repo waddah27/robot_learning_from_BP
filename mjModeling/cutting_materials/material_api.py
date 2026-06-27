@@ -14,6 +14,7 @@ class Material:
         self._is_movable = None
         self._bp_data = None
         self._hight = None
+        self._mot_ampl = None
 
     @classmethod
     def from_work_piece(cls):
@@ -29,6 +30,7 @@ class Material:
         obj.is_solid = workPiece.MATERIAL_IS_SOLID
         obj.is_movable = workPiece.MOBILE
         obj.hight = workPiece.HIGHT
+        obj.mot_ampl = workPiece.MOT_AMPL
         return obj
 
     @property
@@ -79,6 +81,15 @@ class Material:
         if not isinstance(val, (float, int)):
             raise TypeError(f"material hight must be float or int!")
         self._hight = val
+    @property
+    def mot_ampl(self):
+        return self._mot_ampl
+
+    @mot_ampl.setter
+    def mot_ampl(self, val:float|int):
+        if not isinstance(val, (float, int)):
+            raise TypeError(f"material motion amplitude must be float or int!")
+        self._mot_ampl = val
 
     @property
     def name(self):

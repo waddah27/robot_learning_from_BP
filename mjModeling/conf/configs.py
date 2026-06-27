@@ -15,6 +15,18 @@ class paramIK(Enum):
     IK_KD = 0.1
     IK_TOL = 0.04
 
+class ImpedanceOptimizer:
+    qp = "qp"
+    lsq = "lsq"
+    gd = "gd"
+
+# GMR Integration Parameters
+class GMRParams:
+    FORCE_ERROR_THRESHOLD = 5.0  # N, threshold for triggering adaptation
+    ADAPTATION_RATE = 0.1  # How quickly to adapt gains
+    BLENDING_FACTOR = 0.7  # Weight of GMR vs reactive control (0=GMR only, 1=reactive only)
+    MIN_STIFFNESS_CONTACT = 100.0  # N/m, minimum in contact
+    MAX_STIFFNESS_FREE = 2000.0  # N/m, maximum in free motion
 
 class paramVIC:
     VIC_MAX_STEPS = 50000
@@ -29,32 +41,21 @@ class paramVIC:
     PHASE_SPEED = 1.0
     # Disable using variable gains for other motion phases than cutting
     DISABLE_PTP_VIC = True
-
-class ImpedanceOptimizer:
-    qp = "qp"
-    lsq = "lsq"
-    gd = "gd"
-
-# GMR Integration Parameters
-class GMRParams:
-    FORCE_ERROR_THRESHOLD = 5.0  # N, threshold for triggering adaptation
-    ADAPTATION_RATE = 0.1  # How quickly to adapt gains
-    BLENDING_FACTOR = 0.7  # Weight of GMR vs reactive control (0=GMR only, 1=reactive only)
-    MIN_STIFFNESS_CONTACT = 100.0  # N/m, minimum in contact
-    MAX_STIFFNESS_FREE = 2000.0  # N/m, maximum in free motion
-
-# Add to existing paramVIC class
-paramVIC.GMR = GMRParams
+    USE_LEARNT_GAINS = True
+    TRACK_WP_MOTION = True
+    # GMR params to vic
+    GMR = GMRParams
 
 class workPiece:
     MATERIAL_RESISTANCE = 27 #N (OBSOLETE)
     MATERIAL_NAME ="cutting_material"
     MATERIAL_IS_SOLID = True
-    HIGHT = 0.02
+    HIGHT = 0.02 #TODO different hight material behaves strange at first WHY?
     POS = np.array([0.5, 0.0, HIGHT])
     SIZE = np.array([0.3, 0.3, 0.02])
     SURFACE: float = SIZE[2] + POS[2]
     MOBILE: bool = True
+    MOT_AMPL = 0.05 # amplitude of motion sine/cos wave
 
 
 class Signal(IntEnum):

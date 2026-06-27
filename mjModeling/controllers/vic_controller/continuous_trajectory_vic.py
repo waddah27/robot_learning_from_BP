@@ -2,7 +2,7 @@ from mjModeling.conf.configs import ImpedanceOptimizer, paramVIC
 import time
 import numpy as np
 import mujoco
-from mjModeling.cutting_materials.utils import wp_sine_motion
+from mjModeling.cutting_materials.utils import wp_sine_motion, wp_cosine_motion
 from mjModeling.cutting_materials.cutting_force import CuttingForceModel
 from mjModeling.conf import SCALPEL_GEOM
 from mjModeling.controllers.vic_controller.bp_based_controller import BpVariableImpedanceControl
@@ -90,7 +90,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         # the QP blends force tracking and position stiffness by these learned
         # weights instead of a fixed Q.  variance_mode lets the killer experiment
         # use the true / inverted / shuffled precision structure.
-        self.use_learned_gains = True
+        self.use_learned_gains = paramVIC.USE_LEARNT_GAINS
         self.variance_mode = "true"      # {"true","inverted","shuffled","off"}
         self._lg_phase = None            # (N,)
         self._lg_K_pos = None            # (N,3)
@@ -160,7 +160,11 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         norm = np.clip(norm, 0, 1)
         world_x = mat_pos[0] + (norm[0] - 0.5) * self.cut_dim_x
         world_y = mat_pos[1] + (norm[1] - 0.5) * self.cut_dim_y
-        world_z = mat_pos[2] + (norm[2] - 0.5) * self.cut_dim_z
+        if paramVIC.TRACK_WP_MOTION:
+            pass
+            world_z = mat_pos[2] + (norm[2] - 0.5) * self.cut_dim_z
+        else:
+            world_z = self.working_piece.hight + (norm[2] - 0.5) * self.cut_dim_z
         return np.array([world_x, world_y, world_z])
 
     def _gmr_vel_to_world(self, gmr_vel, mat_vel, mat_pos=None):
@@ -533,7 +537,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
             # Update material position (if moving)
             if self.mat_joint_id is not None and self.wp_mobile:
-                current_height = wp_sine_motion(self.mat_time)
+                current_height = wp_sine_motion(self.mat_time, mot_amplitude=self.working_piece.mot_ampl)
                 self.data.qpos[self.mat_joint_id] = current_height
                 mujoco.mj_forward(self.model, self.data)
                 if prev_mat_height is None:

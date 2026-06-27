@@ -119,3 +119,28 @@ correct force metrics are **safety and contact quality**, not tracking error:
 | metric | static, learned | static, baseline | moving, learned | moving, baseline | p |
 A claim is only "supported" if it holds — with significance — for **both**
 static and moving material.
+
+## Three main events to observe for showing results:
+A. work piece moves? `MOBILE`
+B. Robot tracks the workpiece motion ? `TRACK_WP_MOTION`
+C. QP-based VIC controller use learned Gains(Q,R)? `USE_LEARNT_GAINS`
+
+we build 6 scenarios of these 3 events:
+S0. ~A and ~B and ~C
+S1. ~A and ~B and  C
+S2. ~A and  B and  ~C
+S3. ~A and  B and   C
+S4.  A and  ~B and  ~C
+S5.  A and  ~B and   C
+S6.  A and   B and  ~C
+S7.  A and   B and   C
+
+If the workpiece is static, then robot tracking its motion does not make sense therefore
+we keep this
+
+S0. ~A and  ~C
+S1. ~A and   C
+S2.  A and  ~B and   C
+S3.  A and   B and  ~C
+S4.  A and   B and   C
+

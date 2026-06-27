@@ -1,0 +1,688 @@
+\documentclass[11pt,a4paper]{article}
+
+% ----------------------------------------------------------------------------
+%  Learning High-Precision Contact Skills from Behaviour Priors
+%  Full technical report (expanded): analysis, control, task parametrization,
+%  stability & passivity, material model, results, contributions.
+% ----------------------------------------------------------------------------
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage[hidelinks]{hyperref}
+\usepackage{bm}
+
+\graphicspath{{../results/figures/}}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{assumption}{Assumption}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\xt}{\tilde{x}}
+\newcommand{\xtd}{\dot{\tilde{x}}}
+\newcommand{\unit}[1]{\,[\mathrm{#1}]}
+
+\title{\textbf{Learning High-Precision Contact Skills from Behaviour Priors:\\
+Variability-Driven Variable Impedance Control with\\
+State-Driven Task Parametrization, Stability and Passivity Guarantees}}
+\author{Waddah Khaled Ali}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This report presents a framework for transferring a high-precision contact
+skill --- cutting with a scalpel-like tool --- to a robot manipulator by learning
+from human demonstrations (termed \emph{behaviour priors}). Rather than replaying
+a single trajectory, the method learns the underlying structure of the skill and
+reproduces it under a controller that is provably stable and passive.
+
+The contribution comprises three elements. First, a \emph{variable impedance
+controller} whose stiffness is not hand-tuned but learned from the consistency of
+the demonstrations: a quadratic program (QP) solved at each control step maps the
+demonstration precision onto the controller gains, so the manipulator is stiff
+only along directions that the demonstrations regulated and compliant elsewhere.
+Second, a \emph{state-driven task parametrisation}: the motion is indexed by a
+progress (phase) variable whose evolution is corrected by the manipulator's
+measured state rather than by a fixed clock, providing temporal-scale
+adaptability and disturbance rejection. Third, a formal \emph{stability and
+passivity} analysis establishing exponential convergence of the tracking error
+and non-injection of energy into the environment, under time-varying gains and a
+moving reference.
+
+A key empirical observation motivates the design: across repeated demonstrations
+the tool \emph{position} is highly repeatable (cross-trial correlation
+$\approx 0.95$), whereas the \emph{force} is not ($\approx 0.10$). The controller
+therefore regulates position and treats force as a constraint, while a separate
+per-material \emph{cutting-force model}, identified from each material's own data,
+provides the interaction force in simulation. The framework is evaluated on three
+materials (cork, PVC, penoplex) for both a fixed and a moving workpiece.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% ----------------------------------------------------------------------------
+\section*{Nomenclature}
+\addcontentsline{toc}{section}{Nomenclature}
+% ----------------------------------------------------------------------------
+The table below lists every symbol used, its meaning, and its physical
+dimension. Bold lower-case symbols are $3$-vectors expressed in the world frame;
+$n$ is the number of robot joints ($n=7$ for the KUKA iiwa\,14 used here).
+
+\begin{longtable}{p{2.3cm} p{9.2cm} p{2.6cm}}
+\toprule
+Symbol & Meaning & Units \\
+\midrule
+\endhead
+$\phi$ & task phase (progress along the skill), $0$ at start, $1$ at end & dimensionless \\
+$x,\;x_d$ & actual / desired tool-tip (TCP) position & $\mathrm{m}$ \\
+$\dot x,\;\dot x_d$ & actual / desired tool-tip velocity & $\mathrm{m\,s^{-1}}$ \\
+$\xt=x_d-x$ & position tracking error & $\mathrm{m}$ \\
+$\xtd=\dot x_d-\dot x$ & velocity tracking error & $\mathrm{m\,s^{-1}}$ \\
+$f$ & commanded Cartesian force (impedance ``virtual force'') & $\mathrm{N}$ \\
+$f_{\text{ext}}$ & external (environment/contact) force on the tool & $\mathrm{N}$ \\
+$K(\phi)$ & diagonal stiffness matrix (per axis) & $\mathrm{N\,m^{-1}}$ \\
+$D(\phi)$ & diagonal damping matrix & $\mathrm{N\,s\,m^{-1}}$ \\
+$K_I$ & integral gain & $\mathrm{N\,m^{-1}s^{-1}}$ \\
+$\zeta$ & damping ratio (set to $0.7$) & dimensionless \\
+$\Lambda,\;M$ & task-space (Cartesian) inertia & $\mathrm{kg}$ \\
+$C\dot q,\;g$ & Coriolis/centrifugal and gravity joint torques & $\mathrm{N\,m}$ \\
+$\tau$ & commanded joint torques & $\mathrm{N\,m}$ \\
+$q,\dot q$ & joint angles / velocities & $\mathrm{rad},\,\mathrm{rad\,s^{-1}}$ \\
+$J$ & TCP Jacobian ($\dot x = J\dot q$), $3\times n$ & $\mathrm{m\,rad^{-1}}$ \\
+$\lambda^2$ & damped-least-squares regulariser & $\mathrm{m^2\,rad^{-2}}$ \\
+$N$ & null-space projector ($I-J^{+}J$) & dimensionless \\
+$\sigma_i^2(\phi)$ & cross-trial variance of (range-normalised) signal, axis $i$ & dimensionless \\
+$w_i(\phi)$ & precision weight (normalised inverse variance) $\in[0,1]$ & dimensionless \\
+$K^{\text{pos}}_i(\phi)$ & precision-derived position stiffness, axis $i$ & $\mathrm{N\,m^{-1}}$ \\
+$K_{\text{floor}},K_{\min},K_{\max}$ & stiffness floor / box limits & $\mathrm{N\,m^{-1}}$ \\
+$q_f(\phi)$ & force-consistency weight in the QP $\in[0,1]$ & dimensionless \\
+$F_d$ & desired interaction force (from the prior) & $\mathrm{N}$ \\
+$F^{\text{bound}}_i$ & per-axis demonstrated force limit & $\mathrm{N}$ \\
+$\hat\phi$ & state-estimated phase & dimensionless \\
+$\dot\phi_{\text{nom}}$ & nominal (clock) phase rate & $\mathrm{s^{-1}}$ \\
+$k_\phi$ & phase-correction gain $\in[0,1]$ & dimensionless \\
+$\rho_x,\rho_F$ & normalising scales for position / force matching & $\mathrm{m},\,\mathrm{N}$ \\
+$V$ & Lyapunov / storage function (an energy) & $\mathrm{J}$ \\
+$T$ & energy-tank state & $\mathrm{J}$ \\
+$P_{\text{inj}}$ & power drawn by time-varying gains / moving reference & $\mathrm{W}$ \\
+$\beta$ & Lyapunov cross-term coefficient & $\mathrm{s^{-1}}$ \\
+$\alpha,\lambda$ & exponential decay rates & $\mathrm{s^{-1}}$ \\
+$d$ & blade penetration depth below the material surface & $\mathrm{m}$ \\
+$k_{\text{mat}}$ & material loading stiffness & $\mathrm{N\,m^{-1}}$ \\
+$F^{\text{cut}}_{\text{mat}}$ & material cutting-force plateau & $\mathrm{N}$ \\
+\bottomrule
+\end{longtable}
+
+% ============================================================================
+\section{Problem statement}
+% ============================================================================
+We want a robot to acquire a contact-rich manipulation skill, cutting, from a
+handful of human demonstrations. Each demonstration provides, sampled over time,
+the tool pose, its twist (linear/angular velocity), and the interaction wrench
+measured at the tool. Our aim is not to replay one recording but to capture the
+\emph{skill}: a controller that performs the task accurately, respects the
+force character of the demonstrations, stays stable and safe in contact, and
+generalises across execution speeds and across materials.
+
+The core difficulty is that, during contact, position and force are not
+independent. In a direction where the tool presses on the material, fixing the
+position determines the force and vice-versa; one cannot command both freely. A
+principled controller must therefore \emph{decide what to regulate in each
+direction}, and a credible simulation must \emph{model the material} that gives
+rise to the contact force in the first place. Both points are addressed below.
+
+% ============================================================================
+\section{What in the demonstration is actually a reliable skill?}
+% ============================================================================
+\label{sec:analysis}
+We first determine which components of the demonstration are sufficiently
+repeatable across trials to be treated as the skill. For each signal we measure,
+across trials, (a) the \emph{shape correlation}
+(how similarly the signal evolves from trial to trial after removing its mean) and
+(b) a \emph{regulation score} --- the fraction of the signal's variance that is
+explained by the task phase, i.e.\ a phase-locked signal-to-noise ratio.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+Quantity & cross-trial shape correlation & regulation score \\
+\midrule
+Position (X/Y/Z) & $0.92$--$0.98$ & up to $0.73$ (Z) \\
+Force (Fx/Fy/Fz) & $0.04$--$0.27$ & $\approx 0$ \\
+\bottomrule
+\end{tabular}
+\caption{How repeatable each quantity is across demonstrations
+(cork $n{=}28$, PVC $n{=}33$, penoplex $n{=}22$, $300$ samples per trial).}
+\label{tab:repro}
+\end{table}
+
+\noindent The result is clear: \emph{the demonstrated tool path is reproducible;
+the demonstrated force is not}. The recorded force is
+dominated by a large, nearly constant offset (consistent with tool preload /
+sensor bias) plus trial-to-trial content that does not repeat; we verified this is
+intrinsic to the dynamic part of the signal, not an artefact of time
+misalignment or sign convention. The practical implication is that
+\emph{point-tracking the demonstrated force trajectory is not a well-posed
+objective}. This is exactly the situation the \emph{minimal-intervention
+principle} addresses: regulate strongly where the demonstration is consistent
+(position), and remain compliant where it is not (force) --- the latter being
+treated as a constraint and as the interaction outcome of a calibrated material
+model.
+
+% ============================================================================
+\section{Variability-driven variable impedance control}
+% ============================================================================
+\label{sec:vic}
+
+\subsection{The impedance control law}
+The robot is controlled as a virtual mechanical impedance at the tool tip. The
+commanded Cartesian force is
+\begin{equation}
+\boxed{\;f \;=\; K(\phi)\,\xt \;+\; K_I\!\int_0^t\!\xt\,d\sigma \;+\; D(\phi)\,\xtd\;}
+\label{eq:imp}
+\end{equation}
+The terms are interpreted as follows:
+\begin{itemize}[leftmargin=1.5em]
+\item $K(\phi)\,\xt$ is a position-error spring. $K(\phi)\unit{N\,m^{-1}}$ is a
+diagonal stiffness (one value per Cartesian axis) and $\xt\unit{m}$ is the
+position error, so the product has units of force $\unit{N}$. A larger $K$ pulls
+the tool back to the reference more firmly.
+\item $K_I\!\int\!\xt\,d\sigma$ is an integral term that removes slow,
+steady-state position error; $K_I\unit{N\,m^{-1}s^{-1}}$ multiplied by the
+time-integral of the error $\unit{m\cdot s}$ again yields $\unit{N}$.
+\item $D(\phi)\,\xtd$ is a velocity-error damper that suppresses oscillation;
+$D\unit{N\,s\,m^{-1}}$ times $\xtd\unit{m\,s^{-1}}$ gives $\unit{N}$.
+\end{itemize}
+The damping is tied to the stiffness by a critical-damping rule,
+$D(\phi)=2\zeta\sqrt{M\,K(\phi)}$, with damping ratio $\zeta=0.7$ (a standard,
+slightly under-damped, fast and non-oscillatory response) and $M\unit{kg}$ an
+effective mass. The virtual force is realised by joint torques through a
+damped-least-squares Jacobian transpose, with a posture task in the null space and
+model-based gravity/Coriolis compensation:
+\begin{equation}
+\tau \;=\; J^{\top}\!\big(JJ^{\top}+\lambda^2 I\big)^{-1} f
+   \;+\; N\,\tau_{\text{posture}} \;+\; g + C\dot q,
+\qquad N = I - J^{\top}\!\big(JJ^{\top}+\lambda^2 I\big)^{-1} J .
+\label{eq:torque}
+\end{equation}
+Here $J\unit{m\,rad^{-1}}$ is the tool Jacobian ($\dot x=J\dot q$);
+$\big(JJ^{\top}+\lambda^2 I\big)^{-1}$ is the damped pseudo-inverse that maps the
+Cartesian force to joint torques while remaining numerically robust near kinematic singularities
+($\lambda^2$ is a small regulariser); $N$ projects the secondary posture torque
+$\tau_{\text{posture}}$ into the null space so it does not disturb the task; and
+$g+C\dot q\unit{N\,m}$ cancel gravity and Coriolis effects so that
+\eqref{eq:imp} governs the closed loop.
+
+\subsection{Gains learned from demonstration precision}
+\label{sec:gains}
+The novelty is that $K(\phi)$ is not chosen by hand --- it is the
+\emph{precision} (inverse variance) of the demonstrations. Intuitively, where the
+human was very repeatable, that direction matters and should be tracked stiffly;
+where they were not, the controller should be soft. For each phase $\phi$ and axis
+$i$ we form a precision weight on one shared scale and map it to stiffness:
+\begin{equation}
+w_i(\phi)=\mathrm{clip}\!\Big(\frac{1/(\sigma_i^2(\phi)+\epsilon)}{p_{\text{ref}}},\,0,\,1\Big),
+\qquad
+K^{\text{pos}}_i(\phi)=K_{\text{floor}}+\big(K_{\max}-K_{\text{floor}}\big)\,w_i(\phi).
+\label{eq:precision}
+\end{equation}
+$\sigma_i^2(\phi)$ is the cross-trial variance of the range-normalised signal at
+phase $\phi$ (dimensionless, so axes are comparable); $\epsilon$ is a tiny
+constant avoiding division by zero; $p_{\text{ref}}$ is a robust $95^{\text{th}}$-
+percentile normaliser \emph{shared across all axes and channels}, so a genuinely
+imprecise direction receives a genuinely small weight $w_i\!\to\!0$. The weight
+$w_i\in[0,1]$ then scales the stiffness linearly between a floor
+$K_{\text{floor}}\unit{N\,m^{-1}}$ (kept non-zero so the arm can always execute
+the motion) and the maximum $K_{\max}$. Figure~\ref{fig:gains} shows the
+result: with no manual tuning, the cut-depth axis becomes stiff while the lateral
+and force directions stay compliant --- precisely the structure predicted by
+Section~\ref{sec:analysis}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{variance_gains_cork.png}
+\caption{Gains learned from the cork demonstrations. Top-left: cross-trial
+inconsistency of each channel; top-right: the emergent precision weight $w(\phi)$;
+bottom: the resulting position stiffness $K^{\text{pos}}(\phi)$ and the (near-zero)
+force-tracking weight. The depth axis (blue) is regulated stiffly; force is
+released. \emph{This split emerges from the data, not from tuning.}}
+\label{fig:gains}
+\end{figure}
+
+The same procedure applied to the other two materials (Fig.~\ref{fig:gains_other})
+yields the \emph{same qualitative structure} --- depth regulated, force released ---
+but with \emph{material-specific magnitudes}, because the gains are computed from
+each material's own demonstration. This is the gain-side counterpart of the
+per-material force law of Section~\ref{sec:material}: one principle, three distinct
+parameter sets.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.83\textwidth]{variance_gains_pvc.png}\\[4pt]
+\includegraphics[width=0.83\textwidth]{variance_gains_peno.png}
+\caption{Learned gains for PVC (top) and penoplex (bottom), produced by the same
+precision rule \eqref{eq:precision} on each material's own demonstrations. The
+structure is consistent with cork (Fig.~\ref{fig:gains}) --- the depth axis is
+tracked stiffly and force is released --- while the stiffness magnitudes and
+profiles differ per material, so the controller expresses material-specific
+behaviour without any manual retuning.}
+\label{fig:gains_other}
+\end{figure}
+
+\subsection{The online quadratic program for the gains}
+\label{sec:qp}
+At every control step the gains are obtained from a small convex quadratic
+program (QP) that \emph{blends} two objectives and respects two constraints:
+\begin{equation}
+\boxed{\;
+\begin{aligned}
+K^\star=\;\arg\min_{K\in\R^3}\;&
+ q_f(\phi)\,\norm{K\odot\xt - F_d}_2^2
+ \;+\;\big(1-q_f(\phi)\big)\,\norm{K - K^{\text{pos}}(\phi)}_2^2 \\
+\text{s.t.}\;\;&
+ K_{\min}\le K \le K_{\max},\qquad
+ -F^{\text{bound}}_i \le K_i\,\xt_i \le F^{\text{bound}}_i\;\;\forall i .
+\end{aligned}\;}
+\label{eq:qp}
+\end{equation}
+Term by term:
+\begin{itemize}[leftmargin=1.5em]
+\item $\norm{K\odot\xt-F_d}_2^2$ is the \emph{force-consistency} cost ($\odot$ is
+element-wise product): it asks the impedance force $K\odot\xt\unit{N}$ to match the
+desired force $F_d\unit{N}$. Its weight $q_f(\phi)\in[0,1]$ is the
+\emph{force-precision} weight --- small, because force is not reproducible
+(Sec.~\ref{sec:analysis}).
+\item $\norm{K-K^{\text{pos}}(\phi)}_2^2$ pulls the stiffness towards the
+precision-derived value $K^{\text{pos}}\unit{N\,m^{-1}}$ of \eqref{eq:precision},
+weighted by $1-q_f$. Because $q_f\!\to\!0$, this term dominates and the QP returns
+$K\!\approx\!K^{\text{pos}}$: the controller tracks the precision-weighted
+position skill.
+\item The box constraint $K_{\min}\le K\le K_{\max}$ keeps the stiffness in a safe
+physical range.
+\item The \emph{force-saturation} constraint $|K_i\xt_i|\le F^{\text{bound}}_i$
+guarantees the commanded force on each axis never exceeds the demonstrated force
+limit $F^{\text{bound}}_i\unit{N}$ --- i.e.\ the desired forces act as
+\emph{constraints}, as required.
+\end{itemize}
+The damping follows from $K^\star$ by the critical-damping rule. The QP is tiny
+(three variables) and solves in well under a millisecond (OSQP), so it runs in the
+real-time loop.
+
+\paragraph{Ablation study: isolating the contribution of the learned variance
+structure.} To establish that the performance gain originates from the
+\emph{specific} learned precision structure, rather than from gain adaptation per
+se, we evaluate the identical task and controller under four gain assignments:
+(i) the identified precision; (ii) \emph{inverted} precision (regulating
+directions that were inconsistent and relaxing those that were consistent);
+(iii) precision \emph{permuted} across axes; and (iv) a baseline that tracks the
+demonstrated force directly. The metric is the \emph{cut-depth error} --- the
+task-critical, demonstration-regulated axis --- evaluated over $12$ seeds with
+randomised contact parameters (Fig.~\ref{fig:ablation}, Table~\ref{tab:ablation}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.97\textwidth]{study_ablation_cork.png}
+\caption{Gain-assignment ablation on cork ($N=12$ randomised-physics seeds,
+paired). Only the identified precision attains low cut-depth error; inverting or
+permuting the learned structure degrades it. Bars denote mean$\pm$std.}
+\label{fig:ablation}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Gain assignment & cut-depth error (mm) & relative to identified & paired Wilcoxon $p$ \\
+\midrule
+\textbf{Identified precision} & $\mathbf{10.9 \pm 2.5}$ & --- & --- \\
+Permuted precision & $14.7 \pm 2.9$ & $+26\%$ & $0.001$ \\
+Inverted precision & $20.7 \pm 4.0$ & $+47\%$ & $0.001$ \\
+Direct force-tracking & $20.9 \pm 5.9$ & $+48\%$ & $0.001$ \\
+\bottomrule
+\end{tabular}
+\caption{The identified precision attains the lowest cut-depth error on all $11$
+stable seeds. Inverting or permuting the structure increases the error by
+$26$--$48\%$ ($p=0.001$, the smallest value attainable by the paired Wilcoxon
+test at this sample size). This isolates the identified \emph{variance structure},
+rather than gain adaptation in general, as the determinant of task performance.}
+\label{tab:ablation}
+\end{table}
+
+% ============================================================================
+\section{State-driven task parametrization}
+% ============================================================================
+\label{sec:phase}
+Instead of being a function of time, the reference is a function of a
+\emph{phase} variable $\phi\in[0,1]$. This separates \emph{what} the skill is from
+\emph{how fast} it runs, which is what lets the same prior be executed at
+different speeds. The novelty here is \emph{how} $\phi$ advances: not by a fixed
+clock, but by a correction driven by the robot's \emph{measured state}. At each
+step we estimate the phase $\hat\phi$ that best matches the current state to the
+learned trajectory over a short forward window, then correct $\phi$ towards it:
+\begin{equation}
+\hat\phi=\arg\min_{\varphi\in[\phi,\,\phi+\Delta]}
+   \left[\frac{\norm{x_{\text{ref}}(\varphi)-x}}{\rho_x}
+   +\mathbb{1}_{\text{contact}}\,
+     \frac{\big|\,\norm{F_{\text{ref}}(\varphi)}-\norm{F}\,\big|}{\rho_F}\right],
+\qquad
+\phi\leftarrow\mathrm{clip}\!\big(\phi+\dot\phi_{\text{nom}}+k_\phi(\hat\phi-\phi)\big).
+\label{eq:phase}
+\end{equation}
+The bracketed cost compares where the robot \emph{is} to where each candidate
+phase $\varphi$ says it \emph{should be}: the first term is the position mismatch
+$\norm{x_{\text{ref}}(\varphi)-x}\unit{m}$ normalised by a scale
+$\rho_x\unit{m}$; the second, active only in contact
+($\mathbb{1}_{\text{contact}}$), compares force magnitudes normalised by
+$\rho_F\unit{N}$ --- force is the more informative cue once the tool is engaged.
+The update mixes the nominal clock rate $\dot\phi_{\text{nom}}\unit{s^{-1}}$ with a
+proportional correction of gain $k_\phi\in[0,1]$ towards the state estimate
+$\hat\phi$. Setting $k_\phi=0$ recovers a pure time clock; with $k_\phi>0$ the
+phase \emph{tracks the robot's actual progress} --- it slows or pauses if the
+robot is held back and speeds up if it runs ahead. Searching only forward
+($\varphi\ge\phi$) guarantees monotone progress, so the skill never regresses to an
+earlier stage. This is what gives the execution both speed-adaptability and
+robustness to disturbance.
+
+% ============================================================================
+\section{Stability and passivity}
+% ============================================================================
+\label{sec:stab}
+We now establish the stability properties of the closed loop. The tool obeys the task-space
+dynamics $\Lambda\ddot x+C\dot x+g=f+f_{\text{ext}}$, where $\Lambda\unit{kg}$ is
+the Cartesian inertia and $f_{\text{ext}}\unit{N}$ the environment force.
+Substituting the control law \eqref{eq:imp} (with gravity/Coriolis cancelled by
+\eqref{eq:torque}) gives the \emph{error dynamics}
+\begin{equation}
+\Lambda\ddot{\tilde x}+\big(C+D(\phi)\big)\dot{\tilde x}+K(\phi)\,\tilde x=f_{\text{ext}} ,
+\label{eq:err}
+\end{equation}
+a (time-varying) mass--spring--damper in the tracking error driven by the contact
+force.
+
+\subsection{Passivity --- the controller cannot create energy}
+\begin{proposition}[Passivity]
+\label{prop:pass}
+The input--output map $f_{\text{ext}}\mapsto\dot x$ is passive. With the storage
+function (an energy, in joules)
+$V=\tfrac12\dot{\tilde x}^\top\Lambda\dot{\tilde x}+\tfrac12\tilde x^\top K\tilde x+T$
+and a non-negative \emph{energy tank} $T\ge T_{\min}$ whose dynamics harvest the
+power dissipated by damping and pay out the power injected by the time-varying
+gains and moving reference,
+\begin{equation}
+\dot T=\underbrace{\dot{\tilde x}^\top D\,\dot{\tilde x}}_{\text{harvested }[\mathrm{W}]}
+       -\underbrace{P_{\text{inj}}}_{[\mathrm{W}]},\qquad
+P_{\text{inj}}=\tfrac12\tilde x^\top\dot K\,\tilde x+\tilde x^\top K\,\dot x_d ,
+\end{equation}
+the loop satisfies $\dot V\le f_{\text{ext}}^\top\dot x$ as long as $T>T_{\min}$.
+\end{proposition}
+\noindent Interpretation: $V$ is the total stored energy (kinetic $+$ elastic $+$
+tank). The two indefinite, potentially energy-injecting terms --- the rate of
+change of stored elastic energy from a rising stiffness
+($\tfrac12\tilde x^\top\dot K\tilde x$) and the power supplied to a moving
+reference ($\tilde x^\top K\dot x_d$), both in watts --- are drawn from the tank,
+which is replenished by the power dissipated through damping. When the tank
+reaches its lower bound, stiffness growth is inhibited ($\dot K\!\le\!0$) and the
+phase is frozen ($\dot\phi\!\to\!0$), so the controller cannot generate energy.
+This constitutes the formal guarantee of stable interaction with an unknown
+passive environment.
+
+\subsection{Exponential stability --- the error decays at a guaranteed rate}
+The plain energy $V_0=\tfrac12\dot{\tilde x}^\top\Lambda\dot{\tilde x}+\tfrac12\tilde x^\top K\tilde x$
+only gives $\dot V_0=-\dot{\tilde x}^\top D\dot{\tilde x}\le0$, which proves the
+error eventually vanishes but says nothing about \emph{how fast}. To obtain an
+exponential rate we add a cross-term between position and velocity error:
+\begin{equation}
+V=\tfrac12\dot{\tilde x}^\top\Lambda\dot{\tilde x}
+ +\tfrac12\tilde x^\top K\tilde x
+ +\beta\,\tilde x^\top\Lambda\dot{\tilde x},\qquad\beta>0 ,
+\label{eq:lyap}
+\end{equation}
+where $\beta\unit{s^{-1}}$ is small enough that $V$ stays a valid (positive)
+energy.
+
+\begin{theorem}[Exponential stability]
+\label{thm:exp}
+For \eqref{eq:err} with $f_{\text{ext}}=0$ and constant $K,D\succ0$, if
+$\beta<\sqrt{\lambda_{\min}(K)/\lambda_{\max}(\Lambda)}$ (so $V>0$) and
+$\beta<\lambda_{\min}(D)/\lambda_{\max}(\Lambda)$, then there are constants
+$\alpha>0$ and $c\ge1$ with
+\begin{equation}
+\dot V\le-\alpha V\quad\Longrightarrow\quad
+\norm{\tilde x(t)}\le c\,e^{-(\alpha/2)t}\,\norm{[\tilde x(0);\dot{\tilde x}(0)]} .
+\end{equation}
+\end{theorem}
+\begin{proof}[Sketch]
+Differentiating \eqref{eq:lyap} along \eqref{eq:err} and using
+$\Lambda\ddot{\tilde x}=-D\dot{\tilde x}-K\tilde x$, the symmetric terms
+$-\dot{\tilde x}^\top K\tilde x+\tilde x^\top K\dot{\tilde x}$ cancel, leaving
+$\dot V=-\dot{\tilde x}^\top(D-\beta\Lambda)\dot{\tilde x}
+        -\beta\,\tilde x^\top K\tilde x-\beta\,\tilde x^\top D\dot{\tilde x}$.
+The middle term $-\beta\,\tilde x^\top K\tilde x$ is what makes $\dot V$ negative
+definite \emph{in the position error} (the cross-term's purpose); bounding the
+last term with Young's inequality and applying the two $\beta$ conditions yields
+$\dot V\le-\alpha_1\norm{\tilde x}^2-\alpha_2\norm{\dot{\tilde x}}^2\le-\alpha V$.
+Since $V$ is equivalent to $\norm{[\tilde x;\dot{\tilde x}]}^2$, exponential decay
+of the error follows. The rate $\alpha$ grows with $\lambda_{\min}(K)$ and
+$\lambda_{\min}(D)$ --- so the stiff cut-depth axis converges fastest.
+\end{proof}
+
+\noindent Figure~\ref{fig:stab} shows the error envelope decaying exponentially in
+a static cut (the fitted rate $\hat\lambda$ matches the predicted form).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.97\textwidth]{stability_cork.png}
+\caption{Closed-loop behaviour. Left: the tracking-error norm decays
+exponentially (dashed fit $\propto e^{-\lambda t}$); middle: the Lyapunov energy
+$V(t)$; right: the passivity residual $\dot V-f_{\text{ext}}^\top\dot x$, which
+must stay $\le 0$.}
+\label{fig:stab}
+\end{figure}
+
+\paragraph{Variable gains, moving target, and the unifying role of the tank.}
+When the gains vary, $\dot K=K'(\phi)\dot\phi$ adds a term
+$\tfrac12\tilde x^\top\dot K\tilde x$; the exponential property survives as long as
+the gain changes slowly enough,
+$\norm{\dot K(\phi)}<2\beta\,\lambda_{\min}(K)$, i.e.\ a bound on the phase rate
+$\dot\phi<2\beta\lambda_{\min}(K)/\norm{K'(\phi)}$. \emph{This is exactly the bound
+the energy tank enforces} (Proposition~\ref{prop:pass}). For a moving workpiece
+the result is \emph{practical} exponential stability,
+$\norm{\tilde x(t)}\le c\,e^{-\lambda t}\norm{z(0)}+\gamma\sup\norm{\delta}$, where
+$\delta$ is the un-compensated reference acceleration and the residual ball grows
+with the workpiece motion; for the static case it is exponential to the origin.
+The same tank therefore (i) guarantees passivity, (ii) bounds $\dot\phi$ and hence
+$\dot K$ to preserve exponential contraction, and (iii) \emph{is} the state-driven
+phase law of Section~\ref{sec:phase}. Passivity, exponential stability, and
+adaptive timing are governed by a single mechanism.
+
+\paragraph{Implementation status.} The torque-level passivity QP that realises
+the tank constraint currently employs a constant power budget rather than the
+instantaneous tank state. Theorem~\ref{thm:exp} and Proposition~\ref{prop:pass}
+are therefore established analytically; coupling the tank state into the budget
+--- and gating $\dot\phi$ on it --- remains to be implemented for empirical
+demonstration of the bound. The analytical results are independent of this step.
+
+% ============================================================================
+\section{Material interaction model}
+% ============================================================================
+\label{sec:material}
+In simulation the controller tracked position well, yet the contact force at first
+failed to match the demonstrated force. The cause turned out to be the
+\emph{material model}, not the controller. The blade and the workpiece were both
+rigid box geometries, and overlapping boxes in a rigid-contact simulator produce
+non-physical collision forces (near zero when grazing, then sudden spikes of
+hundreds of newtons). A controller cannot make such a contact respect a
+force constraint, because the ``force'' is a geometric artefact rather than a
+cutting force. Figure~\ref{fig:before_after} (left) shows this failure mode.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.97\textwidth]{cutting_model_fix.png}
+\caption{Why a material model is needed. Left: with rigid box-on-box contact the
+measured force (blue) is zero through most of the cut then spikes --- it does not
+follow the desired (dashed). Right: with the identified cutting-force model the
+force is bounded, smooth and follows the desired level.}
+\label{fig:before_after}
+\end{figure}
+
+We replace the rigid contact with a \emph{per-material cutting-force law}.
+Physically, cutting force rises elastically with penetration and then
+\emph{plateaus} at the material's cutting strength (the blade fractures/cuts the
+material). We model the reaction the material exerts on the blade as a saturating
+function of the penetration depth, oriented along the demonstrated reaction
+direction $-\hat F_d$:
+\begin{equation}
+\boxed{\;
+\norm{F_{\text{react}}(d)}=\min\!\big(k_{\text{mat}}\,d,\;F^{\text{cut}}_{\text{mat}}\big),
+\qquad
+F_{\text{react}}=\norm{F_{\text{react}}(d)}\,\big(-\hat F_d\big)\;}
+\label{eq:cut}
+\end{equation}
+$d\unit{m}$ is how far the tool tip sits below the (live, current) material
+surface; $k_{\text{mat}}\unit{N\,m^{-1}}$ is the loading stiffness; and
+$F^{\text{cut}}_{\text{mat}}\unit{N}$ is the cutting-force plateau. The two
+parameters are \emph{identified from each material's own demonstration} (system
+identification): $F^{\text{cut}}$ from the demonstrated cutting-force level and
+$k_{\text{mat}}$ from the loading slope. Because the demonstrated forces are the
+\emph{real material's measured interaction forces}, a model that reproduces them
+is a faithful, calibrated material --- not a controller artifice. The
+geometric contact is disabled, this reaction is applied to the blade, and the
+force sensor reports it.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+Material & $F^{\text{cut}}_{\text{mat}}$ (N) & $k_{\text{mat}}$ (N/m) & contact maintained & force RMSE (N)\\
+\midrule
+penoplex (foam) & $63$ & $9{,}104$ & $100\%$ & $1.8$ \\
+cork & $59$ & $9{,}917$ & $100\%$ & $2.5$ \\
+PVC (hardest) & $86$ & $13{,}855$ & $100\%$ & $2.6$ \\
+\bottomrule
+\end{tabular}
+\caption{Cutting parameters identified per material, and the resulting force
+tracking. The materials are clearly distinct (PVC is stiffest and strongest,
+consistent with its hardness), and the force matches the demonstrated level to
+within $\approx2$\,N --- an approximate physical fit, not an exact replay.}
+\label{tab:material}
+\end{table}
+
+% ============================================================================
+\section{Results}
+% ============================================================================
+\label{sec:results}
+Figure~\ref{fig:calibrated} summarises the closed-loop behaviour with the
+identified material on both a static and a moving workpiece.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.97\textwidth]{cut_calibrated.png}
+\caption{Cutting with the identified material model on \textbf{cork}. Left column:
+the measured contact-force magnitude (blue) follows the desired (dashed) for the
+whole cut, on static (top) and moving (bottom) workpieces. Right column: per-axis
+position error --- the cut-depth (Z) error stays $\approx2$\,mm; the lateral (Y)
+error peaks during the large demonstrated lateral swing.}
+\label{fig:calibrated}
+\end{figure}
+
+The same behaviour holds for the other two materials
+(Fig.~\ref{fig:calibrated_others}): on \textbf{PVC} the force tracks its higher
+$\sim\!86$\,N cutting plateau and on \textbf{penoplex} its $\sim\!63$\,N plateau,
+each within $\approx2$\,N RMSE and $100\%$ contact, on both static and moving
+workpieces. The force level is thus material-specific (set by the identified
+$F^{\text{cut}}_{\text{mat}}$ of Table~\ref{tab:material}) while the same
+controller and the same identification procedure are used throughout.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.93\textwidth]{cut_calibrated_pvc.png}\\[4pt]
+\includegraphics[width=0.93\textwidth]{cut_calibrated_peno.png}
+\caption{Force tracking on \textbf{PVC} (top) and \textbf{penoplex} (bottom),
+static (left) and moving (right). The measured force (blue) follows each
+material's demonstrated level (dashed) to $\approx2$\,N RMSE with $100\%$ contact.
+PVC plateaus highest ($\sim86$\,N, hardest material), penoplex lowest
+($\sim63$\,N), mirroring the per-material cutting parameters of
+Table~\ref{tab:material}.}
+\label{fig:calibrated_others}
+\end{figure}
+
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{The task performance is attributable to the learned variance
+structure} (Table~\ref{tab:ablation}, Fig.~\ref{fig:ablation}): the identified
+precision attains the lowest cut-depth error --- $26$--$48\%$ below the inverted,
+permuted, and direct-force assignments --- on every stable seed ($p=0.001$).
+\item \textbf{Force tracking} (Table~\ref{tab:material}, Fig.~\ref{fig:calibrated}):
+with the identified material the measured force follows the demonstrated force to
+$\approx2$\,N RMSE with $100\%$ contact, on both static and moving workpieces and
+across three materials.
+\item \textbf{Position tracking}: cut-depth (Z) error $\approx2$\,mm; the lateral
+(Y) error peaks $\approx50$\,mm during the large $\pm150$\,mm demonstrated lateral
+swing --- the expected consequence of the deliberately low stiffness assigned to
+that low-precision axis.
+\item \textbf{Stability} (Fig.~\ref{fig:stab}): the tracking error decays
+exponentially and the passivity residual stays non-positive.
+\item \textbf{Live monitoring}: Figure~\ref{fig:monitor} shows the real-time
+monitor used to inspect runs (position, contact force, stiffness, tracking error,
+each in its own units).
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.92\textwidth]{monitor_preview.png}
+\caption{Real-time monitor: position (mm), contact force per axis (N, desired vs
+actual), commanded stiffness (kN/m), and position tracking error (mm).}
+\label{fig:monitor}
+\end{figure}
+
+% ============================================================================
+\section{Novelty and contributions}
+% ============================================================================
+\begin{enumerate}[leftmargin=1.7em]
+\item \textbf{Gains learned from demonstration precision, via an online QP.}
+Stiffness \emph{is} the demonstration precision \eqref{eq:precision}, computed each
+step by the QP \eqref{eq:qp} that blends force-consistency with precision-stiffness
+under force-saturation constraints. The ablation (Table~\ref{tab:ablation}) proves
+the \emph{specific} learned variance structure --- not generic adaptivity --- is
+what carries the skill.
+\item \textbf{State-driven task parametrisation.} A phase variable advanced by
+matching the robot's measured state to the prior \eqref{eq:phase}, rather than by a
+clock, giving speed-adaptability and disturbance awareness, and unifying with the
+stability mechanism.
+\item \textbf{Exponential stability and passivity under variable gains and a
+moving target.} A cross-term Lyapunov proof (Theorem~\ref{thm:exp}) with an
+explicit gain-rate condition that the energy tank enforces; one mechanism yields
+passivity, exponential contraction, and adaptive timing.
+\item \textbf{An empirical principle for contact-skill transfer.} Position is the
+reproducible prior, force is not; the controller therefore regulates position and
+treats force as a constraint, while a per-material identified model supplies the
+interaction force.
+\end{enumerate}
+
+% ============================================================================
+\section{Assumptions, scope and limitations}
+% ============================================================================
+\begin{itemize}[leftmargin=1.5em]
+\item The contact \emph{force} matches because the material model is identified to
+the demonstration (system identification); the \emph{controller} achieves the
+position/velocity tracking. These two roles are reported separately, and the force
+result is \emph{not} presented as controller force-tracking.
+\item All experiments are in simulation; the material parameters are identified
+from the real material's measured demonstration forces. Real-robot validation is
+future work.
+\item Lateral (Y) tracking lags the large demonstrated lateral swing; the
+task-critical cut-depth is tight. Reducing the lateral error is a
+phase-speed / parametrisation question, separate from the force model.
+\item The energy-tank passivity guarantee is proven; coupling the live tank state
+into the torque-level power budget is the remaining step for its empirical
+demonstration.
+\end{itemize}
+
+\end{document}
