@@ -13,6 +13,7 @@ class Material:
         self._is_solid = None
         self._is_movable = None
         self._bp_data = None
+        self._hight = None
 
     @classmethod
     def from_work_piece(cls):
@@ -27,6 +28,7 @@ class Material:
         obj.name = workPiece.MATERIAL_NAME
         obj.is_solid = workPiece.MATERIAL_IS_SOLID
         obj.is_movable = workPiece.MOBILE
+        obj.hight = workPiece.HIGHT
         return obj
 
     @property
@@ -68,6 +70,15 @@ class Material:
         if val.shape != (3,):
             raise ValueError(f"material size is expected of shape (3,), got {val.shape}")
         self._center = val
+    @property
+    def hight(self):
+        return self._hight
+
+    @hight.setter
+    def hight(self, val:float|int):
+        if not isinstance(val, (float, int)):
+            raise TypeError(f"material hight must be float or int!")
+        self._hight = val
 
     @property
     def name(self):
