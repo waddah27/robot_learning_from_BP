@@ -50,7 +50,8 @@ class workPiece:
     MATERIAL_RESISTANCE = 27 #N (OBSOLETE)
     MATERIAL_NAME ="cutting_material"
     MATERIAL_IS_SOLID = True
-    POS = np.array([0.5, 0.0, 0.02])
+    HIGHT = 0.02
+    POS = np.array([0.5, 0.0, HIGHT])
     SIZE = np.array([0.3, 0.3, 0.02])
     SURFACE: float = SIZE[2] + POS[2]
     MOBILE: bool = True

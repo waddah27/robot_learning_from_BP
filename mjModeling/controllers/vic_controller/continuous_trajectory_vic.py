@@ -115,6 +115,9 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         self.traj_pos = self.traj_loader.pos[:, 0:3]
         self.traj_vel = self.traj_loader.vel[:, 0:3]
         self.traj_force = self.traj_loader.force[:, 0:3]
+        self.pos_gmr_min = np.min(self.traj_pos, axis=0)
+        self.pos_gmr_max = np.max(self.traj_pos, axis=0)
+        self.pos_gmr_range = np.maximum(self.pos_gmr_max - self.pos_gmr_min, 1e-6)
 
         if hasattr(self, 'force_scale'):
             self.traj_force *= self.force_scale
@@ -153,7 +156,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             mat_pos = self.data.geom_xpos[self.mat_geom_id].copy()
         p_safe = np.zeros(3)
         p_safe[:min(len(gmr_point), 3)] = gmr_point[:min(len(gmr_point), 3)]
-        norm = (p_safe - self.gmr_min) / self.gmr_range
+        norm = (p_safe - self.pos_gmr_min) / self.pos_gmr_range
         norm = np.clip(norm, 0, 1)
         world_x = mat_pos[0] + (norm[0] - 0.5) * self.cut_dim_x
         world_y = mat_pos[1] + (norm[1] - 0.5) * self.cut_dim_y
@@ -161,9 +164,9 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         return np.array([world_x, world_y, world_z])
 
     def _gmr_vel_to_world(self, gmr_vel, mat_vel, mat_pos=None):
-        v_scale = np.array([self.cut_dim_x / self.gmr_range[0],
-                             self.cut_dim_y / self.gmr_range[1],
-                             self.cut_dim_z / self.gmr_range[2]])
+        v_scale = np.array([self.cut_dim_x / self.pos_gmr_range[0],
+                             self.cut_dim_y / self.pos_gmr_range[1],
+                             self.cut_dim_z / self.pos_gmr_range[2]])
         v_world = gmr_vel[:3] * v_scale
         if np.isscalar(mat_vel):
             v_world_z = v_world[2] + mat_vel

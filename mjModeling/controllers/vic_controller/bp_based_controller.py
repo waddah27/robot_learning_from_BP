@@ -54,24 +54,9 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
             self.bp_generator = GMRReferenceGenerator(self.traj_loader)
 
             raw_pos = self.traj_loader.pos[:, 0:]
-            self.gmr_min = np.min(raw_pos, axis=0)
-            self.gmr_max = np.max(raw_pos, axis=0)
-            self.gmr_range = np.maximum(self.gmr_max - self.gmr_min, 1e-6)
 
     def _gmr_to_world(self, gmr_point):
-        mat_pos = self.data.geom_xpos[self.mat_geom_id].copy()
-
-        p_safe = np.zeros(3)
-        p_safe[:min(len(gmr_point), 3)] = gmr_point[:min(len(gmr_point), 3)]
-
-        norm = (p_safe - self.gmr_min) / self.gmr_range
-        norm = np.clip(norm, 0, 1)
-
-        world_x = mat_pos[0] + (norm[0] - 0.5) * self.cut_dim_x
-        world_y = mat_pos[1] + (norm[1] - 0.5) * self.cut_dim_y
-        world_z = mat_pos[2] +  (norm[2] - 0.5) * self.cut_dim_z
-
-        return np.array([world_x, world_y, world_z])
+        raise NotImplementedError
 
     def _solve_passivity_qp(self, tau_nominal, qvel):
         nv = self.model.nv
