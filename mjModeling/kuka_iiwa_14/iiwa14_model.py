@@ -150,11 +150,12 @@ class iiwa14(Robot):
         return self
 
     def shutdown(self):
-        if hasattr(self, 'robot_state') and 'shared_array' in self.state:
+        if hasattr(self, 'state') and 'shared_array' in self.state:
             self.state['shared_array'] = None   # release reference
         if self.buffer:
             self.buffer.close()
             self.buffer.unlink()
+            self.buffer = None
 
     @property
     def model(self):

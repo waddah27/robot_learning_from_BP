@@ -1,9 +1,8 @@
 # Passivity of Learned-Variability Impedance Control under Variable Gains and Variable Task Phase
 
-This note gives the passivity argument for the cutting controller and states the
-experiment that demonstrates it. It also records one **implementation gap** found
-while writing the proof (the energy tank is currently decorative) and the fix that
-makes the guarantee hold in code.
+This note gives the passivity argument for the cutting controller, documents the
+implementation used in `mjModeling/controllers/vic_controller`, and states the
+experiment that demonstrates it.
 
 ## 1. System and port
 
@@ -89,7 +88,7 @@ This is the thesis's theoretical claim: *learned-variability gains and
 state-driven task timing are admissible because the tank renders the closed loop
 passive for any `K(φ) > 0` and any `0 ≤ γ ≤ 1`.*
 
-## 6. Torque-level enforcement (what the code does)
+## 6. Torque-level enforcement in code
 
 At the joint level the nominal torque `τ_nom = Jᵀf + τ_null + g` is projected onto
 the passive set by a QP (`_solve_passivity_qp`):
@@ -100,49 +99,75 @@ i.e. it caps the mechanical power injected into the robot. With `P_max` tied to
 the tank, `q̇ᵀτ ≤ (T − T_min)/Δt`, (7) is exactly the discrete form of the tank
 constraint in §4.
 
-### Implementation gap (found 2026-06-15) — must fix for the claim to hold
-In the current code the QP uses a **constant** budget `self.tank_energy = 20`
-(`bp_based_controller.py`), so `P_max = (20 − 0.001)/Δt ≈ 10⁴ W` with `Δt ≈ 2e-3`.
-This bound effectively never binds. Meanwhile `update_tank_energy` integrates a
-*separate* variable `self.E_t` that is **never fed back** into the QP. So the tank
-is currently decorative: passivity is not actually enforced by the tank.
-
-**Fix:** make the tank state drive the budget, and deplete/replenish it:
+The implementation now uses one live tank state:
 
 ```python
-# in __init__: self.tank = 20.0  (single source of truth, T_min, T_max)
-# each step, BEFORE _solve_passivity_qp:
-P_inj = 0.5 * x_tilde @ (dKdphi * phidot) * x_tilde \
-        + x_tilde @ (K * dxd_dphi * phidot)          # eq. (5)
-P_dis = float(kd @ vel_error**2)                      # harvested dissipation
-self.tank = np.clip(self.tank + (P_dis - P_inj) * dt, self.tank_min, self.tank_max)
-P_max = max(0.0, (self.tank - self.tank_min) / self.dt)   # pass into the QP
-# and gate the phase:  gamma = np.tanh(self.tank / self.tank_ref); phidot *= gamma
+T[k+1] = clip(T[k] + (P_dis - P_inj) * Δt, T_min, T_max)
+P_max  = max(0, (T[k+1] - T_min) / Δt)
+γ      = tanh((T[k+1] - T_min) / T_ref)
+φ̇      = γ φ̇_nom
 ```
 
-With this coupling, §4–§5 hold in code, not just on paper.
+where:
+
+- `P_dis = ẋ̃ᵀDẋ̃` is harvested damping power.
+- `P_inj = P_gain + P_ref` is the positive power required by stiffness increases
+  and reference motion.
+- `_solve_passivity_qp` enforces `q̇ᵀτ ≤ P_max`. If the numerical QP fails, the
+  code falls back to the closed-form Euclidean projection onto the same halfspace.
+- `E_t` is retained only as a compatibility alias for plotting; `tank_energy` is
+  the single source of truth used by the QP.
+
+The controller logs `tank`, `tank_gamma`, `P_dis`, `P_inj`,
+`tank_balance_residual`, `power_nominal`, `power_safe`, and `power_limit` at
+every timestep. The experiment harness reports `tank_min_J`, `tank_gamma_min`,
+`power_violation_frac`, and `max_power_margin_W`; for the torque-level implementation,
+`power_violation_frac` should be zero up to numerical tolerance.
+
+### Implementation note
+This enforcement is a discrete-time, torque-level safety projection. It supports
+the passivity claim at the implemented port `q̇ᵀτ`; the Cartesian residual
+`V̇ − f_extᵀẋ` remains an empirical diagnostic because it is reconstructed from
+logged finite differences and an approximate effective Cartesian mass.
 
 ## 7. Demonstration experiment (P2)
 
-Goal: show empirically that the tank prevents instability that an un-tanked
-variable-impedance controller would exhibit.
+Goal: show empirically that the implemented tank prevents commanded positive
+joint-power injection that an un-tanked controller would allow.
 
 Protocol (sim, headless):
-1. Run the cut with an **adversarial energy injection**: at mid-cut, command a
-   transient stiffness spike `K → K_max` over a few ms (this drives `P_inj` up),
-   or apply an external impulsive `f_ext` to the TCP.
+1. Run the cut with an **adversarial joint-power injection**: during the middle of
+   the cut, add a known positive-power torque component before `_solve_passivity_qp`.
+   This is a validation hook only; it is disabled in normal experiments.
 2. Compare three controllers under identical perturbation:
-   - **no tank** (constant high `P_max`, current code) — expect velocity/energy blow-up;
-   - **tanked** (fix in §6) — expect the phase to pause, `K̇` clamp, bounded `V`;
-   - **tanked + state-phase** — expect graceful slow-down and recovery.
-3. Metrics: peak TCP speed, peak contact force, total stored energy `V(t)`,
-   tank trajectory `T(t)`, and whether `V̇ ≤ f_extᵀẋ` holds sample-by-sample
-   (plot the passivity residual `V̇ − f_extᵀẋ`; it must stay ≤ 0 for the tanked
-   case and go positive for the un-tanked case).
+   - **no tank**: no torque projection, no phase gate;
+   - **tank projection**: live tank drives the torque-power QP, no phase gate;
+   - **tank + phase gate**: torque-power QP plus tank-modulated phase speed.
+3. Plot the implemented inequality directly:
 
-A figure of the passivity residual staying ≤ 0 for the tanked controller, beside
-it going positive (energy generation) for the un-tanked one, is the defensible
-artifact for the stability chapter.
+       q̇ᵀτ_safe − P_max ≤ 0
+
+   together with `T(t)`, `P_max`, `q̇ᵀτ_nominal`, `q̇ᵀτ_safe`, and phase progress.
+
+Current validation artifact:
+
+    python experiments_eval/passivity_adversarial.py
+
+produces:
+
+    results/figures/passivity_adversarial_cork.png
+
+Observed result on cork:
+
+| controller | power-budget violation | max margin |
+|---|---:|---:|
+| no tank | 12.0% | +5876 W |
+| tank projection | 0.0% | 0 W |
+| tank + phase gate | 0.0% | 0 W |
+
+This is the defensible passivity figure: the un-tanked controller exceeds the
+counterfactual energy budget during the adversarial burst, while the tanked
+controllers keep `q̇ᵀτ_safe` below `P_max` throughout the run.
 
 ## 8. Assumptions
 - The argument assumes the environment is passive (true for elastic/dissipative

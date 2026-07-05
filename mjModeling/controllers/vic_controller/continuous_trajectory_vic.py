@@ -44,12 +44,23 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         self.Q = np.eye(3)     # force error weight
         self.R = np.eye(3) * 1e-9   # regularization weight
         self.delta_t = 0.1     # time step for tank dynamics (actual dt will be used)
-        self.T_max = 3000      # max tank energy (optional)
+        self.T_max = self.tank_max
 
         # Tank state
         self.x_t = np.array([self.epsilon, self.epsilon, self.epsilon])
-        self.E_t = 0.0
+        self.E_t = self.tank_energy
         self.E_tot = []
+        self._tank_prev_kp = None
+        self._tank_prev_phase = None
+        self._last_tank_info = {
+            "P_dis": 0.0,
+            "P_inj": 0.0,
+            "P_gain": 0.0,
+            "P_ref": 0.0,
+            "gamma": 1.0,
+            "balance_residual": 0.0,
+            "tank_prev": self.tank_energy,
+        }
 
         # Previous gains (for fallback)
         self.prev_kd = np.array([self.k_init, self.k_init, self.k_init])
@@ -426,11 +437,82 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                                                  phase=phase)
 
     # ---------- Energy modulation ----------
-    def update_tank_energy(self, kp, kd, error, vel_error, dt):
-        power = np.sum(kd * vel_error**2)
-        self.E_t += power * dt
-        self.E_t = np.clip(self.E_t, 0, self.T_max)
-        return self.E_t
+    def _tank_phase_gate(self):
+        """Scale phase speed to zero as the tank approaches its safety floor."""
+        if not self.phase_gating_enabled:
+            return 1.0
+        usable = max(0.0, self.tank_energy - self.tank_min)
+        gamma = np.tanh(usable / max(self.tank_ref, 1e-9))
+        return float(np.clip(gamma, 0.0, 1.0))
+
+    def _reference_slope_at_phase(self, phase, step=1e-3):
+        """Finite-difference dx_d/dphi in world coordinates."""
+        lo = max(0.0, phase - step)
+        hi = min(1.0, phase + step)
+        if hi <= lo:
+            return np.zeros(3)
+        return (self._gmr_to_world(self.pos_func(hi)) -
+                self._gmr_to_world(self.pos_func(lo))) / (hi - lo)
+
+    def update_tank_energy(self, kp, kd, error, vel_error, dt, phase_dot=0.0,
+                           dxd_dphi=None):
+        """Update the single live passivity tank used by the torque QP.
+
+        The tank harvests damping power and pays for two passivity-breaking
+        terms: stiffness increases and motion of the virtual reference.
+        """
+        kp = np.asarray(kp, dtype=float)
+        kd = np.asarray(kd, dtype=float)
+        error = np.asarray(error, dtype=float)
+        vel_error = np.asarray(vel_error, dtype=float)
+
+        P_dis = float(np.sum(kd * vel_error ** 2))
+
+        if self._tank_prev_kp is None:
+            dkp_dt = np.zeros_like(kp)
+        else:
+            dkp_dt = (kp - self._tank_prev_kp) / max(dt, 1e-9)
+        # Stiffness reductions release stored energy; only increases need tank
+        # budget to prevent the controller from creating energy.
+        P_gain = float(0.5 * np.sum(np.maximum(dkp_dt, 0.0) * error ** 2))
+
+        if dxd_dphi is None:
+            dxd_dphi = np.zeros(3)
+        xd_dot = np.asarray(dxd_dphi, dtype=float) * float(phase_dot)
+        P_ref = float(max(0.0, np.sum(error * kp * xd_dot)))
+        P_inj = P_gain + P_ref
+
+        tank_prev = self.tank_energy
+        tank_unclipped = tank_prev + (P_dis - P_inj) * dt
+        self.tank_energy = float(np.clip(tank_unclipped, self.tank_min, self.tank_max))
+        balance_residual = self.tank_energy - tank_prev - (P_dis - P_inj) * dt
+        self.E_t = self.tank_energy
+        self.E_tot.append(self.tank_energy)
+        self._tank_prev_kp = kp.copy()
+        self._last_tank_info = {
+            "P_dis": P_dis,
+            "P_inj": P_inj,
+            "P_gain": P_gain,
+            "P_ref": P_ref,
+            "gamma": self._tank_phase_gate(),
+            "balance_residual": float(balance_residual),
+            "tank_prev": float(tank_prev),
+        }
+        return self.tank_energy
+
+    def _apply_adversarial_power(self, tau_nominal, qvel):
+        """Add a controlled positive power burst for passivity validation."""
+        self.last_adversarial_power = 0.0
+        if not self.adversarial_power_enabled:
+            return tau_nominal
+        if not (self.adversarial_power_start <= self.phase <= self.adversarial_power_end):
+            return tau_nominal
+        qv_norm_sq = float(np.dot(qvel, qvel))
+        if qv_norm_sq < 1e-12:
+            return tau_nominal
+        tau_adv = (self.adversarial_power_watts / qv_norm_sq) * qvel
+        self.last_adversarial_power = float(qvel @ tau_adv)
+        return tau_nominal + tau_adv
 
     # ---------- Trajectory execution ----------
     def follow_trajectory(self, phase_speed: float = paramVIC.PHASE_SPEED, viewer=None):
@@ -480,7 +562,12 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
         self.phase = 0.0
         self.mat_time = 0.0
-        phase_inc = phase_speed * self.dt / self.traj_duration
+        self.tank_energy = self.tank_initial
+        self.E_t = self.tank_energy
+        self.E_tot = []
+        self._tank_prev_kp = None
+        self.last_adversarial_power = 0.0
+        phase_inc_nominal = phase_speed * self.dt / self.traj_duration
 
         # Precompute world-frame reference trajectory for state-driven phase estimation
         mujoco.mj_forward(self.model, self.data)
@@ -507,6 +594,10 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         self.episode_log = {k: [] for k in
                             ["phase", "pos_des_nom", "pos_des", "pos_act",
                              "f_des", "f_act", "f_raw", "kp", "tank", "tau"]}
+        for k in ["tank_gamma", "P_dis", "P_inj", "P_gain", "P_ref",
+                  "tank_balance_residual", "tank_prev", "power_nominal",
+                  "power_safe", "power_limit", "adversarial_power"]:
+            self.episode_log[k] = []
 
         # Restart the live monitor's recording at sample 0 so it shows the CUT,
         # not the long approach/IK phase that precedes it.
@@ -521,6 +612,9 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 break
 
             step_start = time.time()   # for real-time pacing (live viewer only)
+            tank_gamma = self._tank_phase_gate()
+            effective_phase_speed = phase_speed * tank_gamma
+            phase_inc = phase_inc_nominal * tank_gamma
 
             # Viewer control: pause/resume and quit, polled from the keyboard
             vc = getattr(self.robot, "viewer_control", None)
@@ -543,7 +637,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 if prev_mat_height is None:
                     mat_vel = 0.0
                 else:
-                    mat_vel = (current_height - prev_mat_height) / (phase_speed * self.dt)
+                    mat_vel = (current_height - prev_mat_height) / self.dt
                 prev_mat_height = current_height
             elif self.mat_joint_id is not None:
                 # STATIC material: hold it at its design height every step. Its
@@ -562,7 +656,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             vel_des_gmr = self.vel_func(self.phase)
             force_des_gmr = self.force_func(self.phase)
 
-            vel_des_gmr_scaled = vel_des_gmr * phase_speed
+            vel_des_gmr_scaled = vel_des_gmr * effective_phase_speed
             pos_des = self._gmr_to_world(pos_des_gmr)
             vel_des = self._gmr_vel_to_world(vel_des_gmr_scaled, mat_vel)
 
@@ -598,6 +692,15 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 phase=self.phase
             )
 
+            dxd_dphi = self._reference_slope_at_phase(self.phase)
+            phase_dot = phase_inc / max(self.dt, 1e-9)
+            self.update_tank_energy(
+                kp, kd, error, vel_error, self.dt,
+                phase_dot=phase_dot,
+                dxd_dphi=dxd_dphi
+            )
+            power_limit = (self.tank_energy - self.tank_min) / self.dt
+
             # VIC control law (impedance only)
             f_virtual = (kp * error) + paramVIC.VIC_KI * self.error_accumulated + kd * vel_error
             # Force saturation: strictly cap the commanded force to the per-axis
@@ -620,7 +723,10 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             tau_null = null_projection @ tau_posture
 
             tau_nominal = tau_task + tau_null + self.data.qfrc_bias[:self.model.nv]
-            tau_safe = self._solve_passivity_qp(tau_nominal, self.data.qvel)
+            tau_nominal = self._apply_adversarial_power(tau_nominal, self.data.qvel)
+            tau_safe = self._solve_passivity_qp(
+                tau_nominal, self.data.qvel, power_limit=power_limit
+            )
 
             self.data.ctrl[:self.model.nu] = np.clip(tau_safe[:self.model.nu], -300, 300)
 
@@ -640,7 +746,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             mujoco.mj_step(self.model, self.data)
 
             # Advance time – state-driven phase correction
-            self.mat_time += phase_speed * self.dt
+            self.mat_time += effective_phase_speed * self.dt
             self.sim_time += self.dt
             phi_hat = self._estimate_phase(current_pos, self.filtered_force)
             phase_correction = np.clip(
@@ -648,9 +754,6 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 -phase_inc, 2.0 * phase_inc
             )
             self.phase = np.clip(self.phase + phase_inc + phase_correction, 0.0, 1.0)
-
-            # Update tank energy
-            self.update_tank_energy(kp, kd, error, vel_error, self.dt * phase_speed)
 
             # Full-resolution episode record for metrics
             self.episode_log["phase"].append(self.phase)
@@ -663,6 +766,19 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             self.episode_log["kp"].append(np.asarray(kp).copy())
             self.episode_log["tank"].append(float(self.E_t))
             self.episode_log["tau"].append(float(np.linalg.norm(tau_safe[:self.model.nu])))
+            self.episode_log["tank_gamma"].append(float(self._last_tank_info["gamma"]))
+            self.episode_log["P_dis"].append(float(self._last_tank_info["P_dis"]))
+            self.episode_log["P_inj"].append(float(self._last_tank_info["P_inj"]))
+            self.episode_log["P_gain"].append(float(self._last_tank_info["P_gain"]))
+            self.episode_log["P_ref"].append(float(self._last_tank_info["P_ref"]))
+            self.episode_log["tank_balance_residual"].append(
+                float(self._last_tank_info["balance_residual"])
+            )
+            self.episode_log["tank_prev"].append(float(self._last_tank_info["tank_prev"]))
+            self.episode_log["power_nominal"].append(float(self.last_power_nominal))
+            self.episode_log["power_safe"].append(float(self.last_power_safe))
+            self.episode_log["power_limit"].append(float(self.last_power_limit))
+            self.episode_log["adversarial_power"].append(float(self.last_adversarial_power))
 
             self.record_contact_forces(Pd=pos_des, P=current_pos, Fd=f_des_world, K=kp)
 
@@ -678,7 +794,8 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 Logger.debug(f"Phase {self.phase:.3f}(est:{phi_hat:.3f}): "
                       f"F_des={force_des_mag:.1f}N  F_act={force_act_mag:.1f}N  "
                       f"F_err={force_err_mag:.1f}N  pen={self.adm_s*1e3:.1f}mm  "
-                      f"Kp_z={kp[2]:.0f}  "
+                      f"Kp_z={kp[2]:.0f}  T={self.tank_energy:.2f}J  "
+                      f"gamma={self._last_tank_info['gamma']:.2f}  "
                       f"{'CONTACT' if self.in_contact else 'free'}")
                 last_log_time = self.sim_time
 

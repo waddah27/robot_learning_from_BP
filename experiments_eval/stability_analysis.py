@@ -45,6 +45,7 @@ def run(material="cork", moving=False):
     robot = iiwa14().create(xml_path=ROBOT_SCENE, work_piece=wp)
     vic = ContinuousTrajectoryVIC(robot, use_behaviour_priors=True,
                                   optimizer=ImpedanceOptimizer.qp)
+    vic.working_piece = wp
     vic.use_learned_gains = True; vic.variance_mode = "true"
     exp = straightCutting(robot); exp.controller = vic
     exp.execute(viewer=None)
@@ -84,13 +85,20 @@ def analyze(log, dt, label):
     V = 0.5 * M_EFF * np.sum(edot ** 2, axis=1) + 0.5 * np.sum(K * e ** 2, axis=1)
     Vdot = np.gradient(V, dt)
     passivity_resid = Vdot - np.sum(fext * xdot, axis=1)
+    tank = log.get("tank", np.full(n, np.nan))
+    power_nominal = log.get("power_nominal", np.full(n, np.nan))
+    power_safe = log.get("power_safe", np.full(n, np.nan))
+    power_limit = log.get("power_limit", np.full(n, np.nan))
+    power_violation = np.mean(power_safe > power_limit + 1e-6)
     fit = fit_exponential(t, e_norm)
     return dict(t=t, e_norm=e_norm, e_z=e_z, V=V, resid=passivity_resid, fit=fit,
-                label=label)
+                label=label, tank=tank, power_nominal=power_nominal,
+                power_safe=power_safe,
+                power_limit=power_limit, power_violation=power_violation)
 
 
 def plot(panels, fname):
-    fig, ax = plt.subplots(len(panels), 3, figsize=(15, 4.2 * len(panels)))
+    fig, ax = plt.subplots(len(panels), 4, figsize=(20, 4.2 * len(panels)))
     if len(panels) == 1:
         ax = ax[None, :]
     for r, P in enumerate(panels):
@@ -107,15 +115,30 @@ def plot(panels, fname):
         ax[r, 0].legend(fontsize=8)
         # (r,1) Lyapunov V(t)
         ax[r, 1].plot(t, P["V"], lw=1, color="purple")
-        ax[r, 1].set_title(f"[{P['label']}] Lyapunov V(t)  (impedance energy)")
+        ax2 = ax[r, 1].twinx()
+        ax2.plot(t, P["tank"], lw=0.9, color="darkorange", alpha=0.75)
+        ax[r, 1].set_title(f"[{P['label']}] Lyapunov V(t) and tank T(t)")
         ax[r, 1].set_xlabel("time (s)"); ax[r, 1].set_ylabel("V")
-        # (r,2) passivity residual
-        ax[r, 2].plot(t, P["resid"], lw=0.8, color="teal")
-        ax[r, 2].axhline(0, color="k", lw=0.8, ls=":")
+        ax2.set_ylabel("tank energy (J)")
+        # (r,2) implemented torque-level passivity check
+        ax[r, 2].plot(t, P["power_limit"], lw=1.2, color="black", label="P_max")
+        ax[r, 2].plot(t, P["power_nominal"], lw=0.8, color="tab:red",
+                      alpha=0.65, label="qdot.T tau_nom")
+        ax[r, 2].plot(t, P["power_safe"], lw=0.9, color="tab:green",
+                      label="qdot.T tau_safe")
+        ax[r, 2].set_title(f"[{P['label']}] torque power budget\n"
+                           f"QP violations {P['power_violation']*100:.1f}%")
+        ax[r, 2].set_xlabel("time (s)"); ax[r, 2].set_ylabel("power (W)")
+        ax[r, 2].legend(fontsize=7)
+
+        # (r,3) reconstructed Cartesian passivity residual
+        ax[r, 3].plot(t, P["resid"], lw=0.8, color="teal")
+        ax[r, 3].axhline(0, color="k", lw=0.8, ls=":")
         viol = float(np.mean(P["resid"] > 1e-6) * 100)
-        ax[r, 2].set_title(f"[{P['label']}] passivity residual V̇−fₑₓₜ·ẋ\n"
-                           f"(>0 only {viol:.1f}% of time)")
-        ax[r, 2].set_xlabel("time (s)"); ax[r, 2].set_ylabel("residual")
+        ax[r, 3].set_title(f"[{P['label']}] reconstructed residual V̇−fₑₓₜ·ẋ\n"
+                           f"(residual>0 {viol:.1f}%, torque-QP violations "
+                           f"{P['power_violation']*100:.1f}%)")
+        ax[r, 3].set_xlabel("time (s)"); ax[r, 3].set_ylabel("residual")
     fig.tight_layout()
     os.makedirs(_FIG, exist_ok=True)
     out = os.path.join(_FIG, fname)
@@ -133,6 +156,7 @@ if __name__ == "__main__":
         print(f"[{lab}] mean ‖e‖={P['e_norm'].mean()*1e3:.1f}mm  "
               f"cut-depth={P['e_z'].mean()*1e3:.1f}mm  "
               f"λ̂={f['lam']:.2f}/s (R²={f['r2']:.2f})  "
-              f"passivity-violation={np.mean(P['resid']>1e-6)*100:.1f}%", flush=True)
+              f"cartesian-residual>0={np.mean(P['resid']>1e-6)*100:.1f}%  "
+              f"torque-QP-violation={P['power_violation']*100:.1f}%", flush=True)
     out = plot(panels, "stability_cork.png")
     print("saved figure:", out)

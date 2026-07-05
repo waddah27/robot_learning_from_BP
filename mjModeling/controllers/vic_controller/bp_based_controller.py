@@ -22,8 +22,23 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
 
         # Passivity Tank State
         self.tank_energy = 20.0
+        self.tank_initial = self.tank_energy
         self.tank_max = 50.0
         self.tank_min = 0.001
+        self.tank_ref = 5.0
+        self.passivity_enabled = True
+        self.phase_gating_enabled = True
+        self.last_power_nominal = 0.0
+        self.last_power_safe = 0.0
+        self.last_power_limit = np.inf
+
+        # Optional validation hook: inject a known positive joint-power burst
+        # before the passivity QP. Disabled in normal experiments.
+        self.adversarial_power_enabled = False
+        self.adversarial_power_start = 0.35
+        self.adversarial_power_end = 0.55
+        self.adversarial_power_watts = 0.0
+        self.last_adversarial_power = 0.0
         self.wp_mobile = robot.work_piece.is_movable
         self.sim_time = 0.0
 
@@ -58,18 +73,45 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
     def _gmr_to_world(self, gmr_point):
         raise NotImplementedError
 
-    def _solve_passivity_qp(self, tau_nominal, qvel):
+    def _solve_passivity_qp(self, tau_nominal, qvel, power_limit=None):
+        if not self.passivity_enabled:
+            self.last_power_nominal = float(qvel @ tau_nominal)
+            self.last_power_safe = self.last_power_nominal
+            self.last_power_limit = (
+                np.inf if power_limit is None else max(0.0, float(power_limit))
+            )
+            return tau_nominal
+
         nv = self.model.nv
+        if power_limit is None:
+            power_limit = (self.tank_energy - self.tank_min) / self.dt
+        power_limit = max(0.0, float(power_limit))
+        self.last_power_limit = power_limit
+        self.last_power_nominal = float(qvel @ tau_nominal)
+
+        if np.linalg.norm(qvel) < 1e-9 or self.last_power_nominal <= power_limit:
+            self.last_power_safe = self.last_power_nominal
+            return tau_nominal
+
         P = matrix(np.eye(nv).astype(float))
         q = matrix(-tau_nominal.astype(float))
-        power_limit = (self.tank_energy - self.tank_min) / self.dt
         G = matrix(qvel.reshape(1, -1).astype(float))
-        h = matrix(np.array([max(30.0, power_limit)]).astype(float))
+        h = matrix(np.array([power_limit]).astype(float))
         try:
             sol = solvers.qp(P, q, G, h)
-            return np.array(sol['x']).flatten()
-        except:
-            return np.zeros(nv)
+            if sol.get("status") == "optimal":
+                tau_safe = np.array(sol['x']).flatten()
+                self.last_power_safe = float(qvel @ tau_safe)
+                return tau_safe
+        except Exception as exc:
+            Logger.debug(f"Passivity QP failed, using analytic projection: {exc}")
+
+        # Closed-form Euclidean projection onto qvel.T tau <= power_limit.
+        tau_safe = tau_nominal - (
+            (self.last_power_nominal - power_limit) / (np.dot(qvel, qvel) + 1e-12)
+        ) * qvel
+        self.last_power_safe = float(qvel @ tau_safe)
+        return tau_safe
 
     def move_to_position(self, use_default=True, target_pos=None, viewer=None):
         return super().move_to_position(target_pos, viewer)

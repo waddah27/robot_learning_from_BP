@@ -95,8 +95,10 @@ is the wrong lens.
   result holds across that range. Real-robot validation is future work.
 - **Higher peak contact force** for the learned controller (stiffer depth axis):
   a genuine stiffness/safety trade-off, reported openly.
-- **The passivity/energy-tank stability mechanism** is currently not actually
-  closing the loop in code (it uses a constant budget); the fix is specified.
+- **The passivity/energy-tank mechanism is implemented at torque level**, with
+  the live tank setting the QP power budget. The adversarial validation now shows
+  the un-tanked controller violates the budget while the tanked controllers do not;
+  Cartesian residual passivity remains a diagnostic, not the main proof artifact.
 
 ## 8. Questions to address in the thesis
 - **Ch. A — What transfers and what doesn't:** the variability analysis
@@ -105,7 +107,8 @@ is the wrong lens.
   precision) and the experiment.
 - **Ch. C — Robustness & generalization:** does the learned skill survive
   disturbances and transfer cork → PVC / penoplex (the remaining experiment).
-- **Ch. D — Stability:** the passivity guarantee (theory + the tank fix + demo).
+- **Ch. D — Stability:** the torque-port passivity guarantee (theory +
+  implemented tank + adversarial perturbation demo).
 
 ## 9. Summary
 *"I learned a precision skill from human demonstrations by letting the

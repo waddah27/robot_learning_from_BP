@@ -42,7 +42,7 @@ class paramVIC:
     # Disable using variable gains for other motion phases than cutting
     DISABLE_PTP_VIC = True
     USE_LEARNT_GAINS = True
-    TRACK_WP_MOTION = True
+    TRACK_WP_MOTION = False
     # GMR params to vic
     GMR = GMRParams
 

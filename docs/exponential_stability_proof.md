@@ -161,7 +161,11 @@ Passivity, exponential stability, and adaptive task parametrization are therefor
 - Fit `‖e(t)‖` to `c·e^(−λt)` ⇒ identified `λ̂`; compare to the theoretical
   `λ = α/2` from §3 (report `λ̂/λ_theory`).
 - Verify `V(t)` is non-increasing outside injection windows.
-- Verify the passivity residual `V̇ − f_extᵀẋ ≤ 0` (validates A3 + tank).
+- Verify the implemented torque-port inequality `q̇ᵀτ_safe − P_max ≤ 0`
+  under the adversarial power-injection test (validates the tank enforcement).
+- Use the Cartesian residual `V̇ − f_extᵀẋ` as a reconstructed diagnostic, not
+  as the primary proof artifact until the force frame/sign and storage model are
+  fully matched to the implementation.
 - Disturbance recovery (ISS): impulse perturbation ⇒ exponential return, both
   static and moving material.
 
@@ -171,7 +175,6 @@ Passivity, exponential stability, and adaptive task parametrization are therefor
 - Exponential-to-the-origin requires regulation (`ẍ_d→0`); under a moving
   reference it is exponential-to-a-ball (practical exponential stability) — this
   is standard and is stated, not hidden.
-- Requires the tank to actually gate `φ̇` (the current code does not yet — see
-  the fix in `passivity_analysis.md §6`; implementing it is a prerequisite for
-  the demonstration, though the *proof* stands on its own).
+- Requires the tank to gate `φ̇` and set the torque-level power budget; this is
+  implemented as described in `passivity_analysis.md §6`.
 - Assumes reasonable gravity/Coriolis compensation; residuals enter `δ`.

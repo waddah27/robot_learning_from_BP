@@ -103,6 +103,9 @@ def compute_metrics(log, material="cork"):
     pos_act = np.array(log["pos_act"])
     f_des = np.array(log["f_des"]);     f_act = np.array(log["f_act"])
     tank = np.array(log["tank"]);       tau = np.array(log["tau"])
+    power_safe = np.array(log.get("power_safe", []), dtype=float)
+    power_limit = np.array(log.get("power_limit", []), dtype=float)
+    tank_gamma = np.array(log.get("tank_gamma", []), dtype=float)
 
     err = pos_des - pos_act                       # (N,3)
     pos_err = np.linalg.norm(err, axis=1)
@@ -125,6 +128,13 @@ def compute_metrics(log, material="cork"):
         jerk_rms = float("nan")
 
     peak = float(f_act_mag.max())
+    if len(power_safe) and len(power_limit):
+        power_violation = float(np.mean(power_safe > power_limit + 1e-6))
+        max_power_margin = float(np.max(power_safe - power_limit))
+    else:
+        power_violation = float("nan")
+        max_power_margin = float("nan")
+
     return {
         "completion":      float(phase[-1] >= 0.999),
         "diverged":        float(peak > DIVERGENCE_FORCE_N),
@@ -137,6 +147,10 @@ def compute_metrics(log, material="cork"):
         "force_overshoot_N": float((f_act_mag - f_des_mag).max()),
         "jerk_rms":        jerk_rms,
         "tau_rms_Nm":      float(np.sqrt(np.mean(tau ** 2))),
+        "tank_min_J":      float(np.min(tank)) if len(tank) else float("nan"),
+        "tank_gamma_min":  float(np.min(tank_gamma)) if len(tank_gamma) else float("nan"),
+        "power_violation_frac": power_violation,
+        "max_power_margin_W": max_power_margin,
         "n_steps":         int(len(phase)),
     }
 
@@ -202,7 +216,9 @@ def paired_test(rows_a, rows_b, key):
 
 METRIC_KEYS = ["completion", "z_depth_rmse_mm", "x_rmse_mm", "y_rmse_mm",
                "precw_err_mm", "pos_rmse_mm", "force_peak_N",
-               "force_overshoot_N", "jerk_rms", "tau_rms_Nm"]
+               "force_overshoot_N", "jerk_rms", "tau_rms_Nm",
+               "tank_min_J", "tank_gamma_min", "power_violation_frac",
+               "max_power_margin_W"]
 
 
 def main():
@@ -251,7 +267,8 @@ def main():
     print("=" * 78)
     hdr = ["condition"] + ["completion", "divergence_rate", "z_depth_rmse_mm",
                            "x_rmse_mm", "y_rmse_mm", "precw_err_mm",
-                           "force_peak_N", "tau_rms_Nm"]
+                           "force_peak_N", "tau_rms_Nm",
+                           "tank_min_J", "power_violation_frac"]
     print(f"{hdr[0]:18s}" + "".join(f"{h:>15s}" for h in hdr[1:]))
     for c in conds:
         s = summary[c]
