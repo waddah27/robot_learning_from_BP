@@ -4,18 +4,19 @@ Experiment harness for the learned-variability control thesis.
 Runs cutting episodes headless under different controller conditions and computes
 task-success metrics. Two studies:
 
-  KILLER EXPERIMENT (P0): true vs inverted vs shuffled precision + naive-force
-  baseline. If only the TRUE demonstration-precision structure performs well, the
-  contribution is proven to be the *specific* learned variance structure, not
-  merely "adaptive gains".
+  VARIANCE-STRUCTURE CONTROLLED COMPARISON (P0): true vs inverted vs shuffled
+  precision plus a direct-force baseline. If only the true
+  demonstration-precision structure performs well, the result supports the claim
+  that the contribution is the specific learned variance structure, not merely
+  adjustable impedance.
 
   DOMAIN RANDOMIZATION (P1): each seed draws randomized physics (material
   friction / contact stiffness / mass + initial-pose noise). A PAIRED design runs
   every condition on the same randomized physics per seed -> paired statistics.
 
 Usage:
-    python experiments_eval/run_experiments.py --study killer --seeds 8 --material cork
-    python experiments_eval/run_experiments.py --study dr     --seeds 12 --material cork
+    python experiments_eval/run_experiments.py --study variance_comparison --seeds 8 --material cork
+    python experiments_eval/run_experiments.py --study dr                  --seeds 12 --material cork
 """
 import os, sys, json, argparse, warnings, logging
 import numpy as np
@@ -40,12 +41,12 @@ except Exception:
 _RESULTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
 
 # ---- controller conditions ----
-# (use_learned_gains, variance_mode) ; "naive_force" = original fixed-Q force QP
+# (use_learned_gains, variance_mode); direct_force_baseline = original fixed-Q force QP
 CONDITIONS = {
     "learned_true":     (True,  "true"),
     "learned_inverted": (True,  "inverted"),
     "learned_shuffled": (True,  "shuffled"),
-    "naive_force":      (False, "off"),
+    "direct_force_baseline": (False, "off"),
 }
 
 
@@ -223,10 +224,10 @@ METRIC_KEYS = ["completion", "z_depth_rmse_mm", "x_rmse_mm", "y_rmse_mm",
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--study", choices=["killer", "dr"], default="killer")
+    ap.add_argument("--study", choices=["variance_comparison", "dr"], default="variance_comparison")
     ap.add_argument("--seeds", type=int, default=8)
     ap.add_argument("--material", default="cork")
-    ap.add_argument("--conditions", default="learned_true,learned_inverted,learned_shuffled,naive_force")
+    ap.add_argument("--conditions", default="learned_true,learned_inverted,learned_shuffled,direct_force_baseline")
     args = ap.parse_args()
 
     conds = [c for c in args.conditions.split(",") if c in CONDITIONS]

@@ -1,9 +1,9 @@
 {
   "args": {
-    "study": "killer",
+    "study": "variance_comparison",
     "seeds": 12,
     "material": "cork",
-    "conditions": "learned_true,learned_inverted,learned_shuffled,naive_force"
+    "conditions": "learned_true,learned_inverted,learned_shuffled,direct_force_baseline"
   },
   "summary": {
     "learned_true": {
@@ -177,7 +177,7 @@
         12
       ]
     },
-    "naive_force": {
+    "direct_force_baseline": {
       "completion": [
         1.0,
         0.0,
@@ -926,7 +926,7 @@
         }
       }
     ],
-    "naive_force": [
+    "direct_force_baseline": [
       {
         "completion": 1.0,
         "diverged": 0.0,

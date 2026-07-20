@@ -8,6 +8,7 @@
 \usepackage[margin=2.4cm]{geometry}
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{enumitem}
@@ -40,7 +41,8 @@ This report presents a framework for transferring a high-precision contact
 skill --- cutting with a scalpel-like tool --- to a robot manipulator by learning
 from human demonstrations (termed \emph{behaviour priors}). Rather than replaying
 a single trajectory, the method learns the underlying structure of the skill and
-reproduces it under a controller that is provably stable and passive.
+reproduces it under a variable-impedance controller with an implemented
+energy-tank passivity mechanism at the joint torque port.
 
 The contribution comprises three elements. First, a \emph{variable impedance
 controller} whose stiffness is not hand-tuned but learned from the consistency of
@@ -51,9 +53,12 @@ Second, a \emph{state-driven task parametrisation}: the motion is indexed by a
 progress (phase) variable whose evolution is corrected by the manipulator's
 measured state rather than by a fixed clock, providing temporal-scale
 adaptability and disturbance rejection. Third, a formal \emph{stability and
-passivity} analysis establishing exponential convergence of the tracking error
-and non-injection of energy into the environment, under time-varying gains and a
-moving reference.
+passivity} analysis: the torque command is projected onto a live energy-tank
+power budget, and a positive-power perturbation validation demonstrates that the
+tank prevents energy injection that a controller without tank projection permits.
+Exponential convergence is derived under the stated regulation assumptions and is reported
+empirically as a diagnostic on the regulated task error rather than overclaimed
+from the released directions.
 
 A key empirical observation motivates the design: across repeated demonstrations
 the tool \emph{position} is highly repeatable (cross-trial correlation
@@ -167,9 +172,9 @@ Force (Fx/Fy/Fz) & $0.04$--$0.27$ & $\approx 0$ \\
 \noindent The result is clear: \emph{the demonstrated tool path is reproducible;
 the demonstrated force is not}. The recorded force is
 dominated by a large, nearly constant offset (consistent with tool preload /
-sensor bias) plus trial-to-trial content that does not repeat; we verified this is
-intrinsic to the dynamic part of the signal, not an artefact of time
-misalignment or sign convention. The practical implication is that
+sensor bias) plus trial-to-trial content that does not repeat; this was checked
+against the dynamic part of the signal, time alignment and sign convention. The
+practical implication is that
 \emph{point-tracking the demonstrated force trajectory is not a well-posed
 objective}. This is exactly the situation the \emph{minimal-intervention
 principle} addresses: regulate strongly where the demonstration is consistent
@@ -316,7 +321,7 @@ The damping follows from $K^\star$ by the critical-damping rule. The QP is tiny
 (three variables) and solves in well under a millisecond (OSQP), so it runs in the
 real-time loop.
 
-\paragraph{Ablation study: isolating the contribution of the learned variance
+\paragraph{Controlled comparison: isolating the contribution of the learned variance
 structure.} To establish that the performance gain originates from the
 \emph{specific} learned precision structure, rather than from gain adaptation per
 se, we evaluate the identical task and controller under four gain assignments:
@@ -325,15 +330,17 @@ directions that were inconsistent and relaxing those that were consistent);
 (iii) precision \emph{permuted} across axes; and (iv) a baseline that tracks the
 demonstrated force directly. The metric is the \emph{cut-depth error} --- the
 task-critical, demonstration-regulated axis --- evaluated over $12$ seeds with
-randomised contact parameters (Fig.~\ref{fig:ablation}, Table~\ref{tab:ablation}).
+randomised contact parameters (Fig.~\ref{fig:variance_comparison},
+Table~\ref{tab:variance_comparison}).
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.97\textwidth]{study_ablation_cork.png}
-\caption{Gain-assignment ablation on cork ($N=12$ randomised-physics seeds,
+\includegraphics[width=0.97\textwidth]{study_variance_comparison_cork.png}
+\caption{Controlled comparison of gain assignments on cork ($N=12$
+randomised-physics seeds,
 paired). Only the identified precision attains low cut-depth error; inverting or
 permuting the learned structure degrades it. Bars denote mean$\pm$std.}
-\label{fig:ablation}
+\label{fig:variance_comparison}
 \end{figure}
 
 \begin{table}[h]
@@ -353,7 +360,7 @@ stable seeds. Inverting or permuting the structure increases the error by
 $26$--$48\%$ ($p=0.001$, the smallest value attainable by the paired Wilcoxon
 test at this sample size). This isolates the identified \emph{variance structure},
 rather than gain adaptation in general, as the determinant of task performance.}
-\label{tab:ablation}
+\label{tab:variance_comparison}
 \end{table}
 
 % ============================================================================
@@ -408,10 +415,11 @@ a (time-varying) mass--spring--damper in the tracking error driven by the contac
 force.
 
 \subsection{Passivity --- the controller cannot create energy}
-\begin{proposition}[Passivity]
+\begin{proposition}[Continuous-time tank passivity]
 \label{prop:pass}
-The input--output map $f_{\text{ext}}\mapsto\dot x$ is passive. With the storage
-function (an energy, in joules)
+At the Cartesian contact port, the input--output map
+$f_{\text{ext}}\mapsto\dot x$ is passive under the following tank dynamics. With
+the storage function (an energy, in joules)
 $V=\tfrac12\dot{\tilde x}^\top\Lambda\dot{\tilde x}+\tfrac12\tilde x^\top K\tilde x+T$
 and a non-negative \emph{energy tank} $T\ge T_{\min}$ whose dynamics harvest the
 power dissipated by damping and pay out the power injected by the time-varying
@@ -431,8 +439,79 @@ reference ($\tilde x^\top K\dot x_d$), both in watts --- are drawn from the tank
 which is replenished by the power dissipated through damping. When the tank
 reaches its lower bound, stiffness growth is inhibited ($\dot K\!\le\!0$) and the
 phase is frozen ($\dot\phi\!\to\!0$), so the controller cannot generate energy.
-This constitutes the formal guarantee of stable interaction with an unknown
-passive environment.
+This is the continuous-time passivity argument used to design the implementation.
+
+\subsection{Implemented torque-port passivity}
+The simulation controller enforces the tank constraint at the joint torque port,
+where the mechanical power supplied by the actuators is $P_\tau=\dot q^\top\tau$.
+At every control step the nominal torque
+\[
+\tau_{\rm nom}=J^\top f+\tau_{\rm null}+g+C\dot q
+\]
+is projected onto the half-space of admissible torques
+\begin{equation}
+\boxed{\;
+\tau_{\rm safe}
+=\arg\min_{\tau}\norm{\tau-\tau_{\rm nom}}_2^2
+\quad\text{s.t.}\quad
+\dot q^\top\tau \le P_{\max},\qquad
+P_{\max}=\frac{T-T_{\min}}{\Delta t}. \;}
+\label{eq:pass_qp}
+\end{equation}
+The tank is updated before this projection:
+\begin{equation}
+T_{k+1}=\mathrm{clip}\!\left(
+T_k+\big(P_{\rm dis}-P_{\rm inj}\big)\Delta t,\,
+T_{\min},\,T_{\max}\right),
+\qquad
+\gamma_T=\tanh\!\left(\frac{T_{k+1}-T_{\min}}{T_{\rm ref}}\right),
+\label{eq:tank_disc}
+\end{equation}
+where $P_{\rm dis}=\dot{\tilde x}^{\top}D\dot{\tilde x}$ is harvested damping
+power, $P_{\rm inj}=P_{\rm gain}+P_{\rm ref}$ is the positive power demanded by
+stiffness increases and reference motion, and $\gamma_T\in[0,1]$ modulates the
+phase rate $\dot\phi=\gamma_T\dot\phi_{\rm nom}$. Equation~\eqref{eq:pass_qp}
+is the discrete statement that the controller cannot inject more joint power than
+the current tank can supply. When the numerical QP fails, the code uses the
+closed-form Euclidean projection onto the same half-space, so the enforced
+inequality is unchanged.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.97\textwidth]{passivity_adversarial_cork.png}
+\caption{Positive-power perturbation validation on cork. A known positive joint-power
+burst is injected before the torque projection. Without the tank (top row),
+$\dot q^\top\tau$ exceeds the counterfactual budget for $12.0\%$ of the samples
+and reaches a maximum margin of $+5876$\,W. With the tank projection (middle) and
+with tank plus phase gating (bottom), the implemented inequality
+$\dot q^\top\tau_{\rm safe}-P_{\max}\le0$ is satisfied for the whole run
+($0.0\%$ violations). The red shading marks the perturbation window.}
+\label{fig:pass_adv}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+Controller & completion & min. tank (J) & budget violation & max margin (W)\\
+\midrule
+No tank & $100\%$ & $0.001$ & $12.0\%$ & $+5876$\\
+Tank projection & $100\%$ & $0.907$ & $0.0\%$ & $0$\\
+Tank + phase gate & $100\%$ & $0.921$ & $0.0\%$ & $0$\\
+\bottomrule
+\end{tabular}
+\caption{Torque-port passivity validation under a positive-power
+injection. The tanked controllers complete the cut and never exceed the
+available energy budget.}
+\label{tab:pass_adv}
+\end{table}
+
+This is the empirical passivity proof artifact used in this report. The
+reconstructed Cartesian residual $\dot V-f_{\text{ext}}^\top\dot x$ is still
+plotted as a diagnostic in Fig.~\ref{fig:stab}, but it depends on finite
+differences, force-estimator sign conventions and an approximate Cartesian
+inertia; the implemented guarantee is therefore stated and validated at the
+torque port $\dot q^\top\tau$.
 
 \subsection{Exponential stability --- the error decays at a guaranteed rate}
 The plain energy $V_0=\tfrac12\dot{\tilde x}^\top\Lambda\dot{\tilde x}+\tfrac12\tilde x^\top K\tilde x$
@@ -474,16 +553,22 @@ of the error follows. The rate $\alpha$ grows with $\lambda_{\min}(K)$ and
 $\lambda_{\min}(D)$ --- so the stiff cut-depth axis converges fastest.
 \end{proof}
 
-\noindent Figure~\ref{fig:stab} shows the error envelope decaying exponentially in
-a static cut (the fitted rate $\hat\lambda$ matches the predicted form).
+\noindent Figure~\ref{fig:stab} shows the nominal closed-loop behaviour for
+static and moving workpieces. The cut-depth error remains small, the storage
+remains bounded, and the torque-port passivity inequality is satisfied. The
+exponential fit is included as an empirical diagnostic; because the controller
+deliberately releases low-precision axes, the full Cartesian norm is not the
+strongest metric for claiming exponential convergence.
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.97\textwidth]{stability_cork.png}
-\caption{Closed-loop behaviour. Left: the tracking-error norm decays
-exponentially (dashed fit $\propto e^{-\lambda t}$); middle: the Lyapunov energy
-$V(t)$; right: the passivity residual $\dot V-f_{\text{ext}}^\top\dot x$, which
-must stay $\le 0$.}
+\caption{Nominal stability and passivity diagnostics on cork. The left column
+shows tracking error and cut-depth error; the middle column shows the Lyapunov
+diagnostic and tank energy; the third column shows the implemented torque power
+budget $P_{\max}$ together with nominal and projected torque power; the right
+column shows the reconstructed Cartesian residual, used as a diagnostic rather
+than as the primary passivity proof.}
 \label{fig:stab}
 \end{figure}
 
@@ -503,12 +588,11 @@ $\dot K$ to preserve exponential contraction, and (iii) \emph{is} the state-driv
 phase law of Section~\ref{sec:phase}. Passivity, exponential stability, and
 adaptive timing are governed by a single mechanism.
 
-\paragraph{Implementation status.} The torque-level passivity QP that realises
-the tank constraint currently employs a constant power budget rather than the
-instantaneous tank state. Theorem~\ref{thm:exp} and Proposition~\ref{prop:pass}
-are therefore established analytically; coupling the tank state into the budget
---- and gating $\dot\phi$ on it --- remains to be implemented for empirical
-demonstration of the bound. The analytical results are independent of this step.
+\paragraph{Implementation status.} The live tank state is coupled into the
+torque-level budget \eqref{eq:pass_qp}, and phase progression is gated by
+\eqref{eq:tank_disc}. The positive-power perturbation validation in Fig.~\ref{fig:pass_adv} and
+Table~\ref{tab:pass_adv} is therefore an empirical demonstration of the
+implemented passivity mechanism, not only an analytical claim.
 
 % ============================================================================
 \section{Material interaction model}
@@ -518,18 +602,59 @@ In simulation the controller tracked position well, yet the contact force at fir
 failed to match the demonstrated force. The cause turned out to be the
 \emph{material model}, not the controller. The blade and the workpiece were both
 rigid box geometries, and overlapping boxes in a rigid-contact simulator produce
-non-physical collision forces (near zero when grazing, then sudden spikes of
-hundreds of newtons). A controller cannot make such a contact respect a
-force constraint, because the ``force'' is a geometric artefact rather than a
-cutting force. Figure~\ref{fig:before_after} (left) shows this failure mode.
+solver-dependent collision forces: the magnitude is set by contact penetration,
+time step and solver parameters, and the direction is the instantaneous collision
+normal. A controller cannot make such a contact respect a demonstrated cutting
+law, because the measured ``force'' is a geometric contact artefact rather than a
+material-specific fracture force. Figure~\ref{fig:before_after} shows this
+failure mode in a matched comparison: the same controller, trajectory, gains and
+cork workpiece are used, and only the contact model is toggled.
+
+\begin{proposition}[Why box-on-box contact is not a cutting model]
+Let the desired cutting interaction be a material law
+$F_d(\phi)=\bar F(d(\phi))\,r(\phi)$ with bounded magnitude
+$\bar F(d)\le F_{\rm mat}^{\rm cut}$ and reaction direction $r(\phi)$ learned
+from the demonstration. A rigid box-on-box MuJoCo contact instead generates a
+solver reaction
+\[
+F_{\rm box}=F_{\rm solver}(q,\dot q,h,\texttt{solref},\texttt{solimp},
+                          \mathcal C(q)),
+\]
+where $h$ is the integration step and $\mathcal C(q)$ is the active contact set.
+Since $\mathcal C(q)$ changes discontinuously at box faces and edges, and since
+the reaction direction is constrained by collision normals rather than by the
+demonstrated cutting direction, $F_{\rm box}$ is not a single-valued bounded
+function of cutting depth $d$ and cannot, in general, equal
+$\bar F(d)\,r(\phi)$ along the cut.
+\end{proposition}
+
+\begin{proof}
+For equality to hold for all phases of the demonstrated cut, two independent
+conditions are required: the force magnitude must satisfy
+$\norm{F_{\rm box}}=\bar F(d)\le F_{\rm mat}^{\rm cut}$, and the force direction
+must satisfy $F_{\rm box}/\norm{F_{\rm box}}=r(\phi)$. Rigid contact violates
+both conditions. Its magnitude is the Lagrange/penalty reaction required to
+remove interpenetration under the numerical contact parameters, so changing the
+solver stiffness or time step changes the reported force without changing the
+material. Its direction lies in the contact normal/friction cone determined by
+box geometry, not by the cutting-force direction measured in the demonstration.
+At contact-set switches the mapping can jump even when the desired cutting force
+is smooth. Therefore the rigid collision model and the desired cutting law are
+different input-output maps; no impedance gain choice can make the environment
+produce a missing material law. The missing physics must be supplied by an
+identified material model.
+\end{proof}
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.97\textwidth]{cutting_model_fix.png}
-\caption{Why a material model is needed. Left: with rigid box-on-box contact the
-measured force (blue) is zero through most of the cut then spikes --- it does not
-follow the desired (dashed). Right: with the identified cutting-force model the
-force is bounded, smooth and follows the desired level.}
+\caption{Why a material model is needed. This matched cork comparison uses the same
+controller and toggles only the contact physics. Top row: rigid box-on-box
+contact over-reacts and follows the solver geometry rather than the demonstrated
+cutting plateau ($37.9$\,N force RMSE, $127.8$\,N peak, $9.9$\,mm depth RMSE).
+Bottom row: the identified cutting-force law produces the bounded material
+plateau and tracks the demonstrated force ($3.9$\,N force RMSE, $58.8$\,N peak,
+$2.3$\,mm depth RMSE).}
 \label{fig:before_after}
 \end{figure}
 
@@ -616,7 +741,8 @@ Table~\ref{tab:material}.}
 
 \begin{itemize}[leftmargin=1.5em]
 \item \textbf{The task performance is attributable to the learned variance
-structure} (Table~\ref{tab:ablation}, Fig.~\ref{fig:ablation}): the identified
+structure} (Table~\ref{tab:variance_comparison},
+Fig.~\ref{fig:variance_comparison}): the identified
 precision attains the lowest cut-depth error --- $26$--$48\%$ below the inverted,
 permuted, and direct-force assignments --- on every stable seed ($p=0.001$).
 \item \textbf{Force tracking} (Table~\ref{tab:material}, Fig.~\ref{fig:calibrated}):
@@ -627,18 +753,29 @@ across three materials.
 (Y) error peaks $\approx50$\,mm during the large $\pm150$\,mm demonstrated lateral
 swing --- the expected consequence of the deliberately low stiffness assigned to
 that low-precision axis.
-\item \textbf{Stability} (Fig.~\ref{fig:stab}): the tracking error decays
-exponentially and the passivity residual stays non-positive.
-\item \textbf{Live monitoring}: Figure~\ref{fig:monitor} shows the real-time
-monitor used to inspect runs (position, contact force, stiffness, tracking error,
-each in its own units).
+\item \textbf{Passivity} (Fig.~\ref{fig:pass_adv}, Table~\ref{tab:pass_adv}):
+under positive joint-power perturbation, the controller without tank projection
+violates the available energy budget for $12.0\%$ of the samples
+($+5876$\,W maximum margin), while both tanked controllers satisfy
+$\dot q^\top\tau_{\rm safe}\le P_{\max}$ for the whole run.
+\item \textbf{Stability diagnostics} (Fig.~\ref{fig:stab}): nominal static and
+moving cuts remain bounded and complete the task; cut-depth error stays small.
+The exponential fit is reported as a diagnostic, while the full Cartesian error
+norm is interpreted carefully because low-precision axes are intentionally
+released.
+\item \textbf{Run monitoring}: Figure~\ref{fig:monitor} shows the monitored
+signals used to inspect runs: position, contact force, stiffness, tracking error
+and tank energy, each in its own units.
 \end{itemize}
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.92\textwidth]{monitor_preview.png}
-\caption{Real-time monitor: position (mm), contact force per axis (N, desired vs
-actual), commanded stiffness (kN/m), and position tracking error (mm).}
+\caption{Monitor snapshot reconstructed from one cork cutting episode
+($1299$ controller samples, final phase $1.000$). The panels show Cartesian
+position (mm), material reaction force per axis (N, desired vs measured),
+commanded
+stiffness (kN/m), and position tracking error (mm) together with tank energy (J).}
 \label{fig:monitor}
 \end{figure}
 
@@ -649,17 +786,20 @@ actual), commanded stiffness (kN/m), and position tracking error (mm).}
 \item \textbf{Gains learned from demonstration precision, via an online QP.}
 Stiffness \emph{is} the demonstration precision \eqref{eq:precision}, computed each
 step by the QP \eqref{eq:qp} that blends force-consistency with precision-stiffness
-under force-saturation constraints. The ablation (Table~\ref{tab:ablation}) proves
+under force-saturation constraints. The controlled comparison
+(Table~\ref{tab:variance_comparison}) shows
 the \emph{specific} learned variance structure --- not generic adaptivity --- is
 what carries the skill.
 \item \textbf{State-driven task parametrisation.} A phase variable advanced by
 matching the robot's measured state to the prior \eqref{eq:phase}, rather than by a
 clock, giving speed-adaptability and disturbance awareness, and unifying with the
 stability mechanism.
-\item \textbf{Exponential stability and passivity under variable gains and a
-moving target.} A cross-term Lyapunov proof (Theorem~\ref{thm:exp}) with an
-explicit gain-rate condition that the energy tank enforces; one mechanism yields
-passivity, exponential contraction, and adaptive timing.
+\item \textbf{Torque-port passivity under variable gains and a moving target.}
+The live energy tank sets the torque-level power budget \eqref{eq:pass_qp};
+Fig.~\ref{fig:pass_adv} demonstrates that this rejects positive-power
+perturbations. A cross-term Lyapunov proof (Theorem~\ref{thm:exp}) gives the
+exponential-contraction condition for the regulated error dynamics, and the tank
+provides the mechanism that bounds phase and gain rates.
 \item \textbf{An empirical principle for contact-skill transfer.} Position is the
 reproducible prior, force is not; the controller therefore regulates position and
 treats force as a constraint, while a per-material identified model supplies the
@@ -680,9 +820,17 @@ future work.
 \item Lateral (Y) tracking lags the large demonstrated lateral swing; the
 task-critical cut-depth is tight. Reducing the lateral error is a
 phase-speed / parametrisation question, separate from the force model.
-\item The energy-tank passivity guarantee is proven; coupling the live tank state
-into the torque-level power budget is the remaining step for its empirical
-demonstration.
+\item The energy-tank passivity guarantee is implemented and validated at the
+joint torque port. The reconstructed Cartesian residual is retained as a useful
+diagnostic, but it is not the primary proof artifact until the force frame/sign,
+finite-difference velocity estimate and Cartesian storage model are matched more
+precisely.
+\item The exponential-stability proof applies under regulation assumptions
+(constant or sufficiently slowly varying gains, passive environment, bounded
+reference acceleration). The current simulations support bounded stable cutting;
+a stronger empirical exponential-convergence claim should be made on the
+regulated cut-depth or precision-weighted error, not on the full Cartesian norm
+that includes intentionally released axes.
 \end{itemize}
 
 \end{document}

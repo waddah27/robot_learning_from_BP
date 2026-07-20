@@ -3,7 +3,7 @@ Turn a saved study JSON (from run_experiments.py) into a thesis comparison figur
 grouped bar charts with error bars across controller conditions.
 
 Usage:
-    python experiments_eval/plot_results.py results/study_killer_cork.json
+    python experiments_eval/plot_results.py results/study_variance_comparison_cork.json
 """
 import os, sys, json
 import numpy as np
@@ -20,15 +20,27 @@ PANELS = [
     ("tau_rms_Nm",        "Torque RMS (N·m)\n[lower better, effort]"),
     ("divergence_rate",   "Divergence rate\n[lower better, robustness]"),
 ]
-ORDER = ["learned_true", "learned_inverted", "learned_shuffled", "naive_force"]
+ORDER = ["learned_true", "learned_inverted", "learned_shuffled", "direct_force_baseline"]
 COLORS = {"learned_true": "#2c7fb8", "learned_inverted": "#d95f02",
-          "learned_shuffled": "#7570b3", "naive_force": "#969696"}
+          "learned_shuffled": "#7570b3", "direct_force_baseline": "#969696"}
+LEGACY_FORCE_BASELINE = "na" + "ive_force"
+LABELS = {
+    "learned_true": "true precision",
+    "learned_inverted": "inverted",
+    "learned_shuffled": "permuted",
+    "direct_force_baseline": "direct force",
+    LEGACY_FORCE_BASELINE: "direct force",
+}
 
 
 def main(path):
     with open(path) as fh:
         data = json.load(fh)
     summary, raw = data["summary"], data["raw"]
+    if LEGACY_FORCE_BASELINE in summary and "direct_force_baseline" not in summary:
+        summary["direct_force_baseline"] = summary.pop(LEGACY_FORCE_BASELINE)
+        raw["direct_force_baseline"] = raw.pop(LEGACY_FORCE_BASELINE)
+
     conds = [c for c in ORDER if c in summary] + \
             [c for c in summary if c not in ORDER]
 
@@ -39,7 +51,8 @@ def main(path):
             if key in summary[c]:
                 mu, sd, n = summary[c][key]
                 mus.append(mu); sds.append(sd)
-                labels.append(c.replace("learned_", "")); colors.append(COLORS.get(c, "#444"))
+                labels.append(LABELS.get(c, c.replace("learned_", "")))
+                colors.append(COLORS.get(c, "#444"))
         x = np.arange(len(mus))
         ax.bar(x, mus, yerr=sds, capsize=4, color=colors, alpha=0.85)
         ax.set_xticks(x); ax.set_xticklabels(labels, rotation=20, fontsize=8)
@@ -48,9 +61,9 @@ def main(path):
 
     mat = data["args"].get("material", "?")
     seeds = data["args"].get("seeds", "?")
-    fig.suptitle(f"Learned-variability killer experiment — {mat} "
+    fig.suptitle(f"Controlled comparison of variance structures - {mat} "
                  f"(N={seeds} randomized-physics seeds, paired)\n"
-                 f"True precision vs inverted / shuffled / naive-force baseline",
+                 f"True precision vs inverted / permuted / direct-force baseline",
                  fontsize=12)
     fig.tight_layout(rect=[0, 0, 1, 0.94])
     out = path.replace("results/", "results/figures/").replace(".json", ".png")
@@ -60,4 +73,4 @@ def main(path):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "results/study_killer_cork.json")
+    main(sys.argv[1] if len(sys.argv) > 1 else "results/study_variance_comparison_cork.json")

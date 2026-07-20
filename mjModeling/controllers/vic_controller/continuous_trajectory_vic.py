@@ -99,15 +99,16 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         # Per-phase, per-axis position stiffness K_pos(φ) and force-tracking
         # weight q_force(φ) derived from demonstration precision.  When enabled,
         # the QP blends force tracking and position stiffness by these learned
-        # weights instead of a fixed Q.  variance_mode lets the killer experiment
-        # use the true / inverted / shuffled precision structure.
+        # weights instead of a fixed Q. variance_mode supports the controlled
+        # comparison with true / inverted / shuffled precision.
         self.use_learned_gains = paramVIC.USE_LEARNT_GAINS
         self.variance_mode = "true"      # {"true","inverted","shuffled","off"}
         self._lg_phase = None            # (N,)
         self._lg_K_pos = None            # (N,3)
 
         # Analytical cutting-force model: replaces the erratic box-on-box contact
-        # with a smooth, bounded depth-based cutting resistance. Toggle for ablation.
+        # with a smooth, bounded depth-based cutting resistance. Toggle for
+        # controlled comparisons.
         self.use_cutting_model = True
         self._lg_q_force = None          # (N,3)
 

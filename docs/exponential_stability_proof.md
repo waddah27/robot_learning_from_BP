@@ -162,7 +162,7 @@ Passivity, exponential stability, and adaptive task parametrization are therefor
   `λ = α/2` from §3 (report `λ̂/λ_theory`).
 - Verify `V(t)` is non-increasing outside injection windows.
 - Verify the implemented torque-port inequality `q̇ᵀτ_safe − P_max ≤ 0`
-  under the adversarial power-injection test (validates the tank enforcement).
+  under the positive-power perturbation test (validates the tank enforcement).
 - Use the Cartesian residual `V̇ − f_extᵀẋ` as a reconstructed diagnostic, not
   as the primary proof artifact until the force frame/sign and storage model are
   fully matched to the implementation.

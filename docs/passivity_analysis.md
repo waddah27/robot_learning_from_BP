@@ -38,7 +38,7 @@ Define the position error `x̃ = x_d(φ) − x` and use
 (kinetic + impedance potential + tank energy `T ≥ 0`). `M` is the Cartesian
 inertia.
 
-## 3. The two terms that break naive passivity
+## 3. The two terms that break the nominal passivity balance
 
 Differentiating (3) along the closed loop produces, besides the desired
 `f_extᵀẋ` and the dissipation `−ẋ̃ᵀ D ẋ̃ ≤ 0`, two problematic terms:
@@ -136,7 +136,7 @@ Goal: show empirically that the implemented tank prevents commanded positive
 joint-power injection that an un-tanked controller would allow.
 
 Protocol (sim, headless):
-1. Run the cut with an **adversarial joint-power injection**: during the middle of
+1. Run the cut with a **positive joint-power perturbation**: during the middle of
    the cut, add a known positive-power torque component before `_solve_passivity_qp`.
    This is a validation hook only; it is disabled in normal experiments.
 2. Compare three controllers under identical perturbation:
@@ -166,7 +166,7 @@ Observed result on cork:
 | tank + phase gate | 0.0% | 0 W |
 
 This is the defensible passivity figure: the un-tanked controller exceeds the
-counterfactual energy budget during the adversarial burst, while the tanked
+counterfactual energy budget during the injected power burst, while the tanked
 controllers keep `q̇ᵀτ_safe` below `P_max` throughout the run.
 
 ## 8. Assumptions

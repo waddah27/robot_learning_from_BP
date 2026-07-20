@@ -48,16 +48,16 @@ depth is the skill and lateral wander / absolute force are not.
    **stiff in cutting depth (Z)**, **soft laterally (X/Y)**, and **does not chase
    the unreliable force** — it lets the contact force settle naturally.
 
-## 5. The evidence (the "killer experiment")
-To prove the contribution is the *specific learned structure* (not just "the
-robot has adjustable stiffness"), the same robot/task is run four ways:
+## 5. The evidence (controlled comparison of variance structures)
+To test whether the contribution is the *specific learned structure* rather than
+generic adjustable stiffness, the same robot/task is run four ways:
 
 | Controller | Idea |
 |---|---|
 | **Learned (true)** | Use the real demonstration-variability structure |
 | **Inverted** | Flip it (control the inconsistent things, relax the consistent) |
 | **Shuffled** | Randomly scramble which directions are controlled |
-| **Naive force** | The old approach: just try to match demonstrated force |
+| **Direct-force baseline** | The prior approach: directly weight the demonstrated force |
 
 **Result (cut-depth accuracy, lower is better; 12 seeds, 11 stable):**
 
@@ -66,7 +66,7 @@ robot has adjustable stiffness"), the same robot/task is run four ways:
 | **Learned (true)** | **10.9 ± 2.5** | — (best) |
 | Shuffled | 14.7 ± 2.9 | 26% worse |
 | Inverted | 20.7 ± 4.0 | 47% worse |
-| Naive force | 20.9 ± 5.9 | 48% worse |
+| Direct-force baseline | 20.9 ± 5.9 | 48% worse |
 
 The learned controller tracks **cutting depth best on all 11 of 11 seeds**.
 Flipping or scrambling the learned structure makes depth tracking **26–48%
@@ -96,7 +96,8 @@ is the wrong lens.
 - **Higher peak contact force** for the learned controller (stiffer depth axis):
   a genuine stiffness/safety trade-off, reported openly.
 - **The passivity/energy-tank mechanism is implemented at torque level**, with
-  the live tank setting the QP power budget. The adversarial validation now shows
+  the live tank setting the QP power budget. The positive-power perturbation
+  validation now shows
   the un-tanked controller violates the budget while the tanked controllers do not;
   Cartesian residual passivity remains a diagnostic, not the main proof artifact.
 
@@ -108,7 +109,7 @@ is the wrong lens.
 - **Ch. C — Robustness & generalization:** does the learned skill survive
   disturbances and transfer cork → PVC / penoplex (the remaining experiment).
 - **Ch. D — Stability:** the torque-port passivity guarantee (theory +
-  implemented tank + adversarial perturbation demo).
+  implemented tank + positive-power perturbation demo).
 
 ## 9. Summary
 *"I learned a precision skill from human demonstrations by letting the
