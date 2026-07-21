@@ -22,37 +22,37 @@
 \newlabel{eq:precision}{{3}{4}{Gains learned from demonstration precision}{equation.3}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Gains learned from the cork demonstrations. Top-left: cross-trial inconsistency of each channel; top-right: the emergent precision weight $w(\phi )$; bottom: the resulting position stiffness $K^{\text  {pos}}(\phi )$ and the (near-zero) force-tracking weight. The depth axis (blue) is regulated stiffly; force is released. \emph  {This split emerges from the data, not from tuning.}}}{5}{figure.1}\protected@file@percent }
 \newlabel{fig:gains}{{1}{5}{Gains learned from the cork demonstrations. Top-left: cross-trial inconsistency of each channel; top-right: the emergent precision weight $w(\phi )$; bottom: the resulting position stiffness $K^{\text {pos}}(\phi )$ and the (near-zero) force-tracking weight. The depth axis (blue) is regulated stiffly; force is released. \emph {This split emerges from the data, not from tuning.}}{figure.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}The online quadratic program for the gains}{5}{subsection.3.3}\protected@file@percent }
-\newlabel{sec:qp}{{3.3}{5}{The online quadratic program for the gains}{subsection.3.3}{}}
-\newlabel{eq:qp}{{4}{5}{The online quadratic program for the gains}{equation.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}The online quadratic program (QP) for the gains}{5}{subsection.3.3}\protected@file@percent }
+\newlabel{sec:qp}{{3.3}{5}{The online quadratic program (QP) for the gains}{subsection.3.3}{}}
+\newlabel{eq:qp}{{4}{5}{The online quadratic program (QP) for the gains}{equation.4}{}}
 \@writefile{toc}{\contentsline {paragraph}{Controlled comparison: isolating the contribution of the learned variance structure.}{6}{section*.3}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces The identified precision attains the lowest cut-depth error on all $11$ stable seeds. Inverting or permuting the structure increases the error by $26$--$48\%$ ($p=0.001$, the smallest value attainable by the paired Wilcoxon test at this sample size). This isolates the identified \emph  {variance structure}, rather than gain adaptation in general, as the determinant of task performance.}}{6}{table.3}\protected@file@percent }
 \newlabel{tab:variance_comparison}{{3}{6}{The identified precision attains the lowest cut-depth error on all $11$ stable seeds. Inverting or permuting the structure increases the error by $26$--$48\%$ ($p=0.001$, the smallest value attainable by the paired Wilcoxon test at this sample size). This isolates the identified \emph {variance structure}, rather than gain adaptation in general, as the determinant of task performance}{table.3}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {4}State-driven task parametrization}{6}{section.4}\protected@file@percent }
 \newlabel{sec:phase}{{4}{6}{State-driven task parametrization}{section.4}{}}
 \newlabel{eq:phase}{{5}{6}{State-driven task parametrization}{equation.5}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {5}Stability and passivity}{6}{section.5}\protected@file@percent }
-\newlabel{sec:stab}{{5}{6}{Stability and passivity}{section.5}{}}
-\newlabel{eq:err}{{6}{6}{Stability and passivity}{equation.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Stability and passivity analysis}{7}{section.5}\protected@file@percent }
+\newlabel{sec:stab}{{5}{7}{Stability and passivity analysis}{section.5}{}}
+\newlabel{eq:err}{{6}{7}{Stability and passivity analysis}{equation.6}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Passivity --- the controller cannot create energy}{7}{subsection.5.1}\protected@file@percent }
 \newlabel{prop:pass}{{1}{7}{Continuous-time tank passivity}{proposition.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Implemented torque-port passivity}{7}{subsection.5.2}\protected@file@percent }
 \newlabel{eq:pass_qp}{{8}{7}{Implemented torque-port passivity}{equation.8}{}}
 \newlabel{eq:tank_disc}{{9}{7}{Implemented torque-port passivity}{equation.9}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Torque-port passivity validation under a positive-power injection. The tanked controllers complete the cut and never exceed the available energy budget.}}{7}{table.4}\protected@file@percent }
-\newlabel{tab:pass_adv}{{4}{7}{Torque-port passivity validation under a positive-power injection. The tanked controllers complete the cut and never exceed the available energy budget}{table.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Torque-port passivity validation under a positive-power injection. The tanked controllers complete the cut and never exceed the available energy budget.}}{8}{table.4}\protected@file@percent }
+\newlabel{tab:pass_adv}{{4}{8}{Torque-port passivity validation under a positive-power injection. The tanked controllers complete the cut and never exceed the available energy budget}{table.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Exponential stability --- the error decays at a guaranteed rate}{8}{subsection.5.3}\protected@file@percent }
 \newlabel{eq:lyap}{{10}{8}{Exponential stability --- the error decays at a guaranteed rate}{equation.10}{}}
 \newlabel{thm:exp}{{1}{8}{Exponential stability}{theorem.1}{}}
 \@writefile{toc}{\contentsline {paragraph}{Variable gains, moving target, and the unifying role of the tank.}{8}{section*.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Implementation status.}{8}{section*.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}Material interaction model}{8}{section.6}\protected@file@percent }
-\newlabel{sec:material}{{6}{8}{Material interaction model}{section.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Material interaction model}{9}{section.6}\protected@file@percent }
+\newlabel{sec:material}{{6}{9}{Material interaction model}{section.6}{}}
 \newlabel{eq:cut}{{12}{9}{Material interaction model}{equation.12}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Cutting parameters identified per material, and the resulting force tracking. The materials are clearly distinct (PVC is stiffest and strongest, consistent with its hardness), and the force matches the demonstrated level to within $\approx 2$\,N --- an approximate physical fit, not an exact replay.}}{9}{table.5}\protected@file@percent }
-\newlabel{tab:material}{{5}{9}{Cutting parameters identified per material, and the resulting force tracking. The materials are clearly distinct (PVC is stiffest and strongest, consistent with its hardness), and the force matches the demonstrated level to within $\approx 2$\,N --- an approximate physical fit, not an exact replay}{table.5}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Results}{10}{section.7}\protected@file@percent }
-\newlabel{sec:results}{{7}{10}{Results}{section.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Results}{9}{section.7}\protected@file@percent }
+\newlabel{sec:results}{{7}{9}{Results}{section.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Cutting parameters identified per material, and the resulting force tracking. The materials are clearly distinct (PVC is stiffest and strongest, consistent with its hardness), and the force matches the demonstrated level to within $\approx 2$\,N --- an approximate physical fit, not an exact replay.}}{10}{table.5}\protected@file@percent }
+\newlabel{tab:material}{{5}{10}{Cutting parameters identified per material, and the resulting force tracking. The materials are clearly distinct (PVC is stiffest and strongest, consistent with its hardness), and the force matches the demonstrated level to within $\approx 2$\,N --- an approximate physical fit, not an exact replay}{table.5}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {8}Novelty and contributions}{10}{section.8}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {9}Assumptions, scope and limitations}{11}{section.9}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Learned gains for PVC (top) and penoplex (bottom), produced by the same precision rule \eqref  {eq:precision} on each material's own demonstrations. The structure is consistent with cork (Fig.~\ref {fig:gains}) --- the depth axis is tracked stiffly and force is released --- while the stiffness magnitudes and profiles differ per material, so the controller expresses material-specific behaviour without any manual retuning.}}{12}{figure.2}\protected@file@percent }

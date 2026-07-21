@@ -27,46 +27,49 @@
 \newcommand{\xtd}{\dot{\tilde{x}}}
 \newcommand{\unit}[1]{\,[\mathrm{#1}]}
 
-\title{\textbf{Learning High-Precision Contact Skills from Behaviour Priors:\\
+\title{\textbf{Learning Contact rich Skills from Behaviour Priors:\\
 Variability-Driven Variable Impedance Control with\\
 State-Driven Task Parametrization, Stability and Passivity Guarantees}}
-\author{Waddah Khaled Ali}
+\author{Waddah Ali}
 \date{\today}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-This report presents a framework for transferring a high-precision contact
-skill --- cutting with a scalpel-like tool --- to a robot manipulator by learning
-from human demonstrations (termed \emph{behaviour priors}). Rather than replaying
-a single trajectory, the method learns the underlying structure of the skill and
+This report presents a simulated experimentation framework for testing the Thesis' approach for
+transferring a contact rich skill to a robot manipulator by learning
+from encoded human behaviour priors. The experimental setup represents a robot with a scalpel attached to
+its end effector learned to perform an adaptive cutting skill on variant types of materials.
+unlike replaying a single trajectory, the method learns the pattern of the skill and
 reproduces it under a variable-impedance controller with an implemented
 energy-tank passivity mechanism at the joint torque port.
 
 The contribution comprises three elements. First, a \emph{variable impedance
-controller} whose stiffness is not hand-tuned but learned from the consistency of
+controller} whose stiffness matrix is learned from the consistency of
 the demonstrations: a quadratic program (QP) solved at each control step maps the
 demonstration precision onto the controller gains, so the manipulator is stiff
 only along directions that the demonstrations regulated and compliant elsewhere.
-Second, a \emph{state-driven task parametrisation}: the motion is indexed by a
+Second, a \emph{state-driven task parametrisation} that indexes the motion by a
 progress (phase) variable whose evolution is corrected by the manipulator's
-measured state rather than by a fixed clock, providing temporal-scale
-adaptability and disturbance rejection. Third, a formal \emph{stability and
-passivity} analysis: the torque command is projected onto a live energy-tank
-power budget, and a positive-power perturbation validation demonstrates that the
-tank prevents energy injection that a controller without tank projection permits.
+measured state, providing temporal-scale adaptability and disturbance rejection.
+Third, a formal \emph{stability and
+passivity} analysis by projecting the torque command onto a runtime energy-tank
+power budget, and a positive power perturbation validation demonstrates that the
+tank prevents energy injection that the controller might generate without tank projection for maintaining
+robot passivity and safety-aware interaction with human.
 Exponential convergence is derived under the stated regulation assumptions and is reported
-empirically as a diagnostic on the regulated task error rather than overclaimed
-from the released directions.
+empirically as a diagnostic on the regulated task error.
 
-A key empirical observation motivates the design: across repeated demonstrations
-the tool \emph{position} is highly repeatable (cross-trial correlation
-$\approx 0.95$), whereas the \emph{force} is not ($\approx 0.10$). The controller
-therefore regulates position and treats force as a constraint, while a separate
+An important consideration for the studied approach is the data repeatability to decide
+which skill patterns to extract under which constraints, thus, across repeated demonstrations
+the scalpel \emph{position} is highly repeatable (cross-trial correlation
+$\approx 0.95$), whereas the \emph{force} is not ($\approx 0.10$). Therefore, The controller
+regulates position and treats desired force as a constraint, while a separate
 per-material \emph{cutting-force model}, identified from each material's own data,
-provides the interaction force in simulation. The framework is evaluated on three
-materials (cork, PVC, penoplex) for both a fixed and a moving workpiece.
+provides the interaction force in simulation.
+The experiment framework is evaluated on three materials (cork, PVC, penoplex) for both a fixed and a moving workpiece
+scenarios.
 \end{abstract}
 
 \tableofcontents
@@ -86,12 +89,12 @@ Symbol & Meaning & Units \\
 \midrule
 \endhead
 $\phi$ & task phase (progress along the skill), $0$ at start, $1$ at end & dimensionless \\
-$x,\;x_d$ & actual / desired tool-tip (TCP) position & $\mathrm{m}$ \\
-$\dot x,\;\dot x_d$ & actual / desired tool-tip velocity & $\mathrm{m\,s^{-1}}$ \\
+$x,\;x_d$ & actual / desired scalpel-tip (TCP) position & $\mathrm{m}$ \\
+$\dot x,\;\dot x_d$ & actual / desired scalpel-tip velocity & $\mathrm{m\,s^{-1}}$ \\
 $\xt=x_d-x$ & position tracking error & $\mathrm{m}$ \\
 $\xtd=\dot x_d-\dot x$ & velocity tracking error & $\mathrm{m\,s^{-1}}$ \\
 $f$ & commanded Cartesian force (impedance ``virtual force'') & $\mathrm{N}$ \\
-$f_{\text{ext}}$ & external (environment/contact) force on the tool & $\mathrm{N}$ \\
+$f_{\text{ext}}$ & external (environment/contact) force on the scalpel & $\mathrm{N}$ \\
 $K(\phi)$ & diagonal stiffness matrix (per axis) & $\mathrm{N\,m^{-1}}$ \\
 $D(\phi)$ & diagonal damping matrix & $\mathrm{N\,s\,m^{-1}}$ \\
 $K_I$ & integral gain & $\mathrm{N\,m^{-1}s^{-1}}$ \\
@@ -128,30 +131,32 @@ $F^{\text{cut}}_{\text{mat}}$ & material cutting-force plateau & $\mathrm{N}$ \\
 % ============================================================================
 \section{Problem statement}
 % ============================================================================
-We want a robot to acquire a contact-rich manipulation skill, cutting, from a
-handful of human demonstrations. Each demonstration provides, sampled over time,
-the tool pose, its twist (linear/angular velocity), and the interaction wrench
-measured at the tool. Our aim is not to replay one recording but to capture the
-\emph{skill}: a controller that performs the task accurately, respects the
-force character of the demonstrations, stays stable and safe in contact, and
-generalises across execution speeds and across materials.
+The robot's task is to acquire a contact-rich manipulation skill, cutting, from a
+handful of human encoded behaviour priors. The behaviour priors are provided to the robot controller from
+behaviour prior probabilistic generator trained to encode human demonstrated position, twist and wrench profiles as input to
+the robot control algorithm.
+Each demonstration provides, sampled over time,
+the scalpel pose, its twist (linear/angular velocity), and the interaction wrench
+measured at the scalpel. This aims to capture the \emph{skill} instead of cloning the behaviour. i.e., a controller
+that performs the task accurately, respects the force character of the demonstrations, stays stable and safe in contact,
+and generalises across execution speeds and across materials.
 
-The core difficulty is that, during contact, position and force are not
-independent. In a direction where the tool presses on the material, fixing the
-position determines the force and vice-versa; one cannot command both freely. A
-principled controller must therefore \emph{decide what to regulate in each
-direction}, and a credible simulation must \emph{model the material} that gives
-rise to the contact force in the first place. Both points are addressed below.
+The position and force dependency during contact through the motion path represents the core challenge in the study.
+In a direction where the scalpel presses on the material, fixing the position determines the force and vice-versa;
+commanding robot controller to track both is non trivial issue.
+A principled controller must therefore \emph{decide what to regulate in each
+direction}, and a reliable simulation must \emph{model the material} that gives
+rise to the contact force in the first place. Both points are addressed.
 
 % ============================================================================
 \section{What in the demonstration is actually a reliable skill?}
 % ============================================================================
 \label{sec:analysis}
-We first determine which components of the demonstration are sufficiently
-repeatable across trials to be treated as the skill. For each signal we measure,
-across trials, (a) the \emph{shape correlation}
-(how similarly the signal evolves from trial to trial after removing its mean) and
-(b) a \emph{regulation score} --- the fraction of the signal's variance that is
+The reliable skill patterns were extract from data repeatability across trails. i.e, the repeatable components of the
+demonstration to be treated as the skill where other components are constraints to shape the behaviour of performing the skill by robot.
+For each signal, across trials measurements of (a) the \emph{shape correlation} and (b) a \emph{regulation score} were reported.
+shape correlation measures how similarly the signal evolves from trial to trial after removing its mean where
+\emph{regulation score} refers to the fraction of the signal's variance that is
 explained by the task phase, i.e.\ a phase-locked signal-to-noise ratio.
 
 \begin{table}[h]
@@ -169,16 +174,15 @@ Force (Fx/Fy/Fz) & $0.04$--$0.27$ & $\approx 0$ \\
 \label{tab:repro}
 \end{table}
 
-\noindent The result is clear: \emph{the demonstrated tool path is reproducible;
+\noindent The result concluded that: \emph{the demonstrated scalpel path is reproducible;
 the demonstrated force is not}. The recorded force is
-dominated by a large, nearly constant offset (consistent with tool preload /
+dominated by a large, approximately constant offset (consistent with scalpel preload /
 sensor bias) plus trial-to-trial content that does not repeat; this was checked
-against the dynamic part of the signal, time alignment and sign convention. The
-practical implication is that
-\emph{point-tracking the demonstrated force trajectory is not a well-posed
+against the dynamic part of the signal, time alignment and sign convention.
+The practical implication is that \emph{point-tracking the demonstrated force trajectory is not a well-posed
 objective}. This is exactly the situation the \emph{minimal-intervention
 principle} addresses: regulate strongly where the demonstration is consistent
-(position), and remain compliant where it is not (force) --- the latter being
+(position), and remain compliant where it is not (force). The latter being
 treated as a constraint and as the interaction outcome of a calibrated material
 model.
 
@@ -188,18 +192,18 @@ model.
 \label{sec:vic}
 
 \subsection{The impedance control law}
-The robot is controlled as a virtual mechanical impedance at the tool tip. The
+The robot is controlled as a virtual mechanical impedance at the scalpel tip. The
 commanded Cartesian force is
 \begin{equation}
 \boxed{\;f \;=\; K(\phi)\,\xt \;+\; K_I\!\int_0^t\!\xt\,d\sigma \;+\; D(\phi)\,\xtd\;}
 \label{eq:imp}
 \end{equation}
-The terms are interpreted as follows:
+where,
 \begin{itemize}[leftmargin=1.5em]
 \item $K(\phi)\,\xt$ is a position-error spring. $K(\phi)\unit{N\,m^{-1}}$ is a
 diagonal stiffness (one value per Cartesian axis) and $\xt\unit{m}$ is the
 position error, so the product has units of force $\unit{N}$. A larger $K$ pulls
-the tool back to the reference more firmly.
+the scalpel back to the reference more firmly.
 \item $K_I\!\int\!\xt\,d\sigma$ is an integral term that removes slow,
 steady-state position error; $K_I\unit{N\,m^{-1}s^{-1}}$ multiplied by the
 time-integral of the error $\unit{m\cdot s}$ again yields $\unit{N}$.
@@ -218,7 +222,7 @@ model-based gravity/Coriolis compensation:
 \qquad N = I - J^{\top}\!\big(JJ^{\top}+\lambda^2 I\big)^{-1} J .
 \label{eq:torque}
 \end{equation}
-Here $J\unit{m\,rad^{-1}}$ is the tool Jacobian ($\dot x=J\dot q$);
+where $J\unit{m\,rad^{-1}}$ is the scalpel Jacobian ($\dot x=J\dot q$);
 $\big(JJ^{\top}+\lambda^2 I\big)^{-1}$ is the damped pseudo-inverse that maps the
 Cartesian force to joint torques while remaining numerically robust near kinematic singularities
 ($\lambda^2$ is a small regulariser); $N$ projects the secondary posture torque
@@ -228,11 +232,11 @@ $g+C\dot q\unit{N\,m}$ cancel gravity and Coriolis effects so that
 
 \subsection{Gains learned from demonstration precision}
 \label{sec:gains}
-The novelty is that $K(\phi)$ is not chosen by hand --- it is the
-\emph{precision} (inverse variance) of the demonstrations. Intuitively, where the
-human was very repeatable, that direction matters and should be tracked stiffly;
+The \emph{novice} work here is that $K(\phi)$ is not chosen manually, nor tabulated or tuned via
+deterministic regulation but it is the \emph{precision} (inverse variance) of the demonstrations.
+Intuitively, where the human was very repeatable, that direction matters and should be tracked stiffly;
 where they were not, the controller should be soft. For each phase $\phi$ and axis
-$i$ we form a precision weight on one shared scale and map it to stiffness:
+$i$ a precision weight on one shared scale was formed and mapped to stiffness:
 \begin{equation}
 w_i(\phi)=\mathrm{clip}\!\Big(\frac{1/(\sigma_i^2(\phi)+\epsilon)}{p_{\text{ref}}},\,0,\,1\Big),
 \qquad
@@ -242,11 +246,11 @@ K^{\text{pos}}_i(\phi)=K_{\text{floor}}+\big(K_{\max}-K_{\text{floor}}\big)\,w_i
 $\sigma_i^2(\phi)$ is the cross-trial variance of the range-normalised signal at
 phase $\phi$ (dimensionless, so axes are comparable); $\epsilon$ is a tiny
 constant avoiding division by zero; $p_{\text{ref}}$ is a robust $95^{\text{th}}$-
-percentile normaliser \emph{shared across all axes and channels}, so a genuinely
-imprecise direction receives a genuinely small weight $w_i\!\to\!0$. The weight
+percentile normaliser \emph{shared across all axes and channels}, so a true
+imprecise direction receives a true small weight $w_i\!\to\!0$. The weight
 $w_i\in[0,1]$ then scales the stiffness linearly between a floor
 $K_{\text{floor}}\unit{N\,m^{-1}}$ (kept non-zero so the arm can always execute
-the motion) and the maximum $K_{\max}$. Figure~\ref{fig:gains} shows the
+the motion) and the maximum $K_{\max}$. Figure~\ref{fig:gains} illustrates the
 result: with no manual tuning, the cut-depth axis becomes stiff while the lateral
 and force directions stay compliant --- precisely the structure predicted by
 Section~\ref{sec:analysis}.
@@ -282,9 +286,9 @@ behaviour without any manual retuning.}
 \label{fig:gains_other}
 \end{figure}
 
-\subsection{The online quadratic program for the gains}
+\subsection{The online quadratic program (QP) for the gains}
 \label{sec:qp}
-At every control step the gains are obtained from a small convex quadratic
+At each control step, the gains are obtained from a small convex quadratic
 program (QP) that \emph{blends} two objectives and respects two constraints:
 \begin{equation}
 \boxed{\;
@@ -301,9 +305,9 @@ K^\star=\;\arg\min_{K\in\R^3}\;&
 Term by term:
 \begin{itemize}[leftmargin=1.5em]
 \item $\norm{K\odot\xt-F_d}_2^2$ is the \emph{force-consistency} cost ($\odot$ is
-element-wise product): it asks the impedance force $K\odot\xt\unit{N}$ to match the
+element-wise product): it pulls the impedance force $K\odot\xt\unit{N}$ to match the
 desired force $F_d\unit{N}$. Its weight $q_f(\phi)\in[0,1]$ is the
-\emph{force-precision} weight --- small, because force is not reproducible
+\emph{force-precision} weight - small, because force is not reproducible
 (Sec.~\ref{sec:analysis}).
 \item $\norm{K-K^{\text{pos}}(\phi)}_2^2$ pulls the stiffness towards the
 precision-derived value $K^{\text{pos}}\unit{N\,m^{-1}}$ of \eqref{eq:precision},
@@ -324,7 +328,7 @@ real-time loop.
 \paragraph{Controlled comparison: isolating the contribution of the learned variance
 structure.} To establish that the performance gain originates from the
 \emph{specific} learned precision structure, rather than from gain adaptation per
-se, we evaluate the identical task and controller under four gain assignments:
+se, evaluation of the identical task and controller under four gain assignments is presented:
 (i) the identified precision; (ii) \emph{inverted} precision (regulating
 directions that were inconsistent and relaxing those that were consistent);
 (iii) precision \emph{permuted} across axes; and (iv) a baseline that tracks the
@@ -367,13 +371,15 @@ rather than gain adaptation in general, as the determinant of task performance.}
 \section{State-driven task parametrization}
 % ============================================================================
 \label{sec:phase}
-Instead of being a function of time, the reference is a function of a
-\emph{phase} variable $\phi\in[0,1]$. This separates \emph{what} the skill is from
-\emph{how fast} it runs, which is what lets the same prior be executed at
-different speeds. The novelty here is \emph{how} $\phi$ advances: not by a fixed
-clock, but by a correction driven by the robot's \emph{measured state}. At each
-step we estimate the phase $\hat\phi$ that best matches the current state to the
-learned trajectory over a short forward window, then correct $\phi$ towards it:
+The reference is a function of a \emph{phase} variable $\phi\in[0,1]$ to be decoupled from direct time dependency.
+This separates \emph{what} the skill is from \emph{how fast} it runs, which is what lets the same prior be executed at
+different speeds.
+The \emph{novice} contribution here is \emph{how} $\phi$ advances: not by a but by a correction driven by
+the robot's \emph{measured state} instead of a fixed time cycle that is affected by many factors like processor power,
+hardware, memory and process scheduling, system specifications or other real time application issues
+which might break the generalizability across different conditions.
+At every step, the phase $\hat\phi$ that best matches the current state to the
+learned trajectory over a short forward window, is evaluated then correct $\phi$ towards it:
 \begin{equation}
 \hat\phi=\arg\min_{\varphi\in[\phi,\,\phi+\Delta]}
    \left[\frac{\norm{x_{\text{ref}}(\varphi)-x}}{\rho_x}
@@ -388,7 +394,7 @@ phase $\varphi$ says it \emph{should be}: the first term is the position mismatc
 $\norm{x_{\text{ref}}(\varphi)-x}\unit{m}$ normalised by a scale
 $\rho_x\unit{m}$; the second, active only in contact
 ($\mathbb{1}_{\text{contact}}$), compares force magnitudes normalised by
-$\rho_F\unit{N}$ --- force is the more informative cue once the tool is engaged.
+$\rho_F\unit{N}$ --- force is the more informative cue once the scalpel is engaged.
 The update mixes the nominal clock rate $\dot\phi_{\text{nom}}\unit{s^{-1}}$ with a
 proportional correction of gain $k_\phi\in[0,1]$ towards the state estimate
 $\hat\phi$. Setting $k_\phi=0$ recovers a pure time clock; with $k_\phi>0$ the
@@ -399,11 +405,10 @@ earlier stage. This is what gives the execution both speed-adaptability and
 robustness to disturbance.
 
 % ============================================================================
-\section{Stability and passivity}
+\section{Stability and passivity analysis}
 % ============================================================================
 \label{sec:stab}
-We now establish the stability properties of the closed loop. The tool obeys the task-space
-dynamics $\Lambda\ddot x+C\dot x+g=f+f_{\text{ext}}$, where $\Lambda\unit{kg}$ is
+The scalpel obeys the task-space dynamics $\Lambda\ddot x+C\dot x+g=f+f_{\text{ext}}$, where $\Lambda\unit{kg}$ is
 the Cartesian inertia and $f_{\text{ext}}\unit{N}$ the environment force.
 Substituting the control law \eqref{eq:imp} (with gravity/Coriolis cancelled by
 \eqref{eq:torque}) gives the \emph{error dynamics}
@@ -438,7 +443,8 @@ change of stored elastic energy from a rising stiffness
 reference ($\tilde x^\top K\dot x_d$), both in watts --- are drawn from the tank,
 which is replenished by the power dissipated through damping. When the tank
 reaches its lower bound, stiffness growth is inhibited ($\dot K\!\le\!0$) and the
-phase is frozen ($\dot\phi\!\to\!0$), so the controller cannot generate energy.
+phase is frozen ($\dot\phi\!\to\!0$), so the controller cannot generate energy, instead,
+it reduces the motion velocity to avoid instant change of dynamics.
 This is the continuous-time passivity argument used to design the implementation.
 
 \subsection{Implemented torque-port passivity}
@@ -517,7 +523,7 @@ torque port $\dot q^\top\tau$.
 The plain energy $V_0=\tfrac12\dot{\tilde x}^\top\Lambda\dot{\tilde x}+\tfrac12\tilde x^\top K\tilde x$
 only gives $\dot V_0=-\dot{\tilde x}^\top D\dot{\tilde x}\le0$, which proves the
 error eventually vanishes but says nothing about \emph{how fast}. To obtain an
-exponential rate we add a cross-term between position and velocity error:
+exponential rate, a cross-term between position and velocity error is added:
 \begin{equation}
 V=\tfrac12\dot{\tilde x}^\top\Lambda\dot{\tilde x}
  +\tfrac12\tilde x^\top K\tilde x
@@ -553,7 +559,7 @@ of the error follows. The rate $\alpha$ grows with $\lambda_{\min}(K)$ and
 $\lambda_{\min}(D)$ --- so the stiff cut-depth axis converges fastest.
 \end{proof}
 
-\noindent Figure~\ref{fig:stab} shows the nominal closed-loop behaviour for
+\noindent Figure~\ref{fig:stab} illustrates the nominal closed-loop behaviour for
 static and moving workpieces. The cut-depth error remains small, the storage
 remains bounded, and the torque-port passivity inequality is satisfied. The
 exponential fit is included as an empirical diagnostic; because the controller
@@ -600,7 +606,7 @@ implemented passivity mechanism, not only an analytical claim.
 \label{sec:material}
 In simulation the controller tracked position well, yet the contact force at first
 failed to match the demonstrated force. The cause turned out to be the
-\emph{material model}, not the controller. The blade and the workpiece were both
+\emph{material model}, not the controller. The scalpel blade and the workpiece were both
 rigid box geometries, and overlapping boxes in a rigid-contact simulator produce
 solver-dependent collision forces: the magnitude is set by contact penetration,
 time step and solver parameters, and the direction is the instantaneous collision
@@ -658,10 +664,10 @@ $2.3$\,mm depth RMSE).}
 \label{fig:before_after}
 \end{figure}
 
-We replace the rigid contact with a \emph{per-material cutting-force law}.
+The rigid contact is replaced with a \emph{per-material cutting-force law}.
 Physically, cutting force rises elastically with penetration and then
 \emph{plateaus} at the material's cutting strength (the blade fractures/cuts the
-material). We model the reaction the material exerts on the blade as a saturating
+material). The reaction the material exerts on the blade is modeled as a saturating
 function of the penetration depth, oriented along the demonstrated reaction
 direction $-\hat F_d$:
 \begin{equation}
@@ -671,7 +677,7 @@ direction $-\hat F_d$:
 F_{\text{react}}=\norm{F_{\text{react}}(d)}\,\big(-\hat F_d\big)\;}
 \label{eq:cut}
 \end{equation}
-$d\unit{m}$ is how far the tool tip sits below the (live, current) material
+$d\unit{m}$ is how far the scalpel tip sits below the (live, current) material
 surface; $k_{\text{mat}}\unit{N\,m^{-1}}$ is the loading stiffness; and
 $F^{\text{cut}}_{\text{mat}}\unit{N}$ is the cutting-force plateau. The two
 parameters are \emph{identified from each material's own demonstration} (system
