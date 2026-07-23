@@ -11,9 +11,10 @@
 \contentsline {subsection}{\numberline {5.1}Passivity --- the controller cannot create energy}{7}{subsection.5.1}%
 \contentsline {subsection}{\numberline {5.2}Implemented torque-port passivity}{7}{subsection.5.2}%
 \contentsline {subsection}{\numberline {5.3}Exponential stability --- the error decays at a guaranteed rate}{8}{subsection.5.3}%
-\contentsline {paragraph}{Variable gains, moving target, and the unifying role of the tank.}{9}{section*.4}%
-\contentsline {paragraph}{Implementation status.}{9}{section*.5}%
-\contentsline {section}{\numberline {6}Material interaction model}{9}{section.6}%
-\contentsline {section}{\numberline {7}Results}{10}{section.7}%
-\contentsline {section}{\numberline {8}Novelty and contributions}{11}{section.8}%
-\contentsline {section}{\numberline {9}Assumptions, scope and limitations}{12}{section.9}%
+\contentsline {paragraph}{Time-varying gains and moving-reference perturbations.}{10}{section*.4}%
+\contentsline {paragraph}{Experimental interpretation.}{10}{section*.5}%
+\contentsline {paragraph}{Implementation status.}{11}{section*.6}%
+\contentsline {section}{\numberline {6}Material interaction model}{11}{section.6}%
+\contentsline {section}{\numberline {7}Results}{12}{section.7}%
+\contentsline {section}{\numberline {8}Novelty and contributions}{12}{section.8}%
+\contentsline {section}{\numberline {9}Assumptions, scope and limitations}{13}{section.9}%

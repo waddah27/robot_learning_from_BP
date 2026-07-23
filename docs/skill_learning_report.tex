@@ -21,6 +21,7 @@
 \newtheorem{theorem}{Theorem}
 \newtheorem{proposition}{Proposition}
 \newtheorem{assumption}{Assumption}
+\newtheorem{corollary}{Corollary}
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\norm}[1]{\left\lVert#1\right\rVert}
 \newcommand{\xt}{\tilde{x}}
@@ -372,7 +373,7 @@ rather than gain adaptation in general, as the determinant of task performance.}
 % ============================================================================
 \label{sec:phase}
 The reference is a function of a \emph{phase} variable $\phi\in[0,1]$ to be decoupled from direct time dependency.
-This separates \emph{what} the skill is from \emph{how fast} it runs, which is what lets the same prior be executed at
+This separates \emph{what} the skill is from \emph{how fast} it runs, which allows the same prior be executed at
 different speeds.
 The \emph{novice} contribution here is \emph{how} $\phi$ advances: not by a but by a correction driven by
 the robot's \emph{measured state} instead of a fixed time cycle that is affected by many factors like processor power,
@@ -390,7 +391,7 @@ learned trajectory over a short forward window, is evaluated then correct $\phi$
 \label{eq:phase}
 \end{equation}
 The bracketed cost compares where the robot \emph{is} to where each candidate
-phase $\varphi$ says it \emph{should be}: the first term is the position mismatch
+phase $\varphi$ assumes it \emph{should be}: the first term is the position mismatch
 $\norm{x_{\text{ref}}(\varphi)-x}\unit{m}$ normalised by a scale
 $\rho_x\unit{m}$; the second, active only in contact
 ($\mathbb{1}_{\text{contact}}$), compares force magnitudes normalised by
@@ -401,8 +402,8 @@ $\hat\phi$. Setting $k_\phi=0$ recovers a pure time clock; with $k_\phi>0$ the
 phase \emph{tracks the robot's actual progress} --- it slows or pauses if the
 robot is held back and speeds up if it runs ahead. Searching only forward
 ($\varphi\ge\phi$) guarantees monotone progress, so the skill never regresses to an
-earlier stage. This is what gives the execution both speed-adaptability and
-robustness to disturbance.
+earlier stage. This provides speed-adaptability and
+robustness to disturbance execution.
 
 % ============================================================================
 \section{Stability and passivity analysis}
@@ -582,51 +583,123 @@ inertia; the implemented guarantee is therefore stated and validated at the
 torque port $\dot q^\top\tau$.
 
 \subsection{Exponential stability --- the error decays at a guaranteed rate}
-The plain energy $V_0=\tfrac12\dot{\tilde x}^\top\Lambda\dot{\tilde x}+\tfrac12\tilde x^\top K\tilde x$
-only gives $\dot V_0=-\dot{\tilde x}^\top D\dot{\tilde x}\le0$, which proves the
-error eventually vanishes but says nothing about \emph{how fast}. To obtain an
-exponential rate, a cross-term between position and velocity error is added:
+The stability argument is first established for nominal regulation and is then
+extended to phase-varying gains and bounded perturbations.
+
+\begin{assumption}[Nominal regulation conditions]
+\label{ass:nominal_stability}
+The compensated Cartesian inertia satisfies
+$\Lambda=\Lambda^\top\succ0$ and is constant over the local analysis interval;
+the frozen gains satisfy $K=K^\top\succ0$ and $D=D^\top\succ0$; gravity and
+Coriolis terms are compensated; and the nominal result is evaluated with zero
+external input and zero unmodelled reference acceleration.
+\end{assumption}
+
+Under Assumption~\ref{ass:nominal_stability}, defining
+$e=\tilde x$, $v=\dot{\tilde x}$ and
+$z=[e^\top\;v^\top]^\top$, the error system becomes
 \begin{equation}
-V=\tfrac12\dot{\tilde x}^\top\Lambda\dot{\tilde x}
- +\tfrac12\tilde x^\top K\tilde x
- +\beta\,\tilde x^\top\Lambda\dot{\tilde x},\qquad\beta>0 ,
+\dot z=A z,\qquad
+A=
+\begin{bmatrix}
+0&I\\
+-\Lambda^{-1}K&-\Lambda^{-1}D
+\end{bmatrix}.
+\label{eq:error_state}
+\end{equation}
+The matrix $\Lambda\unit{kg}$ is the Cartesian inertia,
+$K\unit{N\,m^{-1}}$ and $D\unit{N\,s\,m^{-1}}$ are the frozen stiffness and
+damping matrices, and $A$ is the corresponding state matrix. The mechanical
+energy
+$V_0=\tfrac12v^\top\Lambda v+\tfrac12e^\top K e$ satisfies only
+$\dot V_0=-v^\top Dv\le0$. A strict decay rate in both $e$ and $v$ is obtained
+by adding a position--velocity cross-term:
+\begin{equation}
+V(z)=\tfrac12v^\top\Lambda v+\tfrac12e^\top K e
+ +\beta e^\top\Lambda v
+ =\tfrac12z^\top Pz,\qquad
+P=
+\begin{bmatrix}
+K&\beta\Lambda\\
+\beta\Lambda&\Lambda
+\end{bmatrix},\qquad\beta>0 .
 \label{eq:lyap}
 \end{equation}
-where $\beta\unit{s^{-1}}$ is small enough that $V$ stays a valid (positive)
-energy.
+Here $\beta\unit{s^{-1}}$ weights the cross-term. By the Schur complement,
+\begin{equation}
+P\succ0
+\quad\Longleftrightarrow\quad
+K-\beta^2\Lambda\succ0,
+\label{eq:P_condition}
+\end{equation}
+for which the scalar condition
+$\beta^2<\lambda_{\min}(K)/\lambda_{\max}(\Lambda)$ is sufficient. Hence,
+with $\underline p=\lambda_{\min}(P)$ and
+$\overline p=\lambda_{\max}(P)$,
+\begin{equation}
+\frac{\underline p}{2}\norm{z}^2
+\le V(z)\le
+\frac{\overline p}{2}\norm{z}^2 .
+\label{eq:V_bounds}
+\end{equation}
 
 \begin{theorem}[Exponential stability]
 \label{thm:exp}
-For \eqref{eq:err} with $f_{\text{ext}}=0$ and constant $K,D\succ0$, if
-$\beta<\sqrt{\lambda_{\min}(K)/\lambda_{\max}(\Lambda)}$ (so $V>0$) and
-$\beta<\lambda_{\min}(D)/\lambda_{\max}(\Lambda)$, then there are constants
-$\alpha>0$ and $c\ge1$ with
+For the nominal system \eqref{eq:error_state}, suppose $P\succ0$ and
 \begin{equation}
-\dot V\le-\alpha V\quad\Longrightarrow\quad
-\norm{\tilde x(t)}\le c\,e^{-(\alpha/2)t}\,\norm{[\tilde x(0);\dot{\tilde x}(0)]} .
+\begin{split}
+Q&=
+\begin{bmatrix}
+2\beta K&\beta D\\
+\beta D&2(D-\beta\Lambda)
+\end{bmatrix}\succ0 .
+\end{split}
+\label{eq:Q_condition}
+\end{equation}
+Then the origin $z=0$ is globally exponentially stable. In particular, with
+$\underline q=\lambda_{\min}(Q)$,
+\begin{equation}
+\dot V\le-\alpha V,\qquad
+\alpha=\frac{\underline q}{\overline p},
+\qquad
+\norm{z(t)}
+\le
+\sqrt{\frac{\overline p}{\underline p}}\,
+e^{-\alpha t/2}\norm{z(0)} .
+\label{eq:exp_bound}
 \end{equation}
 \end{theorem}
-\begin{proof}[Sketch]
-Differentiating \eqref{eq:lyap} along \eqref{eq:err} and using
-$\Lambda\ddot{\tilde x}=-D\dot{\tilde x}-K\tilde x$, the symmetric terms
-$-\dot{\tilde x}^\top K\tilde x+\tilde x^\top K\dot{\tilde x}$ cancel, leaving
-$\dot V=-\dot{\tilde x}^\top(D-\beta\Lambda)\dot{\tilde x}
-        -\beta\,\tilde x^\top K\tilde x-\beta\,\tilde x^\top D\dot{\tilde x}$.
-The middle term $-\beta\,\tilde x^\top K\tilde x$ is what makes $\dot V$ negative
-definite \emph{in the position error} (the cross-term's purpose); bounding the
-last term with Young's inequality and applying the two $\beta$ conditions yields
-$\dot V\le-\alpha_1\norm{\tilde x}^2-\alpha_2\norm{\dot{\tilde x}}^2\le-\alpha V$.
-Since $V$ is equivalent to $\norm{[\tilde x;\dot{\tilde x}]}^2$, exponential decay
-of the error follows. The rate $\alpha$ grows with $\lambda_{\min}(K)$ and
-$\lambda_{\min}(D)$ --- so the stiff cut-depth axis converges fastest.
+\begin{proof}
+Using $\Lambda\dot v=-Dv-Ke$, differentiation of \eqref{eq:lyap} gives
+\begin{align}
+\dot V
+&=v^\top\Lambda\dot v+e^\top Kv
+  +\beta v^\top\Lambda v+\beta e^\top\Lambda\dot v \nonumber\\
+&=-v^\top(D-\beta\Lambda)v-\beta e^\top Ke-\beta e^\top Dv
+ =-\tfrac12z^\top Qz .
+\label{eq:V_derivative}
+\end{align}
+The cancellation of $-v^\top Ke+e^\top Kv$ removes the conservative
+spring-power exchange. From $Q\succ0$ and \eqref{eq:V_bounds},
+\[
+\dot V\le-\frac{\underline q}{2}\norm{z}^2
+\le-\frac{\underline q}{\overline p}V=-\alpha V.
+\]
+Integration gives $V(t)\le e^{-\alpha t}V(0)$, and substitution of the upper
+and lower quadratic bounds in \eqref{eq:V_bounds} yields
+\eqref{eq:exp_bound}.
 \end{proof}
 
-\noindent Figure~\ref{fig:stab} illustrates the nominal closed-loop behaviour for
-static and moving workpieces. The cut-depth error remains small, the storage
-remains bounded, and the torque-port passivity inequality is satisfied. The
-exponential fit is included as an empirical diagnostic; because the controller
-deliberately releases low-precision axes, the full Cartesian norm is not the
-strongest metric for claiming exponential convergence.
+Condition \eqref{eq:Q_condition} can be checked directly from the learned gains
+and Cartesian inertia at each phase. Its Schur-complement form,
+\begin{equation}
+D-\beta\Lambda-\frac{\beta}{4}DK^{-1}D\succ0,
+\label{eq:Q_schur}
+\end{equation}
+also shows why $D-\beta\Lambda\succ0$ alone is insufficient: the mixed term
+$-\beta e^\top Dv$ must also be dominated. The computable rate
+$\alpha=\lambda_{\min}(Q)/\lambda_{\max}(P)$ expresses the joint influence of
+inertia, stiffness, damping and the selected cross-term coefficient.
 
 \begin{figure}[h]
 \centering
@@ -640,27 +713,115 @@ than as the primary passivity proof.}
 \label{fig:stab}
 \end{figure}
 
-\paragraph{Variable gains, moving target, and the unifying role of the tank.}
-When the gains vary, $\dot K=K'(\phi)\dot\phi$ adds a term
-$\tfrac12\tilde x^\top\dot K\tilde x$; the exponential property survives as long as
-the gain changes slowly enough,
-$\norm{\dot K(\phi)}<2\beta\,\lambda_{\min}(K)$, i.e.\ a bound on the phase rate
-$\dot\phi<2\beta\lambda_{\min}(K)/\norm{K'(\phi)}$. \emph{This is exactly the bound
-the energy tank enforces} (Proposition~\ref{prop:pass}). For a moving workpiece
-the result is \emph{practical} exponential stability,
-$\norm{\tilde x(t)}\le c\,e^{-\lambda t}\norm{z(0)}+\gamma\sup\norm{\delta}$, where
-$\delta$ is the un-compensated reference acceleration and the residual ball grows
-with the workpiece motion; for the static case it is exponential to the origin.
-The same tank therefore (i) guarantees passivity, (ii) bounds $\dot\phi$ and hence
-$\dot K$ to preserve exponential contraction, and (iii) \emph{is} the state-driven
-phase law of Section~\ref{sec:phase}. Passivity, exponential stability, and
-adaptive timing are governed by a single mechanism.
+\paragraph{Time-varying gains and moving-reference perturbations.}
+For $K=K(\phi)$, $D=D(\phi)$ and an aggregated Cartesian perturbation
+$\delta$ containing external contact input, imperfect model compensation and
+uncompensated reference acceleration, the derivative becomes
+\begin{equation}
+\dot V
+=-\tfrac12z^\top Q(\phi)z
++\tfrac12e^\top\dot K(\phi)e
++(v+\beta e)^\top\delta,
+\qquad
+\dot K(\phi)=K'(\phi)\dot\phi .
+\label{eq:V_varying}
+\end{equation}
 
-\paragraph{Implementation status.} The live tank state is coupled into the
-torque-level budget \eqref{eq:pass_qp}, and phase progression is gated by
-\eqref{eq:tank_disc}. The positive-power perturbation validation in Fig.~\ref{fig:pass_adv} and
-Table~\ref{tab:pass_adv} is therefore an empirical demonstration of the
-implemented passivity mechanism, not only an analytical claim.
+\begin{corollary}[Uniform exponential stability with variable gains]
+\label{cor:variable_exp}
+Suppose $P(\phi)\succ0$ and $Q(\phi)\succ0$ uniformly for
+$\phi\in[0,1]$, and define
+\begin{equation}
+q_*=\inf_{\phi\in[0,1]}\lambda_{\min}\!\big(Q(\phi)\big),\qquad
+\kappa=\sup_{\phi\in[0,1]}\norm{\dot K(\phi)}_2,\qquad
+\mu=q_*-\kappa .
+\label{eq:uniform_margin}
+\end{equation}
+If $\mu>0$, the unforced time-varying system is uniformly exponentially stable.
+Since
+$\norm{\dot K(\phi)}_2\le\norm{K'(\phi)}_2|\dot\phi|$, a sufficient phase-rate
+condition is
+\begin{equation}
+|\dot\phi|
+<
+\frac{q_*}{{\displaystyle
+\sup_{\phi\in[0,1]}\norm{K'(\phi)}_2}} .
+\label{eq:phase_stability_bound}
+\end{equation}
+\end{corollary}
+\begin{proof}
+With $\delta=0$, equations~\eqref{eq:V_varying} and
+\eqref{eq:uniform_margin} give
+\[
+\dot V\le-\tfrac12\big(q_*-\kappa\big)\norm{z}^2
+=-\tfrac12\mu\norm{z}^2.
+\]
+Uniform positive lower and upper bounds on $P(\phi)$ imply exponential decay by
+the comparison argument used in Theorem~\ref{thm:exp}.
+Condition~\eqref{eq:phase_stability_bound} ensures $\kappa<q_*$ and therefore
+$\mu>0$.
+\end{proof}
+
+The tank gate \eqref{eq:tank_disc} reduces $\dot\phi$ as usable energy
+decreases and therefore reduces $\dot K$ and the moving-reference power demand.
+The torque projection \eqref{eq:pass_qp} independently enforces the joint-port
+power constraint. Passivity follows from the energy accounting, whereas
+uniform exponential stability additionally requires the matrix margin
+\eqref{eq:uniform_margin}; the two properties are related through phase gating
+but are not identical claims.
+
+\begin{proposition}[Practical exponential stability under bounded perturbations]
+\label{prop:practical_exp}
+Let the conditions of Corollary~\ref{cor:variable_exp} hold, define
+$g_\beta=\sqrt{1+\beta^2}$, and suppose that
+$\sup_{s\ge0}\norm{\delta(s)}<\infty$. Then
+\begin{equation}
+\dot V
+\le-\frac{\mu}{4}\norm{z}^2
++\frac{g_\beta^2}{\mu}\norm{\delta}^2
+\le-aV+\frac{g_\beta^2}{\mu}\norm{\delta}^2,
+\qquad
+a=\frac{\mu}{2\overline p},
+\label{eq:ISS_derivative}
+\end{equation}
+where $\overline p=\sup_\phi\lambda_{\max}(P(\phi))$. Integration gives
+\begin{equation}
+V(t)\le e^{-at}V(0)
++\frac{g_\beta^2}{a\mu}
+ \left(1-e^{-at}\right)
+ \sup_{0\le s\le t}\norm{\delta(s)}^2 .
+\label{eq:ISS_bound}
+\end{equation}
+Accordingly, the state converges exponentially to a residual set whose radius
+is proportional to $\sup\norm{\delta}$; when $\delta=0$, this set collapses to
+the origin.
+\end{proposition}
+\begin{proof}
+The perturbation term in \eqref{eq:V_varying} satisfies
+$|(v+\beta e)^\top\delta|
+\le g_\beta\norm{z}\norm{\delta}$. Young's inequality with the uniform margin
+$\mu$ yields \eqref{eq:ISS_derivative}; integration of the scalar differential
+inequality gives \eqref{eq:ISS_bound}.
+\end{proof}
+
+\paragraph{Experimental interpretation.}
+Theorem~\ref{thm:exp} provides the frozen-gain nominal result,
+Corollary~\ref{cor:variable_exp} states the uniform margin required while the
+learned gains evolve with phase, and Proposition~\ref{prop:practical_exp}
+accounts for bounded workpiece motion, contact forces and compensation error.
+Figure~\ref{fig:stab} reports the corresponding empirical diagnostics. The
+cut-depth error remains small and the storage remains bounded. The fitted decay
+of the full Cartesian error is interpreted cautiously because low-precision
+axes are intentionally assigned low stiffness and therefore have smaller
+contraction margins.
+
+\paragraph{Implementation status.} The live tank state determines the
+torque-level budget in \eqref{eq:pass_qp}, while phase progression is gated by
+\eqref{eq:tank_disc}. The positive-power perturbation validation in
+Fig.~\ref{fig:pass_adv} and Table~\ref{tab:pass_adv} evaluates the implemented
+passivity constraint. Equations~\eqref{eq:Q_condition}--\eqref{eq:ISS_bound}
+separately state the nominal, uniform time-varying and perturbed stability
+conditions against which the logged trajectories are assessed.
 
 % ============================================================================
 \section{Material interaction model}
