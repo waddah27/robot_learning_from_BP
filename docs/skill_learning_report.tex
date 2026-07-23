@@ -828,50 +828,72 @@ conditions against which the logged trajectories are assessed.
 % ============================================================================
 \label{sec:material}
 In simulation the controller tracked position well, yet the contact force at first
-failed to match the demonstrated force. The cause turned out to be the
-\emph{material model}, not the controller. The scalpel blade and the workpiece were both
-rigid box geometries, and overlapping boxes in a rigid-contact simulator produce
-solver-dependent collision forces: the magnitude is set by contact penetration,
-time step and solver parameters, and the direction is the instantaneous collision
-normal. A controller cannot make such a contact respect a demonstrated cutting
+failed to match the demonstrated force. The stock simulated \emph{material model}
+presents both the scalpel blade and the workpiece as rigid box geometries; hence,
+overlapping boxes in a rigid-contact simulator produce solver-dependent
+\emph{collision forces}, unlike the physical nature of the real cutting force.
+Their magnitude is set by contact penetration, time step and solver parameters,
+and their direction by the instantaneous collision normal. A controller cannot
+make such a contact respect a demonstrated cutting
 law, because the measured ``force'' is a geometric contact artefact rather than a
-material-specific fracture force. Figure~\ref{fig:before_after} shows this
+material-specific \emph{fracture force}. Figure~\ref{fig:before_after} shows this
 failure mode in a matched comparison: the same controller, trajectory, gains and
 cork workpiece are used, and only the contact model is toggled.
 
 \begin{proposition}[Why box-on-box contact is not a cutting model]
 Let the desired cutting interaction be a material law
 $F_d(\phi)=\bar F(d(\phi))\,r(\phi)$ with bounded magnitude
-$\bar F(d)\le F_{\rm mat}^{\rm cut}$ and reaction direction $r(\phi)$ learned
-from the demonstration. A rigid box-on-box MuJoCo contact instead generates a
-solver reaction
-\[
+$0\le\bar F(d)\le F_{\rm mat}^{\rm cut}$ and unit reaction direction
+$r(\phi)$ learned from the demonstration. A rigid box-on-box MuJoCo contact
+generates instead
+\begin{equation}
 F_{\rm box}=F_{\rm solver}(q,\dot q,h,\texttt{solref},\texttt{solimp},
-                          \mathcal C(q)),
-\]
-where $h$ is the integration step and $\mathcal C(q)$ is the active contact set.
-Since $\mathcal C(q)$ changes discontinuously at box faces and edges, and since
-the reaction direction is constrained by collision normals rather than by the
-demonstrated cutting direction, $F_{\rm box}$ is not a single-valued bounded
-function of cutting depth $d$ and cannot, in general, equal
-$\bar F(d)\,r(\phi)$ along the cut.
+                          \mathcal C(q),\mu_c),
+\label{eq:box_solver}
+\end{equation}
+where $h$ is the integration step, $\mathcal C(q)$ is the active contact set and
+$\mu_c$ denotes the friction parameters. In general there exists no
+depth-only map $\mathcal F:\R_{\ge0}\rightarrow\R^3$ that is invariant to these
+numerical and geometric quantities and satisfies simultaneously
+$F_{\rm box}=\mathcal F(d)=\bar F(d)r(\phi)$ along the demonstrated cut.
 \end{proposition}
 
 \begin{proof}
-For equality to hold for all phases of the demonstrated cut, two independent
-conditions are required: the force magnitude must satisfy
-$\norm{F_{\rm box}}=\bar F(d)\le F_{\rm mat}^{\rm cut}$, and the force direction
-must satisfy $F_{\rm box}/\norm{F_{\rm box}}=r(\phi)$. Rigid contact violates
-both conditions. Its magnitude is the Lagrange/penalty reaction required to
-remove interpenetration under the numerical contact parameters, so changing the
-solver stiffness or time step changes the reported force without changing the
-material. Its direction lies in the contact normal/friction cone determined by
-box geometry, not by the cutting-force direction measured in the demonstration.
-At contact-set switches the mapping can jump even when the desired cutting force
-is smooth. Therefore the rigid collision model and the desired cutting law are
-different input-output maps; no impedance gain choice can make the environment
-produce a missing material law. The missing physics must be supplied by an
-identified material model.
+Assume such an invariant $\mathcal F(d)$ exists. Consider two simulator
+configurations with the same blade pose and hence the same penetration $d$, but
+with distinct solver settings
+$\theta_1=(h_1,\texttt{solref}_1,\texttt{solimp}_1)$ and
+$\theta_2=(h_2,\texttt{solref}_2,\texttt{solimp}_2)$. The normal reaction in a
+penalty or constraint-regularised contact has the generic dependence
+\begin{equation}
+F_{n,i}=\Psi(d,\dot d;\theta_i),\qquad i\in\{1,2\},
+\label{eq:solver_dependence}
+\end{equation}
+and changing the effective contact stiffness, damping or discrete step gives
+$\Psi(d,\dot d;\theta_1)\ne\Psi(d,\dot d;\theta_2)$ for some
+$(d,\dot d)$. Thus identical $d$ produces different force magnitudes, which
+contradicts the assumed depth-only invariance.
+
+Independently, the rigid-contact force satisfies the friction-cone restriction
+\begin{equation}
+F_{\rm box}=F_n n_c+F_t,\qquad
+F_n\ge0,\quad n_c^\top F_t=0,\quad
+\norm{F_t}\le\mu_cF_n ,
+\label{eq:friction_cone}
+\end{equation}
+where $n_c$ is a normal selected by the active box feature. At a face or edge
+transition, $\mathcal C(q)$ and $n_c$ can change while $d$ remains continuous.
+The resulting force direction is therefore determined by collision geometry
+and need not equal the demonstrated $r(\phi)$. Since equality with the cutting
+law requires both
+\[
+\norm{F_{\rm box}}=\bar F(d)
+\quad\text{and}\quad
+\frac{F_{\rm box}}{\norm{F_{\rm box}}}=r(\phi),
+\]
+failure of either condition disproves
+$F_{\rm box}=\bar F(d)r(\phi)$. Hence the rigid collision map cannot supply the
+missing material-specific constitutive relation.
 \end{proof}
 
 \begin{figure}[h]
@@ -890,26 +912,144 @@ $2.3$\,mm depth RMSE).}
 The rigid contact is replaced with a \emph{per-material cutting-force law}.
 Physically, cutting force rises elastically with penetration and then
 \emph{plateaus} at the material's cutting strength (the blade fractures/cuts the
-material). The reaction the material exerts on the blade is modeled as a saturating
-function of the penetration depth, oriented along the demonstrated reaction
-direction $-\hat F_d$:
+material). Let $p_b(t)\in\R^3$ be the blade-tip position,
+$p_s(t)\in\R^3$ a point on the live workpiece surface, and
+$n_s(t)\in\R^3$, $\norm{n_s}=1$, its outward normal. The instantaneous
+penetration is
+\begin{equation}
+d(t)=\left[-n_s(t)^\top\big(p_b(t)-p_s(t)\big)\right]_+,
+\qquad [a]_+=\max(a,0).
+\label{eq:penetration}
+\end{equation}
+Using the current $p_s(t)$ rather than its initial value preserves the
+penetration definition for a moving workpiece. Let
+$\hat F_d(\phi)=F_d(\phi)/(\norm{F_d(\phi)}+\varepsilon_F)$ denote the
+regularised demonstrated force direction. The reaction applied to the blade is
 \begin{equation}
 \boxed{\;
-\norm{F_{\text{react}}(d)}=\min\!\big(k_{\text{mat}}\,d,\;F^{\text{cut}}_{\text{mat}}\big),
-\qquad
-F_{\text{react}}=\norm{F_{\text{react}}(d)}\,\big(-\hat F_d\big)\;}
+\begin{aligned}
+f_{\rm mat}(d;\theta_{\rm mat})
+ &=\min\!\big(k_{\rm mat}d,F_{\rm mat}^{\rm cut}\big),\\
+F_{\rm react}(d,\phi)
+ &=-f_{\rm mat}(d;\theta_{\rm mat})\,\hat F_d(\phi),\\
+\theta_{\rm mat}
+ &=\big(k_{\rm mat},F_{\rm mat}^{\rm cut}\big),\qquad
+d_c=\frac{F_{\rm mat}^{\rm cut}}{k_{\rm mat}} .
+\end{aligned}\;}
 \label{eq:cut}
 \end{equation}
-$d\unit{m}$ is how far the scalpel tip sits below the (live, current) material
-surface; $k_{\text{mat}}\unit{N\,m^{-1}}$ is the loading stiffness; and
-$F^{\text{cut}}_{\text{mat}}\unit{N}$ is the cutting-force plateau. The two
-parameters are \emph{identified from each material's own demonstration} (system
-identification): $F^{\text{cut}}$ from the demonstrated cutting-force level and
-$k_{\text{mat}}$ from the loading slope. Because the demonstrated forces are the
-\emph{real material's measured interaction forces}, a model that reproduces them
-is a faithful, calibrated material --- not a controller artifice. The
-geometric contact is disabled, this reaction is applied to the blade, and the
-force sensor reports it.
+Here $k_{\rm mat}\unit{N\,m^{-1}}$ is the pre-fracture loading stiffness,
+$F_{\rm mat}^{\rm cut}\unit{N}$ is the cutting-force plateau, and
+$d_c\unit{m}$ is the transition depth. Equivalently,
+\begin{equation}
+f_{\rm mat}(d)=
+\begin{cases}
+0, & d=0,\\
+k_{\rm mat}d, & 0<d<d_c,\\
+F_{\rm mat}^{\rm cut}, & d\ge d_c.
+\end{cases}
+\label{eq:cut_piecewise}
+\end{equation}
+The first branch represents separation, the linear branch represents material
+loading before fracture, and the plateau represents continued cutting after the
+force threshold has been reached.
+
+\begin{proposition}[Boundedness and regularity of the identified cutting law]
+\label{prop:cut_properties}
+For $k_{\rm mat}>0$ and $F_{\rm mat}^{\rm cut}>0$, the scalar law
+\eqref{eq:cut_piecewise} is non-negative, monotone non-decreasing, globally
+bounded by $F_{\rm mat}^{\rm cut}$ and globally Lipschitz on
+$\R_{\ge0}$ with constant $k_{\rm mat}$. Its scalar work primitive is
+\begin{equation}
+U_{\rm mat}(d)=\int_0^d f_{\rm mat}(s)\,ds
+=
+\begin{cases}
+\tfrac12k_{\rm mat}d^2, & 0\le d\le d_c,\\
+F_{\rm mat}^{\rm cut}d
+-\dfrac{(F_{\rm mat}^{\rm cut})^2}{2k_{\rm mat}}, & d>d_c.
+\end{cases}
+\label{eq:material_potential}
+\end{equation}
+\end{proposition}
+\begin{proof}
+Both arguments of the minimum in \eqref{eq:cut} are non-negative and
+non-decreasing for $d\ge0$, which establishes non-negativity and monotonicity.
+The minimum is at most $F_{\rm mat}^{\rm cut}$. For any $d_1,d_2\ge0$,
+\begin{equation}
+\left|f_{\rm mat}(d_1)-f_{\rm mat}(d_2)\right|
+\le k_{\rm mat}|d_1-d_2|,
+\label{eq:cut_lipschitz}
+\end{equation}
+because saturation cannot increase the slope of the unsaturated linear map.
+Integration of the two branches gives \eqref{eq:material_potential}; at
+$d=d_c$, both expressions equal
+$(F_{\rm mat}^{\rm cut})^2/(2k_{\rm mat})$, proving continuity.
+\end{proof}
+
+\paragraph{Parameter identification.}
+For each material, let
+$\mathcal D=\{(d_j,y_j,w_j)\}_{j=1}^{N}$ contain the penetration
+$d_j$, measured force magnitude $y_j=\norm{F_j}$ and non-negative sample weight
+$w_j$. The two material parameters are obtained from the constrained nonlinear
+least-squares problem
+\begin{equation}
+\hat\theta_{\rm mat}
+=\arg\min_{\substack{k>0,\;F^{{\rm cut}}>0}}
+\sum_{j=1}^{N}w_j
+\left[y_j-\min\!\big(kd_j,F^{{\rm cut}}\big)\right]^2 .
+\label{eq:material_identification}
+\end{equation}
+For a fixed division into a loading set
+$\mathcal L=\{j:kd_j<F^{\rm cut}\}$ and plateau set
+$\mathcal P=\{j:kd_j\ge F^{\rm cut}\}$, the estimates have the closed forms
+\begin{equation}
+\hat k_{\rm mat}
+=\frac{\sum_{j\in\mathcal L}w_jd_jy_j}
+       {\sum_{j\in\mathcal L}w_jd_j^2},
+\qquad
+\hat F_{\rm mat}^{\rm cut}
+=\frac{\sum_{j\in\mathcal P}w_jy_j}
+       {\sum_{j\in\mathcal P}w_j}.
+\label{eq:material_closed_form}
+\end{equation}
+These expressions show separately how the loading samples determine stiffness
+and how the steady cutting samples determine the plateau. The partition is
+updated using $d_c=\hat F_{\rm mat}^{\rm cut}/\hat k_{\rm mat}$ until the branch
+assignments are consistent. A unique estimate for a fixed non-empty partition
+requires
+$\sum_{j\in\mathcal L}w_jd_j^2>0$ and
+$\sum_{j\in\mathcal P}w_j>0$.
+
+The demonstrated reaction direction can be estimated independently from the
+normalised force samples:
+\begin{equation}
+\hat F_d(\phi)
+=\frac{\sum_{j\in\mathcal N(\phi)}
+w_j\,F_j/(\norm{F_j}+\varepsilon_F)}
+{\left\|
+\sum_{j\in\mathcal N(\phi)}
+w_j\,F_j/(\norm{F_j}+\varepsilon_F)
+\right\|+\varepsilon_r},
+\label{eq:direction_identification}
+\end{equation}
+where $\mathcal N(\phi)$ is a neighbourhood of the phase and
+$\varepsilon_F,\varepsilon_r>0$ regularise small measured forces and a
+near-zero directional resultant. This separates identification of the scalar
+material strength from identification of the demonstrated force direction; the
+reaction direction applied to the blade is $-\hat F_d(\phi)$ as in
+\eqref{eq:cut}.
+
+The geometric box contact is disabled during the cutting experiment,
+$F_{\rm react}$ from \eqref{eq:cut} is applied to the blade, and the force
+sensor reports the same interaction. Parameter sensitivity is bounded by
+\begin{equation}
+\left|f_{\rm mat}(d;k_1,F_1)-f_{\rm mat}(d;k_2,F_2)\right|
+\le d|k_1-k_2|+|F_1-F_2|,
+\label{eq:material_sensitivity}
+\end{equation}
+so errors in the identified loading stiffness dominate at larger pre-fracture
+penetrations, whereas plateau error directly bounds the post-fracture force
+error.
 
 \begin{table}[h]
 \centering
