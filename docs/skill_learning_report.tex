@@ -423,14 +423,14 @@ force.
 \begin{proposition}[Continuous-time tank passivity]
 \label{prop:pass}
 At the Cartesian contact port, the input--output map
-$f_{\text{ext}}\mapsto\dot x$ is passive under the following tank dynamics. With
+$f_{\text{ext}}\mapsto\dot x$ is passive under the following tank dynamics: With
 the storage function (an energy, in joules)
 $V=\tfrac12\dot{\tilde x}^\top\Lambda\dot{\tilde x}+\tfrac12\tilde x^\top K\tilde x+T$
-and a non-negative \emph{energy tank} $T\ge T_{\min}$ whose dynamics harvest the
-power dissipated by damping and pay out the power injected by the time-varying
+and a non-negative \emph{energy tank} $T\ge T_{\min}$ whose dynamics collect the
+power dissipated by damping and compensate the power injected by the time-varying
 gains and moving reference,
 \begin{equation}
-\dot T=\underbrace{\dot{\tilde x}^\top D\,\dot{\tilde x}}_{\text{harvested }[\mathrm{W}]}
+\dot T=\underbrace{\dot{\tilde x}^\top D\,\dot{\tilde x}}_{\text{collected }[\mathrm{W}]}
        -\underbrace{P_{\text{inj}}}_{[\mathrm{W}]},\qquad
 P_{\text{inj}}=\tfrac12\tilde x^\top\dot K\,\tilde x+\tilde x^\top K\,\dot x_d ,
 \end{equation}
@@ -441,7 +441,7 @@ tank). The two indefinite, potentially energy-injecting terms --- the rate of
 change of stored elastic energy from a rising stiffness
 ($\tfrac12\tilde x^\top\dot K\tilde x$) and the power supplied to a moving
 reference ($\tilde x^\top K\dot x_d$), both in watts --- are drawn from the tank,
-which is replenished by the power dissipated through damping. When the tank
+which is recharged by the power dissipated through damping. When the tank
 reaches its lower bound, stiffness growth is inhibited ($\dot K\!\le\!0$) and the
 phase is frozen ($\dot\phi\!\to\!0$), so the controller cannot generate energy, instead,
 it reduces the motion velocity to avoid instant change of dynamics.
@@ -452,9 +452,30 @@ The simulation controller enforces the tank constraint at the joint torque port,
 where the mechanical power supplied by the actuators is $P_\tau=\dot q^\top\tau$.
 At every control step the nominal torque
 \[
-\tau_{\rm nom}=J^\top f+\tau_{\rm null}+g+C\dot q
+\tau_{\rm nom}=\tau_{\rm task}+\tau_{\rm null}+\tau_{\rm bias},
+\qquad
+\tau_{\rm task}=J^\top(JJ^\top+\lambda^2I)^{-1}f,
+\qquad
+\tau_{\rm null}=N\tau_{\rm posture},
+\qquad
+\tau_{\rm bias}=g+C\dot q
 \]
-is projected onto the half-space of admissible torques
+is assembled from the task, null-space and model-compensation components.
+The task torque $\tau_{\rm task}\unit{N\,m}$ maps the Cartesian impedance
+command $f\unit{N}$ to the joints through the damped Jacobian inverse, where
+$J\in\R^{3\times n}$ satisfies $\dot x=J\dot q$, $\lambda^2$ is the
+damped-least-squares regulariser, $I$ is the identity matrix and $n$ is the
+number of joints. The posture command $\tau_{\rm posture}\unit{N\,m}$ attracts
+the arm towards its home configuration and damps joint motion. Its projection
+$\tau_{\rm null}=N\tau_{\rm posture}$, with
+$N=I-J^\top(JJ^\top+\lambda^2I)^{-1}J$, acts in the redundant null space and
+therefore satisfies $JN\approx0$ without materially disturbing the Cartesian
+cutting task. The bias term $\tau_{\rm bias}\unit{N\,m}$ contains the gravity
+torque $g$ and the Coriolis/centrifugal torque $C\dot q$. Their sum
+$\tau_{\rm nom}\unit{N\,m}$ is the nominal joint-torque command prior to
+passivity enforcement.
+
+The nominal command is projected onto the half-space of admissible torques:
 \begin{equation}
 \boxed{\;
 \tau_{\rm safe}
@@ -464,7 +485,31 @@ is projected onto the half-space of admissible torques
 P_{\max}=\frac{T-T_{\min}}{\Delta t}. \;}
 \label{eq:pass_qp}
 \end{equation}
-The tank is updated before this projection:
+Here $\tau_{\rm safe}\unit{N\,m}$ is the projected actuator command,
+$q\unit{rad}$ and $\dot q\unit{rad\,s^{-1}}$ are the joint position and
+velocity, and $\dot q^\top\tau\unit{W}$ is the mechanical power supplied at the
+joint port. The scalar $P_{\max}\unit{W}$ is the power available from the usable
+tank energy $T-T_{\min}$ over one control period $\Delta t\unit{s}$.
+Consequently, the constraint bounds positive energy delivery by the controller,
+while negative joint power corresponds to energy absorption. The quadratic
+objective retains the nominal control action as closely as possible in the
+Euclidean torque norm. If
+$\dot q^\top\tau_{\rm nom}\le P_{\max}$, then
+$\tau_{\rm safe}=\tau_{\rm nom}$. Otherwise the Euclidean projection has the
+closed form
+\begin{equation}
+\tau_{\rm safe}=\tau_{\rm nom}
+-\frac{\dot q^\top\tau_{\rm nom}-P_{\max}}
+       {\dot q^\top\dot q+\varepsilon}\,\dot q ,
+\label{eq:pass_projection}
+\end{equation}
+where $\varepsilon>0$ is a small numerical regulariser. The correction lies
+along $\dot q$, the direction that changes instantaneous joint power, and is
+therefore the minimum-norm torque modification that satisfies the power bound.
+This expression is also used as a fallback if the numerical QP does not return
+a solution.
+
+Before the torque projection, the tank state and the phase gate are updated as
 \begin{equation}
 T_{k+1}=\mathrm{clip}\!\left(
 T_k+\big(P_{\rm dis}-P_{\rm inj}\big)\Delta t,\,
@@ -473,14 +518,31 @@ T_{\min},\,T_{\max}\right),
 \gamma_T=\tanh\!\left(\frac{T_{k+1}-T_{\min}}{T_{\rm ref}}\right),
 \label{eq:tank_disc}
 \end{equation}
-where $P_{\rm dis}=\dot{\tilde x}^{\top}D\dot{\tilde x}$ is harvested damping
-power, $P_{\rm inj}=P_{\rm gain}+P_{\rm ref}$ is the positive power demanded by
-stiffness increases and reference motion, and $\gamma_T\in[0,1]$ modulates the
-phase rate $\dot\phi=\gamma_T\dot\phi_{\rm nom}$. Equation~\eqref{eq:pass_qp}
-is the discrete statement that the controller cannot inject more joint power than
-the current tank can supply. When the numerical QP fails, the code uses the
-closed-form Euclidean projection onto the same half-space, so the enforced
-inequality is unchanged.
+where $T_k\unit{J}$ and $T_{k+1}\unit{J}$ are the tank energies at consecutive
+samples, $T_{\min}\unit{J}$ is the protected lower bound,
+$T_{\max}\unit{J}$ is the storage ceiling, and $\mathrm{clip}(\cdot)$ enforces
+these bounds. The collected damping power is
+$P_{\rm dis}=\dot{\tilde x}^{\top}D\dot{\tilde x}\unit{W}$. The withdrawn power
+$P_{\rm inj}=P_{\rm gain}+P_{\rm ref}$ comprises the positive power
+$P_{\rm gain}$ associated with increasing $K(\phi)$ and the positive power
+$P_{\rm ref}$ associated with motion of $x_d(\phi)$. The reference energy
+$T_{\rm ref}\unit{J}$ sets the transition scale of the phase gate:
+$\gamma_T\in[0,1]$ approaches zero as the usable tank energy
+$T_{k+1}-T_{\min}$ vanishes and modulates the phase rate according to
+$\dot\phi=\gamma_T\dot\phi_{\rm nom}$. Increasing $T_{\rm ref}$ makes this
+transition more gradual over the available energy range.
+
+The resulting closed-loop sequence couples the timing, impedance and
+joint-torque layers. The available tank energy first determines $\gamma_T$ and
+hence the phase rate. The updated phase selects $x_d$, $\dot x_d$, $K(\phi)$
+and $D(\phi)$, from which the impedance law produces $f$. The task mapping,
+null-space posture term and dynamic compensation then form $\tau_{\rm nom}$.
+After collection of $P_{\rm dis}$ and withdrawal of $P_{\rm inj}$, the updated
+tank state determines $P_{\max}$, and the projection produces
+$\tau_{\rm safe}$ satisfying
+$\dot q^\top\tau_{\rm safe}\le P_{\max}$. Phase gating therefore reduces the
+energy demand generated by reference evolution, while the torque projection
+enforces the joint-port power bound at every sample.
 
 \begin{figure}[h]
 \centering
@@ -512,7 +574,7 @@ available energy budget.}
 \label{tab:pass_adv}
 \end{table}
 
-This is the empirical passivity proof artifact used in this report. The
+This is the empirical passivity proof artifact used in this sudy. The
 reconstructed Cartesian residual $\dot V-f_{\text{ext}}^\top\dot x$ is still
 plotted as a diagnostic in Fig.~\ref{fig:stab}, but it depends on finite
 differences, force-estimator sign conventions and an approximate Cartesian
