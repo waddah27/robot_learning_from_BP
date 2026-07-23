@@ -44,9 +44,7 @@ from encoded human behaviour priors. The experimental setup represents a robot w
 its end effector learned to perform an adaptive cutting skill on variant types of materials.
 unlike replaying a single trajectory, the method learns the pattern of the skill and
 reproduces it under a variable-impedance controller with an implemented
-energy-tank passivity mechanism at the joint torque port.
-
-The contribution comprises three elements. First, a \emph{variable impedance
+energy-tank passivity mechanism at the joint torque port. The contribution comprises three elements. First, a \emph{variable impedance
 controller} whose stiffness matrix is learned from the consistency of
 the demonstrations: a quadratic program (QP) solved at each control step maps the
 demonstration precision onto the controller gains, so the manipulator is stiff
@@ -54,22 +52,17 @@ only along directions that the demonstrations regulated and compliant elsewhere.
 Second, a \emph{state-driven task parametrisation} that indexes the motion by a
 progress (phase) variable whose evolution is corrected by the manipulator's
 measured state, providing temporal-scale adaptability and disturbance rejection.
-Third, a formal \emph{stability and
-passivity} analysis by projecting the torque command onto a runtime energy-tank
+Third, a formal \emph{stability and passivity} analysis by projecting the torque command onto a runtime energy-tank
 power budget, and a positive power perturbation validation demonstrates that the
 tank prevents energy injection that the controller might generate without tank projection for maintaining
-robot passivity and safety-aware interaction with human.
-Exponential convergence is derived under the stated regulation assumptions and is reported
-empirically as a diagnostic on the regulated task error.
-
-An important consideration for the studied approach is the data repeatability to decide
+robot passivity and safety-aware interaction with human. Exponential convergence is derived under the stated regulation assumptions and is reported
+empirically as a diagnostic on the regulated task error. An important consideration for the studied approach is the data repeatability to decide
 which skill patterns to extract under which constraints, thus, across repeated demonstrations
 the scalpel \emph{position} is highly repeatable (cross-trial correlation
 $\approx 0.95$), whereas the \emph{force} is not ($\approx 0.10$). Therefore, The controller
 regulates position and treats desired force as a constraint, while a separate
 per-material \emph{cutting-force model}, identified from each material's own data,
-provides the interaction force in simulation.
-The experiment framework is evaluated on three materials (cork, PVC, penoplex) for both a fixed and a moving workpiece
+provides the interaction force in simulation. The experiment framework is evaluated on three materials (cork, PVC, penoplex) for both a fixed and a moving workpiece
 scenarios.
 \end{abstract}
 
@@ -84,7 +77,7 @@ The table below lists every symbol used, its meaning, and its physical
 dimension. Bold lower-case symbols are $3$-vectors expressed in the world frame;
 $n$ is the number of robot joints ($n=7$ for the KUKA iiwa\,14 used here).
 
-\begin{longtable}{p{2.3cm} p{9.2cm} p{2.6cm}}
+\begin{longtable}{p{3.4cm} p{8.1cm} p{2.6cm}}
 \toprule
 Symbol & Meaning & Units \\
 \midrule
@@ -107,10 +100,17 @@ $q,\dot q$ & joint angles / velocities & $\mathrm{rad},\,\mathrm{rad\,s^{-1}}$ \
 $J$ & TCP Jacobian ($\dot x = J\dot q$), $3\times n$ & $\mathrm{m\,rad^{-1}}$ \\
 $\lambda^2$ & damped-least-squares regulariser & $\mathrm{m^2\,rad^{-2}}$ \\
 $N$ & null-space projector ($I-J^{+}J$) & dimensionless \\
+$N_{\rm seed},N_{\rm demo,*},N_{\rm mat}$ & numbers of random seeds, demonstrations, and material-identification samples & dimensionless \\
 $\sigma_i^2(\phi)$ & cross-trial variance of (range-normalised) signal, axis $i$ & dimensionless \\
+$\Gamma_\chi,\mathcal R_\chi$ & shape-correlation and regulation scores for signal channel $\chi$ & dimensionless \\
+$B_\chi,U_\chi$ & between-phase and within-phase variances of channel $\chi$ & channel units squared \\
+$N_\phi,N_{\rm boot}$ & phase samples per trial and bootstrap resamples & dimensionless \\
+$\epsilon_\sigma,\epsilon_\tau$ & precision and torque-projection numerical regularisers & dimensionless, $\mathrm{rad^2\,s^{-2}}$ \\
 $w_i(\phi)$ & precision weight (normalised inverse variance) $\in[0,1]$ & dimensionless \\
 $K^{\text{pos}}_i(\phi)$ & precision-derived position stiffness, axis $i$ & $\mathrm{N\,m^{-1}}$ \\
 $K_{\text{floor}},K_{\min},K_{\max}$ & stiffness floor / box limits & $\mathrm{N\,m^{-1}}$ \\
+$u,u_w$ & normalised candidate / identified stiffness allocations & dimensionless \\
+$H(\phi)$ & phase-dependent task-relevance matrix in the allocation proof & dimensionless \\
 $q_f(\phi)$ & force-consistency weight in the QP $\in[0,1]$ & dimensionless \\
 $F_d$ & desired interaction force (from the prior) & $\mathrm{N}$ \\
 $F^{\text{bound}}_i$ & per-axis demonstrated force limit & $\mathrm{N}$ \\
@@ -118,11 +118,16 @@ $\hat\phi$ & state-estimated phase & dimensionless \\
 $\dot\phi_{\text{nom}}$ & nominal (clock) phase rate & $\mathrm{s^{-1}}$ \\
 $k_\phi$ & phase-correction gain $\in[0,1]$ & dimensionless \\
 $\rho_x,\rho_F$ & normalising scales for position / force matching & $\mathrm{m},\,\mathrm{N}$ \\
-$V$ & Lyapunov / storage function (an energy) & $\mathrm{J}$ \\
+$\ell_\phi$ & forward phase-search horizon & dimensionless \\
+$\mathcal S$ & total passivity storage (mechanical energy plus tank) & $\mathrm{J}$ \\
+$V$ & stability Lyapunov function & $\mathrm{J}$ \\
 $T$ & energy-tank state & $\mathrm{J}$ \\
+$h_c,h_{\rm sim}$ & controller and simulator integration periods & $\mathrm{s}$ \\
 $P_{\text{inj}}$ & power drawn by time-varying gains / moving reference & $\mathrm{W}$ \\
 $\beta$ & Lyapunov cross-term coefficient & $\mathrm{s^{-1}}$ \\
-$\alpha,\lambda$ & exponential decay rates & $\mathrm{s^{-1}}$ \\
+$\alpha$ & nominal exponential decay rate & $\mathrm{s^{-1}}$ \\
+$A$ & nominal stability state matrix & mixed state-space units \\
+$P,Q$ & Lyapunov and dissipation matrices in the stability proof & mixed energy units \\
 $d$ & blade penetration depth below the material surface & $\mathrm{m}$ \\
 $k_{\text{mat}}$ & material loading stiffness & $\mathrm{N\,m^{-1}}$ \\
 $F^{\text{cut}}_{\text{mat}}$ & material cutting-force plateau & $\mathrm{N}$ \\
@@ -150,15 +155,143 @@ direction}, and a reliable simulation must \emph{model the material} that gives
 rise to the contact force in the first place. Both points are addressed.
 
 % ============================================================================
-\section{What in the demonstration is actually a reliable skill?}
+\section{Patterns in the demonstration that represent a reliable skill}
 % ============================================================================
 \label{sec:analysis}
-The reliable skill patterns were extract from data repeatability across trails. i.e, the repeatable components of the
+The reliable skill patterns were extracted from data repeatability across trails. i.e, the repeatable components of the
 demonstration to be treated as the skill where other components are constraints to shape the behaviour of performing the skill by robot.
 For each signal, across trials measurements of (a) the \emph{shape correlation} and (b) a \emph{regulation score} were reported.
 shape correlation measures how similarly the signal evolves from trial to trial after removing its mean where
 \emph{regulation score} refers to the fraction of the signal's variance that is
 explained by the task phase, i.e.\ a phase-locked signal-to-noise ratio.
+
+Let $y_{\nu,\chi}(\phi_\ell)$ denote channel $\chi$ in demonstration
+$\nu\in\{1,\ldots,N_{\rm demo}\}$ after all trials have been resampled at the
+common phase samples
+$\phi_\ell$, $\ell\in\{1,\ldots,N_\phi\}$, with $N_\phi=300$. The
+trial-specific temporal mean and demeaned profile are
+\begin{equation}
+\bar y_{\nu,\chi}^{\,\phi}
+=\frac{1}{N_\phi}\sum_{\ell=1}^{N_\phi}y_{\nu,\chi}(\phi_\ell),
+\qquad
+\breve y_{\nu,\chi}(\phi_\ell)
+=y_{\nu,\chi}(\phi_\ell)-\bar y_{\nu,\chi}^{\,\phi}.
+\label{eq:demo_demean}
+\end{equation}
+Here $\nu$ indexes demonstrations, $\chi$ identifies one of
+$X,Y,Z,F_x,F_y,F_z$, and $\ell$ indexes phase. Subtracting
+$\bar y_{\nu,\chi}^{\,\phi}$ removes constant trial-dependent offsets before
+shape comparison. The pairwise shape correlation is
+\begin{equation}
+\operatorname{corr}_{\nu\mu}^{(\chi)}
+=\frac{\displaystyle
+\sum_{\ell=1}^{N_\phi}
+\breve y_{\nu,\chi}(\phi_\ell)\breve y_{\mu,\chi}(\phi_\ell)}
+{\displaystyle
+\sqrt{\sum_{\ell=1}^{N_\phi}\breve y_{\nu,\chi}^2(\phi_\ell)}
+\sqrt{\sum_{\ell=1}^{N_\phi}\breve y_{\mu,\chi}^2(\phi_\ell)}} ,
+\qquad \nu<\mu ,
+\label{eq:pair_shape_correlation}
+\end{equation}
+and the reported channel statistic is the mean over all distinct trial pairs,
+\begin{equation}
+\Gamma_\chi
+=\frac{2}{N_{\rm demo}(N_{\rm demo}-1)}
+\sum_{\nu<\mu}\operatorname{corr}_{\nu\mu}^{(\chi)} .
+\label{eq:mean_shape_correlation}
+\end{equation}
+Thus $\Gamma_\chi\in[-1,1]$ measures reproducibility of the evolving profile,
+not agreement of its absolute offset.
+
+The phase-conditioned mean and grand mean are
+\begin{equation}
+\bar{\breve y}_{\chi}(\phi_\ell)
+=\frac{1}{N_{\rm demo}}\sum_{\nu=1}^{N_{\rm demo}}
+\breve y_{\nu,\chi}(\phi_\ell),
+\qquad
+\bar{\breve y}_{\chi}^{\,\rm all}
+=\frac{1}{N_\phi}\sum_{\ell=1}^{N_\phi}\bar{\breve y}_{\chi}(\phi_\ell).
+\label{eq:phase_means}
+\end{equation}
+The between-phase and within-phase variances are then
+\begin{align}
+B_\chi
+&=\frac{1}{N_\phi}\sum_{\ell=1}^{N_\phi}
+\big(\bar{\breve y}_{\chi}(\phi_\ell)
+-\bar{\breve y}_{\chi}^{\,\rm all}\big)^2,
+\label{eq:between_phase_variance}\\
+U_\chi
+&=\frac{1}{N_{\rm demo}N_\phi}
+\sum_{\nu=1}^{N_{\rm demo}}\sum_{\ell=1}^{N_\phi}
+\big(\breve y_{\nu,\chi}(\phi_\ell)
+-\bar{\breve y}_{\chi}(\phi_\ell)\big)^2 .
+\label{eq:within_phase_variance}
+\end{align}
+$B_\chi$ quantifies the common trajectory variation explained by phase, while
+$U_\chi$ quantifies trial-to-trial variation remaining at the same phase. The
+regulation score is
+\begin{equation}
+\mathcal R_\chi=\frac{B_\chi}{B_\chi+U_\chi}\in[0,1].
+\label{eq:regulation_score}
+\end{equation}
+A value near one indicates that the signal is predominantly phase locked; a
+value near zero indicates that knowing the phase does not predict the measured
+channel reliably across demonstrations.
+
+\begin{proposition}[Reliability interpretation of the two metrics]
+\label{prop:demo_reliability}
+Suppose an aligned channel admits the repeated-trial decomposition
+\begin{equation}
+y_{\nu,\chi}(\phi)
+=o_{\nu,\chi}+\psi_\chi(\phi)+\upsilon_{\nu,\chi}(\phi),
+\label{eq:repeatability_model}
+\end{equation}
+where $o_{\nu,\chi}$ is a trial-dependent constant offset,
+$\psi_\chi(\phi)$ is a common phase-locked pattern, and
+$\upsilon_{\nu,\chi}$ is zero-mean trial-specific variation independent across
+trials and uncorrelated with $\psi_\chi$. If
+\[
+\operatorname{Var}_\phi[\psi_\chi]=\varsigma_{\psi,\chi}^2,
+\qquad
+\operatorname{Var}_\phi[\upsilon_{\nu,\chi}]
+=\varsigma_{\upsilon,\chi}^2
+\]
+is the same for all trials, then, in the large-sample limit,
+\begin{equation}
+\mathbb E\!\left[\operatorname{corr}_{\nu\mu}^{(\chi)}\right]
+=\frac{\varsigma_{\psi,\chi}^2}
+       {\varsigma_{\psi,\chi}^2+\varsigma_{\upsilon,\chi}^2},
+\qquad
+\mathcal R_\chi
+\longrightarrow
+\frac{\varsigma_{\psi,\chi}^2}
+     {\varsigma_{\psi,\chi}^2+\varsigma_{\upsilon,\chi}^2}.
+\label{eq:reliability_equivalence}
+\end{equation}
+Consequently, both statistics estimate the phase-locked fraction of the dynamic
+signal and are invariant to the constant offset $o_{\nu,\chi}$.
+\end{proposition}
+\begin{proof}
+Demeaning \eqref{eq:repeatability_model} by
+\eqref{eq:demo_demean} eliminates $o_{\nu,\chi}$. For distinct trials
+$\nu\ne\mu$, independence of the residuals and their lack of correlation with
+$\psi_\chi$ give
+\[
+\operatorname{Cov}_\phi
+(\breve y_{\nu,\chi},\breve y_{\mu,\chi})
+=\varsigma_{\psi,\chi}^2 ,
+\]
+whereas each demeaned trial has variance
+$\varsigma_{\psi,\chi}^2+\varsigma_{\upsilon,\chi}^2$. Division of the
+covariance by the two standard deviations yields the first expression in
+\eqref{eq:reliability_equivalence}. For the variance decomposition,
+the phase-conditioned demeaned trial mean converges to the centred common
+pattern $\psi_\chi(\phi)-\mathbb E_\phi[\psi_\chi]$, so
+$B_\chi\rightarrow\varsigma_{\psi,\chi}^2$, while deviations about that mean
+give $U_\chi\rightarrow\varsigma_{\upsilon,\chi}^2$. Substitution into
+\eqref{eq:regulation_score} yields the second expression. Neither limit depends
+on $o_{\nu,\chi}$.
+\end{proof}
 
 \begin{table}[h]
 \centering
@@ -171,9 +304,64 @@ Force (Fx/Fy/Fz) & $0.04$--$0.27$ & $\approx 0$ \\
 \bottomrule
 \end{tabular}
 \caption{How repeatable each quantity is across demonstrations
-(cork $n{=}28$, PVC $n{=}33$, penoplex $n{=}22$, $300$ samples per trial).}
+(cork $N_{\rm demo,cork}{=}28$, PVC $N_{\rm demo,PVC}{=}33$,
+penoplex $N_{\rm demo,peno}{=}22$, $300$ samples per trial).}
 \label{tab:repro}
 \end{table}
+
+The numerical separation between the two signal classes is
+\begin{equation}
+m_\Gamma
+=\min_{\chi\in\{X,Y,Z\}}\Gamma_\chi
+-\max_{\chi\in\{F_x,F_y,F_z\}}\Gamma_\chi
+\ge0.92-0.27=0.65>0 .
+\label{eq:correlation_separation}
+\end{equation}
+Thus even the least repeatable position channel has substantially greater shape
+agreement than the most repeatable force channel. Under
+Proposition~\ref{prop:demo_reliability}, either reliability statistic
+$q_\chi\in\{\Gamma_\chi,\mathcal R_\chi\}$ corresponds to the
+phase-locked signal-to-residual ratio
+\begin{equation}
+\operatorname{SNR}_\chi
+=\frac{\varsigma_{\psi,\chi}^2}{\varsigma_{\upsilon,\chi}^2}
+=\frac{q_\chi}{1-q_\chi}.
+\label{eq:repeatability_snr}
+\end{equation}
+The position-correlation range $0.92$--$0.98$ therefore corresponds to an
+estimated phase-locked ratio of $11.5$--$49$, whereas the force-correlation
+range $0.04$--$0.27$ corresponds to only $0.04$--$0.37$. Independently, the
+depth regulation score $\mathcal R_Z=0.73$ gives
+$\operatorname{SNR}_Z\approx2.70$, while
+$\mathcal R_{F_x},\mathcal R_{F_y},\mathcal R_{F_z}\approx0$ gives a
+near-zero phase-locked force ratio. The two estimators use different variance
+aggregations, but both produce the same ordering.
+
+Sampling uncertainty can be assessed without assuming normally distributed
+signals by resampling complete demonstrations. If
+$\Gamma_\chi^{*(b)}$ and $\mathcal R_\chi^{*(b)}$ are recomputed from bootstrap
+resample $b\in\{1,\ldots,N_{\rm boot}\}$, their percentile intervals are
+\begin{equation}
+\operatorname{CI}_{0.95}(\Gamma_\chi)
+=\left[
+Q_{0.025}\!\left(\Gamma_\chi^*\right),
+Q_{0.975}\!\left(\Gamma_\chi^*\right)
+\right],
+\qquad
+\operatorname{CI}_{0.95}(\mathcal R_\chi)
+=\left[
+Q_{0.025}\!\left(\mathcal R_\chi^*\right),
+Q_{0.975}\!\left(\mathcal R_\chi^*\right)
+\right],
+\label{eq:reliability_bootstrap}
+\end{equation}
+where $Q_p$ denotes the empirical $p$-quantile across bootstrap resamples.
+This trial-level resampling preserves the temporal dependence within each
+trajectory. A conservative reliability decision is obtained when the lower
+confidence limit of every regulated channel exceeds the upper confidence limit
+of every released channel. Equation~\eqref{eq:correlation_separation} reports
+the observed effect-size margin; confidence intervals should accompany it when
+the bootstrap results are reported.
 
 \noindent The result concluded that: \emph{the demonstrated scalpel path is reproducible;
 the demonstrated force is not}. The recorded force is
@@ -237,21 +425,96 @@ The \emph{novice} work here is that $K(\phi)$ is not chosen manually, nor tabula
 deterministic regulation but it is the \emph{precision} (inverse variance) of the demonstrations.
 Intuitively, where the human was very repeatable, that direction matters and should be tracked stiffly;
 where they were not, the controller should be soft. For each phase $\phi$ and axis
-$i$ a precision weight on one shared scale was formed and mapped to stiffness:
+$i$ a precision weight on one shared scale was formed and mapped to stiffness.
+The calculation is made explicitly as follows. Let $N_{\rm demo}$ be the number
+of demonstrations and let $y_{\nu,i}(\phi)$ be the value of channel $i$ in
+demonstration $\nu$ at phase $\phi$. First, the mean across demonstrations at
+that same phase is
 \begin{equation}
-w_i(\phi)=\mathrm{clip}\!\Big(\frac{1/(\sigma_i^2(\phi)+\epsilon)}{p_{\text{ref}}},\,0,\,1\Big),
+\bar y_i(\phi)
+=\frac{1}{N_{\rm demo}}\sum_{\nu=1}^{N_{\rm demo}}y_{\nu,i}(\phi).
+\label{eq:gain_trial_mean}
+\end{equation}
+The cross-trial standard deviation is then
+\begin{equation}
+s_i(\phi)
+=\sqrt{\frac{1}{N_{\rm demo}}
+\sum_{\nu=1}^{N_{\rm demo}}
+\left(y_{\nu,i}(\phi)-\bar y_i(\phi)\right)^2}.
+\label{eq:gain_trial_std}
+\end{equation}
+Thus, $s_i(\phi)$ is small when all demonstrations have nearly the same
+channel value at phase $\phi$, and it is large when their values are widely
+scattered. The denominator is $N_{\rm demo}$, rather than
+$N_{\rm demo}-1$, matching the population-standard-deviation convention used
+in the implementation. Equation~\eqref{eq:gain_trial_std} is evaluated
+separately at each of the $N_\phi=300$ phase samples for
+$X,Y,Z,F_x,F_y,F_z$, producing a $300\times6$ array.
+
+Because the six raw channels have different units and numerical scales, their
+standard deviations cannot be compared directly. Each channel is therefore
+normalised by the range of its across-trial mean trajectory,
+\begin{equation}
+r_i=\max_{\phi}\bar y_i(\phi)-\min_{\phi}\bar y_i(\phi),
 \qquad
-K^{\text{pos}}_i(\phi)=K_{\text{floor}}+\big(K_{\max}-K_{\text{floor}}\big)\,w_i(\phi).
+\sigma_i(\phi)=\frac{s_i(\phi)}{\max(r_i,\epsilon_r)} ,
+\label{eq:gain_range_normalisation}
+\end{equation}
+where $\epsilon_r$ only protects against a zero range. The resulting
+$\sigma_i(\phi)$ is a dimensionless cross-trial inconsistency: it measures
+the scatter at that phase as a fraction of the total demonstrated motion or
+force range of that channel. Its inverse variance gives the precision
+\begin{equation}
+p_i(\phi)=\frac{1}{\sigma_i^2(\phi)+\epsilon_\sigma}.
+\label{eq:gain_precision_raw}
+\end{equation}
+Low relative scatter therefore gives high precision, while high relative
+scatter gives low precision.
+
+To place every axis and channel on one common scale, all $6N_\phi=1800$
+precision values for one material are pooled into the set
+\begin{equation}
+\mathcal P
+=\left\{p_i(\phi_\ell):
+i\in\{X,Y,Z,F_x,F_y,F_z\},\
+\ell=1,\ldots,N_\phi\right\},
+\qquad
+p_{\mathrm{ref}}=\operatorname{percentile}_{95}(\mathcal P).
+\label{eq:gain_shared_pref}
+\end{equation}
+Thus a separate percentile is not calculated for each axis: the position and
+force precisions at all 300 phases contribute to the same $p_{\mathrm{ref}}$.
+Approximately $95\%$ of the pooled precision values are at or below this
+reference and the upper $5\%$ are above it. The reference is shared across
+all six channels within a material, but it is recomputed from that material's
+own demonstrations. For the present data, $p_{\mathrm{ref}}=42.669$ for cork,
+$35.895$ for PVC, and $18.734$ for penoplex.
+
+The final precision weight and its mapping to stiffness are
+\begin{equation}
+\begin{aligned}
+w_i(\phi)
+&=\mathrm{clip}\!\Big(\frac{p_i(\phi)}{p_{\text{ref}}},\,0,\,1\Big)
+=\mathrm{clip}\!\Big(
+\frac{1/(\sigma_i^2(\phi)+\epsilon_\sigma)}{p_{\text{ref}}},
+\,0,\,1\Big),\\
+K^{\text{pos}}_i(\phi)
+&=K_{\text{floor}}
++\big(K_{\max}-K_{\text{floor}}\big)\,w_i(\phi).
+\end{aligned}
 \label{eq:precision}
 \end{equation}
 $\sigma_i^2(\phi)$ is the cross-trial variance of the range-normalised signal at
-phase $\phi$ (dimensionless, so axes are comparable); $\epsilon$ is a tiny
+phase $\phi$ (dimensionless, so axes are comparable); $\epsilon_\sigma$ is a tiny
 constant avoiding division by zero; $p_{\text{ref}}$ is a robust $95^{\text{th}}$-
 percentile normaliser \emph{shared across all axes and channels}, so a true
 imprecise direction receives a true small weight $w_i\!\to\!0$. The weight
 $w_i\in[0,1]$ then scales the stiffness linearly between a floor
 $K_{\text{floor}}\unit{N\,m^{-1}}$ (kept non-zero so the arm can always execute
-the motion) and the maximum $K_{\max}$. Figure~\ref{fig:gains} illustrates the
+the motion) and the maximum $K_{\max}$. Precision values at or above
+$p_{\mathrm{ref}}$ are clipped to $w_i=1$. Using the $95$th percentile rather
+than the absolute maximum prevents a single exceptionally low-variance sample
+from compressing all other weights towards zero. Figure~\ref{fig:gains} illustrates the
 result: with no manual tuning, the cut-depth axis becomes stiff while the lateral
 and force directions stay compliant --- precisely the structure predicted by
 Section~\ref{sec:analysis}.
@@ -326,7 +589,7 @@ The damping follows from $K^\star$ by the critical-damping rule. The QP is tiny
 (three variables) and solves in well under a millisecond (OSQP), so it runs in the
 real-time loop.
 
-\paragraph{Controlled comparison: isolating the contribution of the learned variance
+\paragraph{highlighting the contribution of the learned variance
 structure.} To establish that the performance gain originates from the
 \emph{specific} learned precision structure, rather than from gain adaptation per
 se, evaluation of the identical task and controller under four gain assignments is presented:
@@ -338,10 +601,124 @@ task-critical, demonstration-regulated axis --- evaluated over $12$ seeds with
 randomised contact parameters (Fig.~\ref{fig:variance_comparison},
 Table~\ref{tab:variance_comparison}).
 
+Let $w(\phi)=[w_1(\phi),w_2(\phi),w_3(\phi)]^\top\in[0,1]^3$ be the
+identified position-precision vector of \eqref{eq:precision}, and define the
+normalised stiffness allocation
+\begin{equation}
+u(\phi)
+=\frac{K^{\rm pos}(\phi)-K_{\min}\mathbf 1}
+       {K_{\max}-K_{\min}}\in[0,1]^3,
+\qquad
+u_w(\phi)=\eta_0\mathbf1+\eta_1w(\phi),
+\label{eq:normalised_stiffness}
+\end{equation}
+Here $K^{\rm pos}=[K^{\rm pos}_1,K^{\rm pos}_2,K^{\rm pos}_3]^\top$ is the
+Cartesian stiffness vector, $\mathbf 1\in\R^3$ is the all-ones vector, and the
+scalar denominator is the full admissible stiffness range. Substitution of
+\eqref{eq:precision} gives the identified allocation $u=u_w$, with
+\[
+\eta_0=\frac{K_{\rm floor}-K_{\min}}{K_{\max}-K_{\min}},
+\qquad
+\eta_1=\frac{K_{\max}-K_{\rm floor}}{K_{\max}-K_{\min}} .
+\]
+The controlled comparison uses the exact transformations
+\begin{equation}
+\begin{aligned}
+u^{\rm true}(\phi)&=u_w(\phi),\\
+u^{\rm inv}(\phi)&=\mathbf 1-u_w(\phi),\\
+u^{\rm perm}(\phi)&=\Pi(\phi)u_w(\phi),
+\end{aligned}
+\qquad
+\Pi(\phi)^\top\Pi(\phi)=I ,
+\label{eq:variance_assignments}
+\end{equation}
+where $\Pi(\phi)$ is a $3\times3$ permutation matrix. Thus inversion reverses
+the regulation ranking, whereas permutation preserves the set of gain values
+but assigns them to different Cartesian axes. The direct-force condition does
+not use $u=u_w$; it disables the learned-gain mode and uses the fixed force-QP
+weighting of the baseline controller.
+
+\begin{proposition}[Optimality of the matched precision structure]
+\label{prop:precision_structure}
+Consider the precision-allocation functional
+\begin{equation}
+\mathcal J[u]
+=\frac12\int_0^1
+\big(u(\phi)-u_w(\phi)\big)^\top
+H(\phi)
+\big(u(\phi)-u_w(\phi)\big)\,d\phi ,
+\qquad H(\phi)=H(\phi)^\top\succ0 .
+\label{eq:precision_functional}
+\end{equation}
+Among all measurable allocations $u:[0,1]\rightarrow[0,1]^3$, the identified
+assignment $u^{\rm true}=u_w$ is the unique minimiser up to sets of zero measure.
+The excess costs of the inverted and permuted structures are
+\begin{align}
+\mathcal G_{\rm inv}
+&=\frac12\int_0^1
+(\mathbf1-2u_w)^\top H(\mathbf1-2u_w)\,d\phi ,
+\label{eq:inverted_excess}\\
+\mathcal G_{\rm perm}
+&=\frac12\int_0^1
+(\Pi u_w-u_w)^\top H(\Pi u_w-u_w)\,d\phi .
+\label{eq:permuted_excess}
+\end{align}
+Both are strictly positive whenever the transformation changes a
+task-weighted component of $u_w$ on a phase interval of non-zero measure.
+\end{proposition}
+\begin{proof}
+Since $H(\phi)\succ0$, its smallest eigenvalue
+$h_{\min}(\phi)=\lambda_{\min}(H(\phi))$ is positive and
+\begin{equation}
+\mathcal J[u]
+\ge\frac12\int_0^1
+h_{\min}(\phi)\norm{u(\phi)-u_w(\phi)}_2^2\,d\phi
+\ge0 .
+\label{eq:precision_lower_bound}
+\end{equation}
+The lower bound is attained by $u=u_w$, for which
+$\mathcal J[u_w]=0$. Equality for another allocation requires
+$u(\phi)=u_w(\phi)$ almost everywhere, which proves uniqueness. Substitution of
+$u^{\rm inv}=\mathbf1-u_w$ and $u^{\rm perm}=\Pi u_w$ into
+\eqref{eq:precision_functional} gives
+\eqref{eq:inverted_excess} and \eqref{eq:permuted_excess}. Positive
+definiteness of $H$ makes either integral strictly positive when its difference
+vector is non-zero on a set of non-zero measure.
+\end{proof}
+
+The matrix $H(\phi)$ represents phase- and axis-dependent task relevance. In
+the cutting experiment its depth-axis entry is dominant because depth is the
+repeatable, task-critical coordinate. Proposition~\ref{prop:precision_structure}
+establishes the allocation result for the stated quadratic precision objective;
+whether that structural advantage produces lower closed-loop cutting error is
+then tested by the paired experiment rather than assumed from the proposition.
+
+For controller condition $c$ and randomised-physics seed $s$, the reported
+cut-depth metric is
+\begin{equation}
+E_{s,c}^{z}
+=10^3\sqrt{\frac{1}{t_{f,s}}
+\int_0^{t_{f,s}}
+\big(x_{d,z}^{(s,c)}(t)-x_z^{(s,c)}(t)\big)^2\,dt}
+\quad[\mathrm{mm}],
+\label{eq:depth_rmse}
+\end{equation}
+where $t_{f,s}$ is the episode duration, $x_{d,z}$ is desired scalpel depth, $x_z$
+is measured depth, and the factor $10^3$ converts metres to millimetres. The
+same randomised mass, friction, contact parameters and initial perturbation are
+used for all conditions within seed $s$, so the paired difference
+\begin{equation}
+G_{s,c}=E_{s,c}^{z}-E_{s,{\rm true}}^{z}
+\label{eq:paired_difference}
+\end{equation}
+removes seed-specific physics shared by the two runs. Positive
+$G_{s,c}$ means that condition $c$ has larger cut-depth error than the
+identified precision assignment.
+
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.97\textwidth]{study_variance_comparison_cork.png}
-\caption{Controlled comparison of gain assignments on cork ($N=12$
+\caption{Controlled comparison of gain assignments on cork ($N_{\rm seed}=12$
 randomised-physics seeds,
 paired). Only the identified precision attains low cut-depth error; inverting or
 permuting the learned structure degrades it. Bars denote mean$\pm$std.}
@@ -352,7 +729,7 @@ permuting the learned structure degrades it. Bars denote mean$\pm$std.}
 \centering
 \begin{tabular}{lccc}
 \toprule
-Gain assignment & cut-depth error (mm) & relative to identified & paired Wilcoxon $p$ \\
+Gain assignment & depth RMSE (mm) & identified reduction & Wilcoxon $p$ \\
 \midrule
 \textbf{Identified precision} & $\mathbf{10.9 \pm 2.5}$ & --- & --- \\
 Permuted precision & $14.7 \pm 2.9$ & $+26\%$ & $0.001$ \\
@@ -361,12 +738,73 @@ Direct force-tracking & $20.9 \pm 5.9$ & $+48\%$ & $0.001$ \\
 \bottomrule
 \end{tabular}
 \caption{The identified precision attains the lowest cut-depth error on all $11$
-stable seeds. Inverting or permuting the structure increases the error by
-$26$--$48\%$ ($p=0.001$, the smallest value attainable by the paired Wilcoxon
+stable seeds and reduces error by $26$--$48\%$ relative to the three comparator
+assignments ($p=0.001$, the smallest value attainable by the paired Wilcoxon
 test at this sample size). This isolates the identified \emph{variance structure},
 rather than gain adaptation in general, as the determinant of task performance.}
 \label{tab:variance_comparison}
 \end{table}
+
+For the $n_{\rm pair}=11$ seeds that were stable in every paired condition, the table
+reports
+\begin{equation}
+\bar E_c=\frac1{n_{\rm pair}}\sum_{s=1}^{n_{\rm pair}}E_{s,c}^{z},
+\qquad
+s_c=\sqrt{\frac{1}{n_{\rm pair}-1}\sum_{s=1}^{n_{\rm pair}}
+\big(E_{s,c}^{z}-\bar E_c\big)^2},
+\label{eq:sample_statistics}
+\end{equation}
+where $\bar E_c$ and $s_c$ are respectively the sample mean and sample standard
+deviation for condition $c$. The percentage shown in the third column is the
+error reduction achieved by the identified assignment relative to comparator
+$c$,
+\begin{equation}
+R_c=100\,
+\frac{\bar E_c-\bar E_{\rm true}}{\bar E_c}\quad[\%],
+\label{eq:relative_reduction}
+\end{equation}
+which gives $26\%$, $47\%$ and $48\%$ for the permuted, inverted and
+direct-force conditions. This denominator explains why these percentages are
+reductions relative to each comparator rather than percentage increases
+relative to the identified mean.
+
+\begin{proposition}[Paired dominance in the evaluated seeds]
+\label{prop:paired_variance}
+For each of the three comparator conditions, the evaluated stable pairs satisfy
+$G_{s,c}>0$ for all $s\in\{1,\ldots,11\}$. The exact two-sided paired
+Wilcoxon signed-rank test therefore gives
+\begin{equation}
+p_{\rm exact}=2^{1-n_{\rm pair}}
+=2^{-10}=0.0009765625\approx0.001 .
+\label{eq:wilcoxon_exact}
+\end{equation}
+\end{proposition}
+\begin{proof}
+Let $\varrho_s$ be the rank of $|G_{s,c}|$ among the
+$n_{\rm pair}$ non-zero paired
+differences and define the negative signed-rank statistic
+\begin{equation}
+W^-_c=\sum_{s=1}^{n_{\rm pair}}\varrho_s\,
+\mathbb 1_{\{G_{s,c}<0\}} .
+\label{eq:wilcoxon_statistic}
+\end{equation}
+Because every observed difference is positive, $W^-_c=0$. Under the Wilcoxon
+null hypothesis of a distribution symmetric about zero, each of the
+$2^{n_{\rm pair}}$ sign
+assignments is equally likely. Only the all-positive and all-negative
+assignments are at least as extreme as the observed one, so the two-sided exact
+probability is
+$2/2^{n_{\rm pair}}=2^{1-n_{\rm pair}}$. Substitution of
+$n_{\rm pair}=11$ yields
+\eqref{eq:wilcoxon_exact}.
+\end{proof}
+
+Proposition~\ref{prop:paired_variance} is an exact statement about the evaluated
+paired seeds and rejects the zero-median-difference null at the reported sample
+size. Together with Proposition~\ref{prop:precision_structure}, it links the
+analytical consequence of matching the learned precision allocation to the
+observed closed-loop reduction in the task-critical error, without treating the
+finite simulation sample as a universal proof for all contact conditions.
 
 % ============================================================================
 \section{State-driven task parametrization}
@@ -382,7 +820,7 @@ which might break the generalizability across different conditions.
 At every step, the phase $\hat\phi$ that best matches the current state to the
 learned trajectory over a short forward window, is evaluated then correct $\phi$ towards it:
 \begin{equation}
-\hat\phi=\arg\min_{\varphi\in[\phi,\,\phi+\Delta]}
+\hat\phi=\arg\min_{\varphi\in[\phi,\,\phi+\ell_\phi]}
    \left[\frac{\norm{x_{\text{ref}}(\varphi)-x}}{\rho_x}
    +\mathbb{1}_{\text{contact}}\,
      \frac{\big|\,\norm{F_{\text{ref}}(\varphi)}-\norm{F}\,\big|}{\rho_F}\right],
@@ -391,7 +829,8 @@ learned trajectory over a short forward window, is evaluated then correct $\phi$
 \label{eq:phase}
 \end{equation}
 The bracketed cost compares where the robot \emph{is} to where each candidate
-phase $\varphi$ assumes it \emph{should be}: the first term is the position mismatch
+phase $\varphi$ assumes it \emph{should be}; $\ell_\phi$ is the forward
+phase-search horizon. The first term is the position mismatch
 $\norm{x_{\text{ref}}(\varphi)-x}\unit{m}$ normalised by a scale
 $\rho_x\unit{m}$; the second, active only in contact
 ($\mathbb{1}_{\text{contact}}$), compares force magnitudes normalised by
@@ -426,7 +865,7 @@ force.
 At the Cartesian contact port, the input--output map
 $f_{\text{ext}}\mapsto\dot x$ is passive under the following tank dynamics: With
 the storage function (an energy, in joules)
-$V=\tfrac12\dot{\tilde x}^\top\Lambda\dot{\tilde x}+\tfrac12\tilde x^\top K\tilde x+T$
+$\mathcal S=\tfrac12\dot{\tilde x}^\top\Lambda\dot{\tilde x}+\tfrac12\tilde x^\top K\tilde x+T$
 and a non-negative \emph{energy tank} $T\ge T_{\min}$ whose dynamics collect the
 power dissipated by damping and compensate the power injected by the time-varying
 gains and moving reference,
@@ -435,9 +874,10 @@ gains and moving reference,
        -\underbrace{P_{\text{inj}}}_{[\mathrm{W}]},\qquad
 P_{\text{inj}}=\tfrac12\tilde x^\top\dot K\,\tilde x+\tilde x^\top K\,\dot x_d ,
 \end{equation}
-the loop satisfies $\dot V\le f_{\text{ext}}^\top\dot x$ as long as $T>T_{\min}$.
+the loop satisfies
+$\dot{\mathcal S}\le f_{\text{ext}}^\top\dot x$ as long as $T>T_{\min}$.
 \end{proposition}
-\noindent Interpretation: $V$ is the total stored energy (kinetic $+$ elastic $+$
+\noindent Interpretation: $\mathcal S$ is the total stored energy (kinetic $+$ elastic $+$
 tank). The two indefinite, potentially energy-injecting terms --- the rate of
 change of stored elastic energy from a rising stiffness
 ($\tfrac12\tilde x^\top\dot K\tilde x$) and the power supplied to a moving
@@ -483,14 +923,14 @@ The nominal command is projected onto the half-space of admissible torques:
 =\arg\min_{\tau}\norm{\tau-\tau_{\rm nom}}_2^2
 \quad\text{s.t.}\quad
 \dot q^\top\tau \le P_{\max},\qquad
-P_{\max}=\frac{T-T_{\min}}{\Delta t}. \;}
+P_{\max}=\frac{T-T_{\min}}{h_c}. \;}
 \label{eq:pass_qp}
 \end{equation}
 Here $\tau_{\rm safe}\unit{N\,m}$ is the projected actuator command,
 $q\unit{rad}$ and $\dot q\unit{rad\,s^{-1}}$ are the joint position and
 velocity, and $\dot q^\top\tau\unit{W}$ is the mechanical power supplied at the
 joint port. The scalar $P_{\max}\unit{W}$ is the power available from the usable
-tank energy $T-T_{\min}$ over one control period $\Delta t\unit{s}$.
+tank energy $T-T_{\min}$ over one control period $h_c\unit{s}$.
 Consequently, the constraint bounds positive energy delivery by the controller,
 while negative joint power corresponds to energy absorption. The quadratic
 objective retains the nominal control action as closely as possible in the
@@ -501,10 +941,10 @@ closed form
 \begin{equation}
 \tau_{\rm safe}=\tau_{\rm nom}
 -\frac{\dot q^\top\tau_{\rm nom}-P_{\max}}
-       {\dot q^\top\dot q+\varepsilon}\,\dot q ,
+       {\dot q^\top\dot q+\epsilon_\tau}\,\dot q ,
 \label{eq:pass_projection}
 \end{equation}
-where $\varepsilon>0$ is a small numerical regulariser. The correction lies
+where $\epsilon_\tau>0$ is a small numerical regulariser. The correction lies
 along $\dot q$, the direction that changes instantaneous joint power, and is
 therefore the minimum-norm torque modification that satisfies the power bound.
 This expression is also used as a fallback if the numerical QP does not return
@@ -513,7 +953,7 @@ a solution.
 Before the torque projection, the tank state and the phase gate are updated as
 \begin{equation}
 T_{k+1}=\mathrm{clip}\!\left(
-T_k+\big(P_{\rm dis}-P_{\rm inj}\big)\Delta t,\,
+T_k+\big(P_{\rm dis}-P_{\rm inj}\big)h_c,\,
 T_{\min},\,T_{\max}\right),
 \qquad
 \gamma_T=\tanh\!\left(\frac{T_{k+1}-T_{\min}}{T_{\rm ref}}\right),
@@ -847,11 +1287,12 @@ $0\le\bar F(d)\le F_{\rm mat}^{\rm cut}$ and unit reaction direction
 $r(\phi)$ learned from the demonstration. A rigid box-on-box MuJoCo contact
 generates instead
 \begin{equation}
-F_{\rm box}=F_{\rm solver}(q,\dot q,h,\texttt{solref},\texttt{solimp},
+F_{\rm box}=F_{\rm solver}(q,\dot q,h_{\rm sim},\texttt{solref},\texttt{solimp},
                           \mathcal C(q),\mu_c),
 \label{eq:box_solver}
 \end{equation}
-where $h$ is the integration step, $\mathcal C(q)$ is the active contact set and
+where $h_{\rm sim}$ is the simulator integration step,
+$\mathcal C(q)$ is the active contact set and
 $\mu_c$ denotes the friction parameters. In general there exists no
 depth-only map $\mathcal F:\R_{\ge0}\rightarrow\R^3$ that is invariant to these
 numerical and geometric quantities and satisfies simultaneously
@@ -862,15 +1303,15 @@ $F_{\rm box}=\mathcal F(d)=\bar F(d)r(\phi)$ along the demonstrated cut.
 Assume such an invariant $\mathcal F(d)$ exists. Consider two simulator
 configurations with the same blade pose and hence the same penetration $d$, but
 with distinct solver settings
-$\theta_1=(h_1,\texttt{solref}_1,\texttt{solimp}_1)$ and
-$\theta_2=(h_2,\texttt{solref}_2,\texttt{solimp}_2)$. The normal reaction in a
+$\vartheta_1=(h_{{\rm sim},1},\texttt{solref}_1,\texttt{solimp}_1)$ and
+$\vartheta_2=(h_{{\rm sim},2},\texttt{solref}_2,\texttt{solimp}_2)$. The normal reaction in a
 penalty or constraint-regularised contact has the generic dependence
 \begin{equation}
-F_{n,i}=\Psi(d,\dot d;\theta_i),\qquad i\in\{1,2\},
+F_{n,i}=\Psi(d,\dot d;\vartheta_i),\qquad i\in\{1,2\},
 \label{eq:solver_dependence}
 \end{equation}
 and changing the effective contact stiffness, damping or discrete step gives
-$\Psi(d,\dot d;\theta_1)\ne\Psi(d,\dot d;\theta_2)$ for some
+$\Psi(d,\dot d;\vartheta_1)\ne\Psi(d,\dot d;\vartheta_2)$ for some
 $(d,\dot d)$. Thus identical $d$ produces different force magnitudes, which
 contradicts the assumed depth-only invariance.
 
@@ -918,7 +1359,7 @@ $n_s(t)\in\R^3$, $\norm{n_s}=1$, its outward normal. The instantaneous
 penetration is
 \begin{equation}
 d(t)=\left[-n_s(t)^\top\big(p_b(t)-p_s(t)\big)\right]_+,
-\qquad [a]_+=\max(a,0).
+\qquad [\xi]_+=\max(\xi,0).
 \label{eq:penetration}
 \end{equation}
 Using the current $p_s(t)$ rather than its initial value preserves the
@@ -988,14 +1429,14 @@ $(F_{\rm mat}^{\rm cut})^2/(2k_{\rm mat})$, proving continuity.
 
 \paragraph{Parameter identification.}
 For each material, let
-$\mathcal D=\{(d_j,y_j,w_j)\}_{j=1}^{N}$ contain the penetration
+$\mathcal D_{\rm mat}=\{(d_j,y_j,\omega_j)\}_{j=1}^{N_{\rm mat}}$ contain the penetration
 $d_j$, measured force magnitude $y_j=\norm{F_j}$ and non-negative sample weight
-$w_j$. The two material parameters are obtained from the constrained nonlinear
+$\omega_j$. The two material parameters are obtained from the constrained nonlinear
 least-squares problem
 \begin{equation}
 \hat\theta_{\rm mat}
 =\arg\min_{\substack{k>0,\;F^{{\rm cut}}>0}}
-\sum_{j=1}^{N}w_j
+\sum_{j=1}^{N_{\rm mat}}\omega_j
 \left[y_j-\min\!\big(kd_j,F^{{\rm cut}}\big)\right]^2 .
 \label{eq:material_identification}
 \end{equation}
@@ -1004,12 +1445,12 @@ $\mathcal L=\{j:kd_j<F^{\rm cut}\}$ and plateau set
 $\mathcal P=\{j:kd_j\ge F^{\rm cut}\}$, the estimates have the closed forms
 \begin{equation}
 \hat k_{\rm mat}
-=\frac{\sum_{j\in\mathcal L}w_jd_jy_j}
-       {\sum_{j\in\mathcal L}w_jd_j^2},
+=\frac{\sum_{j\in\mathcal L}\omega_jd_jy_j}
+       {\sum_{j\in\mathcal L}\omega_jd_j^2},
 \qquad
 \hat F_{\rm mat}^{\rm cut}
-=\frac{\sum_{j\in\mathcal P}w_jy_j}
-       {\sum_{j\in\mathcal P}w_j}.
+=\frac{\sum_{j\in\mathcal P}\omega_jy_j}
+       {\sum_{j\in\mathcal P}\omega_j}.
 \label{eq:material_closed_form}
 \end{equation}
 These expressions show separately how the loading samples determine stiffness
@@ -1017,18 +1458,18 @@ and how the steady cutting samples determine the plateau. The partition is
 updated using $d_c=\hat F_{\rm mat}^{\rm cut}/\hat k_{\rm mat}$ until the branch
 assignments are consistent. A unique estimate for a fixed non-empty partition
 requires
-$\sum_{j\in\mathcal L}w_jd_j^2>0$ and
-$\sum_{j\in\mathcal P}w_j>0$.
+$\sum_{j\in\mathcal L}\omega_jd_j^2>0$ and
+$\sum_{j\in\mathcal P}\omega_j>0$.
 
 The demonstrated reaction direction can be estimated independently from the
 normalised force samples:
 \begin{equation}
 \hat F_d(\phi)
 =\frac{\sum_{j\in\mathcal N(\phi)}
-w_j\,F_j/(\norm{F_j}+\varepsilon_F)}
+\omega_j\,F_j/(\norm{F_j}+\varepsilon_F)}
 {\left\|
 \sum_{j\in\mathcal N(\phi)}
-w_j\,F_j/(\norm{F_j}+\varepsilon_F)
+\omega_j\,F_j/(\norm{F_j}+\varepsilon_F)
 \right\|+\varepsilon_r},
 \label{eq:direction_identification}
 \end{equation}
