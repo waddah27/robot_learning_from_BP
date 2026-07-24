@@ -603,24 +603,35 @@ Table~\ref{tab:variance_comparison}).
 
 Let $w(\phi)=[w_1(\phi),w_2(\phi),w_3(\phi)]^\top\in[0,1]^3$ be the
 identified position-precision vector of \eqref{eq:precision}, and define the
-normalised stiffness allocation
+affine normalisation of the Cartesian stiffness vector by
 \begin{equation}
 u(\phi)
 =\frac{K^{\rm pos}(\phi)-K_{\min}\mathbf 1}
        {K_{\max}-K_{\min}}\in[0,1]^3,
 \qquad
-u_w(\phi)=\eta_0\mathbf1+\eta_1w(\phi),
+K^{\rm pos}(\phi)
+=K_{\min}\mathbf1+(K_{\max}-K_{\min})u(\phi).
 \label{eq:normalised_stiffness}
 \end{equation}
 Here $K^{\rm pos}=[K^{\rm pos}_1,K^{\rm pos}_2,K^{\rm pos}_3]^\top$ is the
 Cartesian stiffness vector, $\mathbf 1\in\R^3$ is the all-ones vector, and the
-scalar denominator is the full admissible stiffness range. Substitution of
-\eqref{eq:precision} gives the identified allocation $u=u_w$, with
-\[
-\eta_0=\frac{K_{\rm floor}-K_{\min}}{K_{\max}-K_{\min}},
-\qquad
-\eta_1=\frac{K_{\max}-K_{\rm floor}}{K_{\max}-K_{\min}} .
-\]
+scalar denominator is the full admissible stiffness range. Thus $u_i=0$ and
+$u_i=1$ correspond respectively to $K_i^{\rm pos}=K_{\min}$ and
+$K_i^{\rm pos}=K_{\max}$; $u$ is a dimensionless coordinate representation of
+the commanded stiffness rather than an additional controller state.
+Substitution of the learned gain law \eqref{eq:precision} into
+\eqref{eq:normalised_stiffness} gives
+\begin{equation}
+\begin{aligned}
+u_w(\phi)&=\eta_0\mathbf1+\eta_1w(\phi),\\
+\eta_0&=\frac{K_{\rm floor}-K_{\min}}{K_{\max}-K_{\min}},\\
+\eta_1&=\frac{K_{\max}-K_{\rm floor}}{K_{\max}-K_{\min}} .
+\end{aligned}
+\label{eq:identified_normalised_allocation}
+\end{equation}
+Accordingly, $u_w$ denotes the normalized Cartesian stiffness induced by the
+precision weights obtained from the demonstrations.
+
 The controlled comparison uses the exact transformations
 \begin{equation}
 \begin{aligned}
@@ -632,13 +643,64 @@ u^{\rm perm}(\phi)&=\Pi(\phi)u_w(\phi),
 \Pi(\phi)^\top\Pi(\phi)=I ,
 \label{eq:variance_assignments}
 \end{equation}
-where $\Pi(\phi)$ is a $3\times3$ permutation matrix. Thus inversion reverses
-the regulation ranking, whereas permutation preserves the set of gain values
-but assigns them to different Cartesian axes. The direct-force condition does
-not use $u=u_w$; it disables the learned-gain mode and uses the fixed force-QP
-weighting of the baseline controller.
+The matched condition applies each learned component to its identified
+Cartesian axis. The inverted condition acts componentwise and satisfies
+\begin{equation}
+u_i^{\rm inv}(\phi)=1-u_{w,i}(\phi),
+\qquad
+u_i^{\rm inv}-u_j^{\rm inv}
+=-\big(u_{w,i}-u_{w,j}\big),
+\label{eq:inverted_allocation_order}
+\end{equation}
+thereby reversing the component ordering about the midpoint of the admissible
+normalized stiffness interval. The permuted condition preserves the
+instantaneous multiset of components of $u_w$ but changes their Cartesian-axis
+assignment. These transformations distinguish sensitivity to the learned
+ordering from sensitivity to the learned axis association. The direct-force
+condition is not an allocation transformation in this space: it disables the
+learned-gain mode and applies the fixed force-QP weighting of the baseline
+controller.
 
-\begin{proposition}[Optimality of the matched precision structure]
+Write the identified allocation as
+\begin{equation}
+u_w(\phi)
+=
+\begin{bmatrix}
+u_{w,x}(\phi)&u_{w,y}(\phi)&u_{w,z}(\phi)
+\end{bmatrix}^{\top}.
+\label{eq:allocation_axis_vector}
+\end{equation}
+For a bijection $\pi_\phi:\{1,2,3\}\rightarrow\{1,2,3\}$, define
+\begin{equation}
+[\Pi(\phi)]_{jk}
+=
+\begin{cases}
+1,&k=\pi_\phi(j),\\
+0,&\text{otherwise},
+\end{cases}
+\qquad j,k\in\{1,2,3\}.
+\label{eq:permutation_definition}
+\end{equation}
+It follows that
+\begin{equation}
+[\Pi(\phi)u_w(\phi)]_j
+=u_{w,\pi_\phi(j)}(\phi),
+\qquad
+\Pi(\phi)^\top\Pi(\phi)=I,
+\qquad
+\Pi(\phi)^{-1}=\Pi(\phi)^\top .
+\label{eq:permutation_properties}
+\end{equation}
+Consequently, $\Pi(\phi)$ preserves the Euclidean norm and the multiset of
+components of $u_w(\phi)$ while changing their Cartesian-axis assignment.
+The dependence on $\phi$ permits the assignment to vary over task phase. In
+the implemented shuffled condition, $\phi$ determines the pseudorandom seed
+used to generate $\pi_\phi$. This comparison isolates the effect of the
+learned axis assignment while preserving the instantaneous set of stiffness
+allocations.
+
+\begin{proposition}[Uniqueness of the matched allocation under the
+precision-deviation functional]
 \label{prop:precision_structure}
 Consider the precision-allocation functional
 \begin{equation}
@@ -650,8 +712,9 @@ H(\phi)
 \qquad H(\phi)=H(\phi)^\top\succ0 .
 \label{eq:precision_functional}
 \end{equation}
-Among all measurable allocations $u:[0,1]\rightarrow[0,1]^3$, the identified
-assignment $u^{\rm true}=u_w$ is the unique minimiser up to sets of zero measure.
+Among all measurable allocations $u:[0,1]\rightarrow[0,1]^3$, the matched
+assignment $u^{\rm true}=u_w$ is the unique minimiser of
+\eqref{eq:precision_functional}, up to sets of zero measure.
 The excess costs of the inverted and permuted structures are
 \begin{align}
 \mathcal G_{\rm inv}
@@ -686,12 +749,45 @@ definiteness of $H$ makes either integral strictly positive when its difference
 vector is non-zero on a set of non-zero measure.
 \end{proof}
 
-The matrix $H(\phi)$ represents phase- and axis-dependent task relevance. In
-the cutting experiment its depth-axis entry is dominant because depth is the
-repeatable, task-critical coordinate. Proposition~\ref{prop:precision_structure}
-establishes the allocation result for the stated quadratic precision objective;
-whether that structural advantage produces lower closed-loop cutting error is
-then tested by the paired experiment rather than assumed from the proposition.
+Define the allocation error
+\begin{equation}
+e_u(\phi)=u(\phi)-u_w(\phi)
+=
+\begin{bmatrix}
+e_x(\phi)&e_y(\phi)&e_z(\phi)
+\end{bmatrix}^{\top}.
+\label{eq:allocation_error}
+\end{equation}
+Then the integrand of \eqref{eq:precision_functional} is the quadratic form
+\begin{equation}
+\frac12 e_u^\top H e_u
+=\frac12\sum_{j=1}^{3}\sum_{k=1}^{3}
+H_{jk}(\phi)e_j(\phi)e_k(\phi).
+\label{eq:H_quadratic_expansion}
+\end{equation}
+Here $H:[0,1]\rightarrow\mathbb S_{++}^{3}$ is a measurable,
+phase-dependent task-relevance metric on the allocation space. Its diagonal
+entries weight axis-specific allocation errors, whereas its off-diagonal
+entries encode cross-axis coupling. The condition $H(\phi)\succ0$ means
+\begin{equation}
+v^\top H(\phi)v>0
+\quad\text{for every non-zero }v\in\R^3,
+\label{eq:H_positive_definite}
+\end{equation}
+and is the condition required for the uniqueness result in
+Proposition~\ref{prop:precision_structure}. For the cutting task, greater
+depth-axis relevance may be represented through the corresponding entries of
+$H(\phi)$.
+
+The matrix $H(\phi)$ is an assumed metric defining the quadratic allocation
+functional; it is not estimated from the demonstrations, numerically specified
+in the experiments, or evaluated by the controller. Consequently,
+Proposition~\ref{prop:precision_structure} establishes only that $u_w$
+uniquely minimizes the defined weighted deviation from $u_w$. It does not
+establish optimality with respect to cutting error, interaction force, or a
+general closed-loop performance functional. The physical consequence of the
+matched allocation is instead evaluated by the paired closed-loop experiment
+below.
 
 For controller condition $c$ and randomised-physics seed $s$, the reported
 cut-depth metric is
