@@ -26,11 +26,6 @@ class GMRParams:
     ADAPTATION_RATE = 0.1  # How quickly to adapt gains
     BLENDING_FACTOR = 0.7  # Weight of GMR vs reactive control (0=GMR only, 1=reactive only)
 
-    # The recorded task is a straight cut.  GMR averaging leaves a small
-    # transverse curvature which is strongly magnified by workspace mapping.
-    # Preserve the demonstrated endpoints and phase-dependent force/precision,
-    # but constrain the geometric position prior to their connecting line.
-    STRAIGHT_CUT_REFERENCE = True
     MIN_STIFFNESS_CONTACT = 100.0  # N/m, minimum in contact
     MAX_STIFFNESS_FREE = 2000.0  # N/m, maximum in free motion
 
@@ -74,7 +69,7 @@ class workPiece:
     POS = np.array([0.5, 0.0, HIGHT])
     SIZE = np.array([0.3, 0.3, 0.02])
     SURFACE: float = SIZE[2] + POS[2]
-    MOBILE: bool = False
+    MOBILE: bool = True
     MOT_AMPL = 0.05 # amplitude of motion sine/cos wave
 
 

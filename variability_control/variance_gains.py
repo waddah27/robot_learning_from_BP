@@ -52,14 +52,29 @@ _EPS = 1e-9
 
 
 def load_demos(material: str, n_phase: int = N_PHASE) -> np.ndarray:
-    """Return (n_trials, n_phase, 6) array of [X,Y,Z,Fx,Fy,Fz], force de-biased."""
+    """Return progress-registered [X,Y,Z,Fx,Fy,Fz] demonstrations."""
     prefix = MATERIALS[material]
     files = sorted(glob.glob(os.path.join(_DEMO_DIR, f"{prefix}_iter*.csv")))
     trials = []
+    phase = np.linspace(0.0, 1.0, n_phase)
     for f in files:
         d = np.genfromtxt(f, delimiter=",", skip_header=1)
-        if d.shape[0] >= n_phase:
-            trials.append(d[:n_phase, _POS_FORCE_COLS])
+        values = d[:, _POS_FORCE_COLS]
+        position = values[:, :3]
+        direction = position[-1] - position[0]
+        norm_sq = float(direction @ direction)
+        if norm_sq < _EPS:
+            continue
+        progress = ((position - position[0]) @ direction) / norm_sq
+        progress = np.maximum.accumulate(np.clip(progress, 0.0, 1.0))
+        progress[0], progress[-1] = 0.0, 1.0
+        keep = np.r_[progress[1:] > progress[:-1] + 1e-10, True]
+        progress, values = progress[keep], values[keep]
+        registered = np.column_stack([
+            np.interp(phase, progress, values[:, column])
+            for column in range(values.shape[1])
+        ])
+        trials.append(registered)
     T = np.asarray(trials)                                  # (n,phase,6)
     # de-bias force: subtract each trial's pre-contact baseline (force cols only)
     base = T[:, :_BASELINE_W, 3:].mean(axis=1, keepdims=True)

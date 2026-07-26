@@ -41,8 +41,18 @@ paramVIC.HOLDBACK_DISTURBANCE = False
 paramVIC.HOLDBACK_FORCE_N = 120.0
 paramVIC.HOLDBACK_START_S = 0.9
 paramVIC.HOLDBACK_END_S = 1.4
-paramVIC.GMR.STRAIGHT_CUT_REFERENCE = True  # enforce the stated straight-cut geometry
 ```
+
+Retrain the material GMR priors from progress-registered demonstrations with:
+
+```bash
+python training/train_gmr_priors.py
+python variability_control/variance_gains.py
+```
+
+The first command replaces the legacy notebook workflow, which aligned trials
+by sample index. It registers each trial by monotone spatial cutting progress,
+fits standardized material-specific GMMs, and writes the runtime `.npy` priors.
 
 The holdback is disabled for nominal execution. When enabled, it applies a
 bounded external force opposite the local cutting-path tangent; it is intended
