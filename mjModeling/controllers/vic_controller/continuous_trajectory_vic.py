@@ -20,6 +20,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
     def __init__(self, robot: iiwa14, use_behaviour_priors: bool = False,
                  optimizer=ImpedanceOptimizer.qp):
         super().__init__(robot, use_behaviour_priors)
+        self.working_piece = robot.work_piece
 
         self.optimizer = optimizer
         Logger.debug(f"Using optimizer: {self.optimizer} (QP-based gain optimization)")
@@ -34,12 +35,13 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         self.D_max = np.array([self.Xi_scaler, self.Xi_scaler, self.Xi_scaler])
         self.f_min = -70
         self.f_max = 70
-        # Per-axis force-saturation bounds for the QP: the commanded impedance
-        # force K·error is constrained to ±f_bound per axis, so it never violates
-        # the demonstrated min/max force. Set from the demonstration in
-        # follow_trajectory (world frame); default to the legacy scalar bound.
+        # Residual impedance bound used inside the gain QP.  This is distinct
+        # from total controller authority and from measured contact force.
         self.f_bound = np.array([70.0, 70.0, 70.0])
         self.f_motion_floor = 40.0   # min per-axis force authority for free motion
+        self.control_wrench_limit = np.full(
+            3, paramVIC.VIC_CONTROL_WRENCH_LIMIT, dtype=float
+        )
         self.epsilon = 0.675   # minimum tank energy
         self.Q = np.eye(3)     # force error weight
         self.R = np.eye(3) * 1e-9   # regularization weight
@@ -89,11 +91,21 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         self.traj_dt = 0.01
 
         # State-driven phase estimation
-        self.k_phase = 0.3            # correction gain: 0 = pure clock, 1 = pure state
-        self.phase_search_window = 0.1  # max forward-look (fraction of total trajectory)
+        self.state_phase_enabled = paramVIC.STATE_DRIVEN_PHASE
+        self.k_phase = paramVIC.PHASE_CORRECTION_RATE
+        self.phase_search_backward = paramVIC.PHASE_SEARCH_BACKWARD
+        self.phase_search_forward = paramVIC.PHASE_SEARCH_FORWARD
+        self.max_execution_time_factor = 5.0
         self._phase_points = None
         self._traj_pos_world = None
         self._traj_force_mag = None
+
+        # Optional matched-disturbance hook for task-parametrization ablations.
+        # Disabled during ordinary execution.
+        self.holdback_disturbance_enabled = paramVIC.HOLDBACK_DISTURBANCE
+        self.holdback_start_s = paramVIC.HOLDBACK_START_S
+        self.holdback_end_s = paramVIC.HOLDBACK_END_S
+        self.holdback_force_N = paramVIC.HOLDBACK_FORCE_N
 
         # ----- Learned-variability gains (minimal-intervention) -----
         # Per-phase, per-axis position stiffness K_pos(φ) and force-tracking
@@ -253,15 +265,18 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
     # ---------- State-driven phase estimation ----------
     def _estimate_phase(self, current_pos, current_force):
         """
-        Find the phase value φ̂ ∈ [φ, φ+window] whose reference state best
-        matches the current robot state. Returns the nominal phase when the
-        cache is not ready (before the first follow_trajectory call).
+        Project the measured task state onto a local, bidirectional interval of
+        the learned phase curve.  The backward branch allows physical lag to
+        retard the commanded phase; monotonicity is enforced separately by the
+        phase-increment saturation.
         """
-        if self._phase_points is None or self._traj_pos_world is None:
+        if (not self.state_phase_enabled or self._phase_points is None
+                or self._traj_pos_world is None):
             return self.phase
 
-        phi_hi = min(1.0, self.phase + self.phase_search_window)
-        mask = (self._phase_points >= self.phase) & (self._phase_points <= phi_hi)
+        phi_lo = max(0.0, self.phase - self.phase_search_backward)
+        phi_hi = min(1.0, self.phase + self.phase_search_forward)
+        mask = (self._phase_points >= phi_lo) & (self._phase_points <= phi_hi)
         if not np.any(mask):
             return self.phase
 
@@ -278,6 +293,18 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             cost = pos_errors / pos_range
 
         return self._phase_points[mask][np.argmin(cost)]
+
+    def _phase_step(self, phi_hat, nominal_increment):
+        """Return (next phase, correction) with monotone, rate-limited progress."""
+        nominal_increment = max(0.0, float(nominal_increment))
+        raw = self.dt * self.k_phase * (float(phi_hat) - self.phase)
+        correction = float(np.clip(
+            raw, -nominal_increment, 2.0 * nominal_increment
+        ))
+        phase_next = float(np.clip(
+            self.phase + nominal_increment + correction, 0.0, 1.0
+        ))
+        return phase_next, correction
 
     # ---------- QP-BASED GAIN OPTIMIZATION ----------
     def get_variable_gains_optimizer(self, error, vel_error, desired_force, dt,
@@ -384,6 +411,15 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 # Smooth update (optional)
                 alpha = 0.5
                 kp_smooth = alpha * kp + (1 - alpha) * self.prev_kd
+                # Restore current-step feasibility after smoothing.  A convex
+                # blend with the previous gain need not satisfy today's
+                # error-dependent |K e| constraint.
+                feasible_upper = np.minimum(
+                    self.k_max,
+                    self.f_bound / np.maximum(np.abs(error), 1e-9)
+                )
+                feasible_upper = np.maximum(feasible_upper, self.k_min)
+                kp_smooth = np.clip(kp_smooth, self.k_min, feasible_upper)
                 kd_smooth = alpha * kd + (1 - alpha) * (
                             2 * self.prev_xi * np.sqrt(np.maximum(self.prev_kd, 100)))
                 self.prev_kd = kp_smooth
@@ -483,12 +519,11 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
         P_ref = float(max(0.0, np.sum(error * kp * xd_dot)))
         P_inj = P_gain + P_ref
 
+        # P_dis/P_inj remain diagnostics.  The live torque-port storage is
+        # settled from the actual projected actuator power after tau_safe is
+        # computed; mutating it here would double-count controller energy.
         tank_prev = self.tank_energy
-        tank_unclipped = tank_prev + (P_dis - P_inj) * dt
-        self.tank_energy = float(np.clip(tank_unclipped, self.tank_min, self.tank_max))
-        balance_residual = self.tank_energy - tank_prev - (P_dis - P_inj) * dt
-        self.E_t = self.tank_energy
-        self.E_tot.append(self.tank_energy)
+        balance_residual = 0.0
         self._tank_prev_kp = kp.copy()
         self._last_tank_info = {
             "P_dis": P_dis,
@@ -500,6 +535,21 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             "tank_prev": float(tank_prev),
         }
         return self.tank_energy
+
+    def _settle_torque_tank(self, power_safe, dt):
+        """Exact sampled storage update for the commanded joint-power port."""
+        tank_prev = float(self.tank_energy)
+        self.tank_energy = float(np.clip(
+            tank_prev - float(power_safe) * dt,
+            self.tank_min, self.tank_max
+        ))
+        self.E_t = self.tank_energy
+        self.E_tot.append(self.tank_energy)
+        self._last_tank_info["tank_prev"] = tank_prev
+        self._last_tank_info["balance_residual"] = float(
+            self.tank_energy - tank_prev + float(power_safe) * dt
+        )
+        self._last_tank_info["gamma"] = self._tank_phase_gate()
 
     def _apply_adversarial_power(self, tau_nominal, qvel):
         """Add a controlled positive power burst for passivity validation."""
@@ -578,7 +628,7 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
 
         prev_mat_height = None
         actual_duration = self.traj_duration / phase_speed
-        max_steps = int(2 * actual_duration / self.dt)
+        max_steps = int(self.max_execution_time_factor * actual_duration / self.dt)
 
         self.filtered_force = np.zeros(3)
         self.force_integral = np.zeros(3)
@@ -597,7 +647,9 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                              "f_des", "f_act", "f_raw", "kp", "tank", "tau"]}
         for k in ["tank_gamma", "P_dis", "P_inj", "P_gain", "P_ref",
                   "tank_balance_residual", "tank_prev", "power_nominal",
-                  "power_safe", "power_limit", "adversarial_power"]:
+                  "power_safe", "power_limit", "adversarial_power",
+                  "phase_hat", "phase_correction", "phase_dot",
+                  "tank_gamma_next", "holdback_force"]:
             self.episode_log[k] = []
 
         # Restart the live monitor's recording at sample 0 so it shows the CUT,
@@ -652,15 +704,6 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             else:
                 mat_vel = 0.0
 
-            # Desired quantities from GMR
-            pos_des_gmr = self.pos_func(self.phase)
-            vel_des_gmr = self.vel_func(self.phase)
-            force_des_gmr = self.force_func(self.phase)
-
-            vel_des_gmr_scaled = vel_des_gmr * effective_phase_speed
-            pos_des = self._gmr_to_world(pos_des_gmr)
-            vel_des = self._gmr_vel_to_world(vel_des_gmr_scaled, mat_vel)
-
             # Current robot state
             mujoco.mj_forward(self.model, self.data)
             current_pos = self.data.site_xpos[tcp_id].copy()
@@ -672,11 +715,42 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             mujoco.mj_jacSite(self.model, self.data, jac, None, tcp_id)
             v_cur = jac @ self.data.qvel
 
+            self.in_contact = np.linalg.norm(self.filtered_force) > self.contact_threshold
+
+            # State-consistent phase plan for the current control interval.
+            # The gate is evaluated from T_k; the tank update below produces
+            # T_{k+1}, which affects the next interval (explicit sampled-data
+            # ordering).
+            phi_hat = self._estimate_phase(current_pos, self.filtered_force)
+            phase_next, phase_correction = self._phase_step(phi_hat, phase_inc)
+            phase_dot = (phase_next - self.phase) / max(self.dt, 1e-9)
+
+            # Phase-indexed references.  Velocity is derived from the position
+            # curve by the chain rule rather than interpolated independently.
+            pos_des_gmr = self.pos_func(self.phase)
+            force_des_gmr = self.force_func(self.phase)
+            pos_des = self._gmr_to_world(pos_des_gmr)
+            dxd_dphi = self._reference_slope_at_phase(self.phase)
+            vel_des = np.asarray(dxd_dphi, dtype=float) * phase_dot
+            # Workpiece motion is an external perturbation.  It must not
+            # translate either the desired position or desired velocity.
+
             # Transform desired force to world frame
             site_rot = self.data.site_xmat[tcp_id].reshape(3, 3)
             f_des_world = site_rot @ force_des_gmr
 
-            self.in_contact = np.linalg.norm(self.filtered_force) > self.contact_threshold
+            # Predict the analytical material reaction once for this sample.
+            # Its opposite is model-based feedforward; the same reaction is
+            # subsequently applied to the scalpel as the environment wrench.
+            fcut = np.zeros(3)
+            if self.cut_model is not None:
+                self.cut_model.set_material(
+                    self.data.geom_xpos[self.mat_geom_id],
+                    self.model.geom_size[self.mat_geom_id]
+                )
+                fcut = self.cut_model.compute(
+                    current_pos, v_cur, f_des_world
+                ).copy()
 
             # Position tracking error (pure VIC — no force loop)
             error     = pos_des - current_pos
@@ -693,8 +767,6 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
                 phase=self.phase
             )
 
-            dxd_dphi = self._reference_slope_at_phase(self.phase)
-            phase_dot = phase_inc / max(self.dt, 1e-9)
             self.update_tank_energy(
                 kp, kd, error, vel_error, self.dt,
                 phase_dot=phase_dot,
@@ -702,12 +774,38 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             )
             power_limit = (self.tank_energy - self.tank_min) / self.dt
 
-            # VIC control law (impedance only)
-            f_virtual = (kp * error) + paramVIC.VIC_KI * self.error_accumulated + kd * vel_error
-            # Force saturation: strictly cap the commanded force to the per-axis
-            # demonstrated bound so it never violates the desired min/max force
-            # (the QP enforces this softly; this makes it a hard guarantee).
-            f_virtual = np.clip(f_virtual, -self.f_bound, self.f_bound)
+            # Precision-weighted integral action with componentwise anti-windup.
+            # Integrate only while the residual command is not saturating
+            # farther in the direction of the current position error.
+            i_candidate = np.clip(
+                self.error_accumulated + error * self.dt,
+                -paramVIC.VIC_INTEGRAL_LIMIT,
+                paramVIC.VIC_INTEGRAL_LIMIT
+            )
+            residual_unsat = (
+                kp * error + paramVIC.VIC_KI * i_candidate + kd * vel_error
+            )
+            outward = (
+                (np.abs(residual_unsat) > self.f_bound)
+                & (np.sign(residual_unsat) == np.sign(error))
+            )
+            self.error_accumulated = np.where(
+                outward, self.error_accumulated, i_candidate
+            )
+            residual = (
+                kp * error
+                + paramVIC.VIC_KI * self.error_accumulated
+                + kd * vel_error
+            )
+            residual = np.clip(residual, -self.f_bound, self.f_bound)
+            # Total residual Cartesian command.  The identified material model
+            # is not used as actuation feedforward because its demonstrated
+            # force direction is defined for the environment reaction channel.
+            f_virtual = np.clip(
+                residual,
+                -self.control_wrench_limit,
+                self.control_wrench_limit
+            )
 
             # Torque calculation
             jjt = jac @ jac.T
@@ -728,33 +826,36 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             tau_safe = self._solve_passivity_qp(
                 tau_nominal, self.data.qvel, power_limit=power_limit
             )
+            self._settle_torque_tank(self.last_power_safe, self.dt)
 
             self.data.ctrl[:self.model.nu] = np.clip(tau_safe[:self.model.nu], -300, 300)
 
-            # Apply the analytical cutting resistance to the blade (material
-            # physics, not the controller). This is the environment reaction the
-            # blade feels; the force estimator reports it.
+            # Apply the analytical cutting resistance and, when requested by an
+            # ablation experiment, a matched force opposing the path tangent.
+            applied_force = np.zeros(3)
             if self.cut_model is not None:
-                # Refresh the cutting surface from the LIVE material position each
-                # step (the material can drift/move) so depth is computed against
-                # where the surface actually is — not a stale setup value.
-                self.cut_model.set_material(self.data.geom_xpos[self.mat_geom_id],
-                                            self.model.geom_size[self.mat_geom_id])
-                fcut = self.cut_model.compute(current_pos, v_cur, f_des_world)
-                self.data.xfrc_applied[self._scalpel_body, :3] = fcut
+                applied_force += fcut
                 self.robot._applied_cut_force = fcut
+            holdback_force = np.zeros(3)
+            cut_time = step * self.dt
+            if (self.holdback_disturbance_enabled
+                    and self.holdback_start_s <= cut_time <= self.holdback_end_s
+                    and self.holdback_force_N > 0.0):
+                tangent_norm = np.linalg.norm(dxd_dphi)
+                if tangent_norm > 1e-9:
+                    holdback_force = (
+                        -self.holdback_force_N * dxd_dphi / tangent_norm
+                    )
+                    applied_force += holdback_force
+            if self.cut_model is not None or self.holdback_disturbance_enabled:
+                self.data.xfrc_applied[self._scalpel_body, :3] = applied_force
 
             mujoco.mj_step(self.model, self.data)
 
             # Advance time – state-driven phase correction
             self.mat_time += effective_phase_speed * self.dt
             self.sim_time += self.dt
-            phi_hat = self._estimate_phase(current_pos, self.filtered_force)
-            phase_correction = np.clip(
-                self.k_phase * (phi_hat - self.phase),
-                -phase_inc, 2.0 * phase_inc
-            )
-            self.phase = np.clip(self.phase + phase_inc + phase_correction, 0.0, 1.0)
+            self.phase = phase_next
 
             # Full-resolution episode record for metrics
             self.episode_log["phase"].append(self.phase)
@@ -767,7 +868,10 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             self.episode_log["kp"].append(np.asarray(kp).copy())
             self.episode_log["tank"].append(float(self.E_t))
             self.episode_log["tau"].append(float(np.linalg.norm(tau_safe[:self.model.nu])))
-            self.episode_log["tank_gamma"].append(float(self._last_tank_info["gamma"]))
+            self.episode_log["tank_gamma"].append(float(tank_gamma))
+            self.episode_log["tank_gamma_next"].append(
+                float(self._last_tank_info["gamma"])
+            )
             self.episode_log["P_dis"].append(float(self._last_tank_info["P_dis"]))
             self.episode_log["P_inj"].append(float(self._last_tank_info["P_inj"]))
             self.episode_log["P_gain"].append(float(self._last_tank_info["P_gain"]))
@@ -780,6 +884,12 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
             self.episode_log["power_safe"].append(float(self.last_power_safe))
             self.episode_log["power_limit"].append(float(self.last_power_limit))
             self.episode_log["adversarial_power"].append(float(self.last_adversarial_power))
+            self.episode_log["phase_hat"].append(float(phi_hat))
+            self.episode_log["phase_correction"].append(float(phase_correction))
+            self.episode_log["phase_dot"].append(float(phase_dot))
+            self.episode_log["holdback_force"].append(
+                float(np.linalg.norm(holdback_force))
+            )
 
             self.record_contact_forces(Pd=pos_des, P=current_pos, Fd=f_des_world, K=kp)
 

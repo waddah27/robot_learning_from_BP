@@ -1,7 +1,7 @@
 \documentclass[11pt,a4paper]{article}
 
 % ----------------------------------------------------------------------------
-%  Learning High-Precision Contact Skills from Behaviour Priors
+%  Learning Precision-Selective Contact Skills from Behaviour Priors
 %  Full technical report (expanded): analysis, control, task parametrization,
 %  stability & passivity, material model, results, contributions.
 % ----------------------------------------------------------------------------
@@ -28,9 +28,9 @@
 \newcommand{\xtd}{\dot{\tilde{x}}}
 \newcommand{\unit}[1]{\,[\mathrm{#1}]}
 
-\title{\textbf{Learning Contact rich Skills from Behaviour Priors:\\
+\title{\textbf{Learning Precision-Selective Contact Skills from Behaviour Priors:\\
 Variability-Driven Variable Impedance Control with\\
-State-Driven Task Parametrization, Stability and Passivity Guarantees}}
+State-Corrected Task Parametrization and Torque-Port Energy Accounting}}
 \author{Waddah Ali}
 \date{\today}
 
@@ -44,26 +44,30 @@ from encoded human behaviour priors. The experimental setup represents a robot w
 its end effector learned to perform an adaptive cutting skill on variant types of materials.
 unlike replaying a single trajectory, the method learns the pattern of the skill and
 reproduces it under a variable-impedance controller with an implemented
-energy-tank passivity mechanism at the joint torque port. The contribution comprises three elements. First, a \emph{variable impedance
+energy-tank mechanism at the joint torque port. The contribution comprises three elements. First, a \emph{variable impedance
 controller} whose stiffness matrix is learned from the consistency of
 the demonstrations: a quadratic program (QP) solved at each control step maps the
 demonstration precision onto the controller gains, so the manipulator is stiff
 only along directions that the demonstrations regulated and compliant elsewhere.
-Second, a \emph{state-driven task parametrisation} that indexes the motion by a
+Second, a \emph{state-corrected task parametrisation} that indexes the motion by a
 progress (phase) variable whose evolution is corrected by the manipulator's
-measured state, providing temporal-scale adaptability and disturbance rejection.
-Third, a formal \emph{stability and passivity} analysis by projecting the torque command onto a runtime energy-tank
-power budget, and a positive power perturbation validation demonstrates that the
-tank prevents energy injection that the controller might generate without tank projection for maintaining
-robot passivity and safety-aware interaction with human. Exponential convergence is derived under the stated regulation assumptions and is reported
-empirically as a diagnostic on the regulated task error. An important consideration for the studied approach is the data repeatability to decide
+measured state. Its incremental effect is evaluated rather than assumed.
+Third, sufficient stability conditions are derived for idealised error models,
+and the implemented torque projection is coupled to a discrete tank that is
+settled from delivered joint power. A positive-power perturbation experiment
+tests the resulting storage and power inequalities. These are simulation-level
+results, not a hardware-safety or human-interaction guarantee. An important
+consideration for the studied approach is the data repeatability to decide
 which skill patterns to extract under which constraints, thus, across repeated demonstrations
-the scalpel \emph{position} is highly repeatable (cross-trial correlation
-$\approx 0.95$), whereas the \emph{force} is not ($\approx 0.10$). Therefore, The controller
-regulates position and treats desired force as a constraint, while a separate
+position-channel correlation ranges from $0.37$ to $0.98$ and force-channel
+correlation from approximately $0.00$ to $0.27$ across the three datasets.
+The controller maps this continuous, axis-dependent precision to stiffness.
+Desired force enters the gain objective and a virtual-wrench bound; it is not a
+hard measured-contact-force constraint. A separate
 per-material \emph{cutting-force model}, identified from each material's own data,
-provides the interaction force in simulation. The experiment framework is evaluated on three materials (cork, PVC, penoplex) for both a fixed and a moving workpiece
-scenarios.
+provides the interaction force in simulation. The framework is evaluated with
+three separately calibrated materials (cork, PVC and penoplex), not by zero-shot
+generalisation to unseen materials.
 \end{abstract}
 
 \tableofcontents
@@ -115,10 +119,17 @@ $q_f(\phi)$ & force-consistency weight in the QP $\in[0,1]$ & dimensionless \\
 $F_d$ & desired interaction force (from the prior) & $\mathrm{N}$ \\
 $F^{\text{bound}}_i$ & per-axis demonstrated force limit & $\mathrm{N}$ \\
 $\hat\phi$ & state-estimated phase & dimensionless \\
+$\phi^\star,\phi_c,e_\phi$ & state-consistent phase, clock phase, and phase synchronisation error & dimensionless \\
 $\dot\phi_{\text{nom}}$ & nominal (clock) phase rate & $\mathrm{s^{-1}}$ \\
-$k_\phi$ & phase-correction gain $\in[0,1]$ & dimensionless \\
+$\Delta\phi_k^{\rm nom}$ & nominal phase increment in one controller sample & dimensionless \\
+$s_\phi,T_d$ & execution-speed multiplier and demonstration duration & dimensionless, $\mathrm{s}$ \\
+$k_\phi$ & phase-synchronisation rate & $\mathrm{s^{-1}}$ \\
 $\rho_x,\rho_F$ & normalising scales for position / force matching & $\mathrm{m},\,\mathrm{N}$ \\
-$\ell_\phi$ & forward phase-search horizon & dimensionless \\
+$\ell_\phi^-,\ell_\phi^+$ & backward/forward phase-search horizons & dimensionless \\
+$\gamma_{T,k}$ & energy-tank phase gate at sample $k$, in $[0,1]$ & dimensionless \\
+$\mathcal C_k$ & discrete local candidate set used for phase estimation & dimensionless \\
+$z,z_r,\mathcal M,W$ & measured/reference task state, task manifold, and observation weighting & mixed \\
+$\hat t_r,F_h,f_h$ & unit path tangent, holdback magnitude, and validation force & dimensionless, $\mathrm{N}$, $\mathrm{N}$ \\
 $\mathcal S$ & total passivity storage (mechanical energy plus tank) & $\mathrm{J}$ \\
 $V$ & stability Lyapunov function & $\mathrm{J}$ \\
 $T$ & energy-tank state & $\mathrm{J}$ \\
@@ -144,8 +155,8 @@ the robot control algorithm.
 Each demonstration provides, sampled over time,
 the scalpel pose, its twist (linear/angular velocity), and the interaction wrench
 measured at the scalpel. This aims to capture the \emph{skill} instead of cloning the behaviour. i.e., a controller
-that performs the task accurately, respects the force character of the demonstrations, stays stable and safe in contact,
-and generalises across execution speeds and across materials.
+that executes the task with quantified error, respects the demonstrated
+variability structure and remains bounded in the tested simulation conditions.
 
 The position and force dependency during contact through the motion path represents the core challenge in the study.
 In a direction where the scalpel presses on the material, fixing the position determines the force and vice-versa;
@@ -299,8 +310,8 @@ on $o_{\nu,\chi}$.
 \toprule
 Quantity & cross-trial shape correlation & regulation score \\
 \midrule
-Position (X/Y/Z) & $0.92$--$0.98$ & up to $0.73$ (Z) \\
-Force (Fx/Fy/Fz) & $0.04$--$0.27$ & $\approx 0$ \\
+Position (X/Y/Z) & $0.37$--$0.98$ & $0.42$--$0.95$ \\
+Force (Fx/Fy/Fz) & $-0.00$--$0.27$ & $0.03$--$0.31$ \\
 \bottomrule
 \end{tabular}
 \caption{How repeatable each quantity is across demonstrations
@@ -312,9 +323,9 @@ penoplex $N_{\rm demo,peno}{=}22$, $300$ samples per trial).}
 The numerical separation between the two signal classes is
 \begin{equation}
 m_\Gamma
-=\min_{\chi\in\{X,Y,Z\}}\Gamma_\chi
--\max_{\chi\in\{F_x,F_y,F_z\}}\Gamma_\chi
-\ge0.92-0.27=0.65>0 .
+=\min_{\substack{\mathrm{material}\\\chi\in\{X,Y,Z\}}}\Gamma_\chi
+-\max_{\substack{\mathrm{material}\\\chi\in\{F_x,F_y,F_z\}}}\Gamma_\chi
+=0.373-0.266=0.107>0 .
 \label{eq:correlation_separation}
 \end{equation}
 Thus even the least repeatable position channel has substantially greater shape
@@ -328,14 +339,11 @@ phase-locked signal-to-residual ratio
 =\frac{q_\chi}{1-q_\chi}.
 \label{eq:repeatability_snr}
 \end{equation}
-The position-correlation range $0.92$--$0.98$ therefore corresponds to an
-estimated phase-locked ratio of $11.5$--$49$, whereas the force-correlation
-range $0.04$--$0.27$ corresponds to only $0.04$--$0.37$. Independently, the
-depth regulation score $\mathcal R_Z=0.73$ gives
-$\operatorname{SNR}_Z\approx2.70$, while
-$\mathcal R_{F_x},\mathcal R_{F_y},\mathcal R_{F_z}\approx0$ gives a
-near-zero phase-locked force ratio. The two estimators use different variance
-aggregations, but both produce the same ordering.
+Across all materials and axes, position correlation is $0.373$--$0.983$,
+whereas force correlation is $-0.003$--$0.266$. Regulation-score ranges are
+$0.418$--$0.947$ for position and $0.032$--$0.310$ for force. Position is
+therefore more repeatable in these datasets, but not every position direction
+is highly repeatable and force is not wholly unstructured.
 
 Sampling uncertainty can be assessed without assuming normally distributed
 signals by resampling complete demonstrations. If
@@ -363,16 +371,11 @@ of every released channel. Equation~\eqref{eq:correlation_separation} reports
 the observed effect-size margin; confidence intervals should accompany it when
 the bootstrap results are reported.
 
-\noindent The result concluded that: \emph{the demonstrated scalpel path is reproducible;
-the demonstrated force is not}. The recorded force is
-dominated by a large, approximately constant offset (consistent with scalpel preload /
-sensor bias) plus trial-to-trial content that does not repeat; this was checked
-against the dynamic part of the signal, time alignment and sign convention.
-The practical implication is that \emph{point-tracking the demonstrated force trajectory is not a well-posed
-objective}. This is exactly the situation the \emph{minimal-intervention
-principle} addresses: regulate strongly where the demonstration is consistent
-(position), and remain compliant where it is not (force). The latter being
-treated as a constraint and as the interaction outcome of a calibrated material
+\noindent The defensible conclusion is that position is more phase repeatable
+than force in the analysed datasets, especially in the task-critical depth
+direction. The controller therefore maps the continuous per-axis precision to
+stiffness instead of imposing a binary position/force classification. The
+simulated interaction force is generated separately by a calibrated material
 model.
 
 % ============================================================================
@@ -384,7 +387,7 @@ model.
 The robot is controlled as a virtual mechanical impedance at the scalpel tip. The
 commanded Cartesian force is
 \begin{equation}
-\boxed{\;f \;=\; K(\phi)\,\xt \;+\; K_I\!\int_0^t\!\xt\,d\sigma \;+\; D(\phi)\,\xtd\;}
+\boxed{\;f \;=\; K(\phi)\,\xt \;+\; K_I\xi \;+\; D(\phi)\,\xtd\;}
 \label{eq:imp}
 \end{equation}
 where,
@@ -393,16 +396,33 @@ where,
 diagonal stiffness (one value per Cartesian axis) and $\xt\unit{m}$ is the
 position error, so the product has units of force $\unit{N}$. A larger $K$ pulls
 the scalpel back to the reference more firmly.
-\item $K_I\!\int\!\xt\,d\sigma$ is an integral term that removes slow,
-steady-state position error; $K_I\unit{N\,m^{-1}s^{-1}}$ multiplied by the
-time-integral of the error $\unit{m\cdot s}$ again yields $\unit{N}$.
+\item $K_I\xi$ compensates persistent contact-load error. The sampled
+accumulator $\xi$ is clipped componentwise and uses conditional anti-windup.
 \item $D(\phi)\,\xtd$ is a velocity-error damper that suppresses oscillation;
 $D\unit{N\,s\,m^{-1}}$ times $\xtd\unit{m\,s^{-1}}$ gives $\unit{N}$.
 \end{itemize}
-The damping is tied to the stiffness by a critical-damping rule,
-$D(\phi)=2\zeta\sqrt{M\,K(\phi)}$, with damping ratio $\zeta=0.7$ (a standard,
-slightly under-damped, fast and non-oscillatory response) and $M\unit{kg}$ an
-effective mass. The virtual force is realised by joint torques through a
+The implemented integral update is
+\begin{align}
+\xi_{k+1}^{\rm cand}
+&=\Pi_{[-\xi_{\max},\xi_{\max}]}
+(\xi_k+h_c\tilde x_k),\\
+\xi_{i,k+1}
+&=\begin{cases}
+\xi_{i,k},&
+|f^{\rm cand}_{i,k}|>F_i^{\rm bound}\ \text{and}\
+\operatorname{sgn}(f^{\rm cand}_{i,k})
+=\operatorname{sgn}(\tilde x_{i,k}),\\
+\xi_{i,k+1}^{\rm cand},&\text{otherwise},
+\end{cases}
+\end{align}
+where $f^{\rm cand}=K\tilde x+K_I\xi^{\rm cand}+D\dot{\tilde x}$,
+$K_I=800$ and $\xi_{\max}=0.05\,\mathrm{m\,s}$. The residual wrench is then
+clipped componentwise.
+
+The damping is tied to the stiffness by the heuristic
+$D(\phi)=2\zeta\sqrt{M_{\rm eff}K(\phi)}$, with $\zeta=0.7$ and
+$M_{\rm eff}=2\,\mathrm{kg}$. This is not exact critical damping of the
+configuration-dependent Cartesian inertia. The virtual force is realised by joint torques through a
 damped-least-squares Jacobian transpose, with a posture task in the null space and
 model-based gravity/Coriolis compensation:
 \begin{equation}
@@ -515,9 +535,10 @@ the motion) and the maximum $K_{\max}$. Precision values at or above
 $p_{\mathrm{ref}}$ are clipped to $w_i=1$. Using the $95$th percentile rather
 than the absolute maximum prevents a single exceptionally low-variance sample
 from compressing all other weights towards zero. Figure~\ref{fig:gains} illustrates the
-result: with no manual tuning, the cut-depth axis becomes stiff while the lateral
-and force directions stay compliant --- precisely the structure predicted by
-Section~\ref{sec:analysis}.
+result: the data-derived weights make the cut-depth axis comparatively stiff
+while lateral and force directions remain more compliant. The mapping is not
+parameter free: its percentile normalisation and stiffness bounds are fixed
+design choices.
 
 \begin{figure}[h]
 \centering
@@ -578,25 +599,28 @@ precision-derived value $K^{\text{pos}}\unit{N\,m^{-1}}$ of \eqref{eq:precision}
 weighted by $1-q_f$. Because $q_f\!\to\!0$, this term dominates and the QP returns
 $K\!\approx\!K^{\text{pos}}$: the controller tracks the precision-weighted
 position skill.
-\item The box constraint $K_{\min}\le K\le K_{\max}$ keeps the stiffness in a safe
-physical range.
-\item The \emph{force-saturation} constraint $|K_i\xt_i|\le F^{\text{bound}}_i$
-guarantees the commanded force on each axis never exceeds the demonstrated force
-limit $F^{\text{bound}}_i\unit{N}$ --- i.e.\ the desired forces act as
-\emph{constraints}, as required.
+\item The box constraint $K_{\min}\le K\le K_{\max}$ keeps stiffness in the
+configured numerical range; hardware safety is not evaluated.
+\item The constraint $|K_i\xt_i|\le F^{\text{bound}}_i$ bounds the
+proportional residual-wrench component. The complete residual, including
+integral and damping terms, is clipped separately. Neither bound directly
+constrains measured contact force.
 \end{itemize}
-The damping follows from $K^\star$ by the critical-damping rule. The QP is tiny
-(three variables) and solves in well under a millisecond (OSQP), so it runs in the
-real-time loop.
+The damping follows from $K^\star$ by the fixed damping-ratio heuristic. The QP
+has three decision variables and is evaluated at every simulated control step;
+no wall-clock real-time guarantee is claimed. The raw solution is smoothed with
+the preceding gain and then reprojected onto the current error-dependent
+feasible interval before use.
 
-\paragraph{highlighting the contribution of the learned variance
-structure.} To establish that the performance gain originates from the
-\emph{specific} learned precision structure, rather than from gain adaptation per
-se, evaluation of the identical task and controller under four gain assignments is presented:
+\paragraph{Controlled comparison of learned variance structure.}
+To test whether performance is associated with the selected precision
+allocation, the identical task and controller are evaluated under four gain assignments:
 (i) the identified precision; (ii) \emph{inverted} precision (regulating
 directions that were inconsistent and relaxing those that were consistent);
-(iii) precision \emph{permuted} across axes; and (iv) a baseline that tracks the
-demonstrated force directly. The metric is the \emph{cut-depth error} --- the
+(iii) precision \emph{permuted} across axes; and (iv) the original fixed-weight
+QP with learned gains disabled. The saved artifact historically calls the
+fourth condition ``direct force'', but it is not a measured-force feedback
+controller. The metric is the \emph{cut-depth error} --- the
 task-critical, demonstration-regulated axis --- evaluated over $12$ seeds with
 randomised contact parameters (Fig.~\ref{fig:variance_comparison},
 Table~\ref{tab:variance_comparison}).
@@ -906,42 +930,368 @@ finite simulation sample as a universal proof for all contact conditions.
 \section{State-driven task parametrization}
 % ============================================================================
 \label{sec:phase}
-The reference is a function of a \emph{phase} variable $\phi\in[0,1]$ to be decoupled from direct time dependency.
-This separates \emph{what} the skill is from \emph{how fast} it runs, which allows the same prior be executed at
-different speeds.
-The \emph{novice} contribution here is \emph{how} $\phi$ advances: not by a but by a correction driven by
-the robot's \emph{measured state} instead of a fixed time cycle that is affected by many factors like processor power,
-hardware, memory and process scheduling, system specifications or other real time application issues
-which might break the generalizability across different conditions.
-At every step, the phase $\hat\phi$ that best matches the current state to the
-learned trajectory over a short forward window, is evaluated then correct $\phi$ towards it:
+\subsection{Theoretical motivation}
+Contact-rich skill execution involves two distinct objects: the geometric and
+interaction structure of the skill, and the rate at which that structure is
+traversed.  A purely temporal reference conflates them by imposing
+$x_d(t)=x_r(t/T_d)$.  Under free motion this may be adequate; under contact,
+however, the realised state is affected by material deformation, friction,
+actuator limits, external perturbations and passivity intervention.  The
+temporal phase can therefore continue to advance while the physical system
+remains near an earlier task state.
+
+Let
 \begin{equation}
-\hat\phi=\arg\min_{\varphi\in[\phi,\,\phi+\ell_\phi]}
-   \left[\frac{\norm{x_{\text{ref}}(\varphi)-x}}{\rho_x}
-   +\mathbb{1}_{\text{contact}}\,
-     \frac{\big|\,\norm{F_{\text{ref}}(\varphi)}-\norm{F}\,\big|}{\rho_F}\right],
+z(t)=\begin{bmatrix}x(t)^\top&\norm{F(t)}_2\end{bmatrix}^{\!\top},
 \qquad
-\phi\leftarrow\mathrm{clip}\!\big(\phi+\dot\phi_{\text{nom}}+k_\phi(\hat\phi-\phi)\big).
+z_r(\phi)=
+\begin{bmatrix}x_r(\phi)^\top&\norm{F_r(\phi)}_2\end{bmatrix}^{\!\top}
+\label{eq:phase_augmented_state}
+\end{equation}
+denote the measured and reference task states, respectively.  The phase
+consistent with the realised task state is the local projection
+\begin{equation}
+\phi^\star(t)\in
+\arg\min_{\varphi\in\mathcal I(t)}
+\norm{W\big(z_r(\varphi)-z(t)\big)} ,
+\label{eq:ideal_state_phase}
+\end{equation}
+where $W$ is a dimensional normalisation/weighting matrix and
+$\mathcal I(t)\subseteq[0,1]$ restricts the admissible branch of the reference
+curve.  For a clock phase $\phi_c(t)=t/T_d$, define the synchronisation error
+$e_\phi(t)=\phi_c(t)-\phi^\star(t)$.  If $x_r$ is differentiable, the reference
+displacement induced solely by this loss of synchronisation satisfies the
+first-order relation
+\begin{equation}
+x_r(\phi_c)-x_r(\phi^\star)
+=x'_r(\phi^\star)e_\phi+\mathcal O(e_\phi^2).
+\label{eq:phase_desynchronisation}
+\end{equation}
+Thus a phase error is converted directly into a Cartesian reference error,
+scaled by the local path tangent.  During contact, this error is further mapped
+through the impedance into a commanded wrench.  Continuing a clock-driven
+reference during arrested motion can consequently increase both tracking
+error and demanded interaction power, even when the geometric prior itself is
+appropriate.
+
+State-driven parametrisation addresses this synchronisation problem by treating
+phase as an internal progress coordinate inferred from the realised task
+state, rather than as elapsed time alone.  This has three theoretical
+consequences.  First, it separates the phase-indexed task manifold
+$\mathcal M=\{z_r(\phi):\phi\in[0,1]\}$ from its temporal traversal law.
+Second, local projection onto $\mathcal M$ makes reference selection dependent
+on physical task progress.  Third, constraining the phase law to be
+non-negative preserves the causal ordering of approach, engagement, cutting
+and termination.  For the present controller, state projection, nominal
+temporal progression and the energy-tank gate are combined in a sampled-data
+phase law; the precise construction follows.
+
+\subsection{Phase-domain skill representation}
+Let the learned behaviour prior be the phase-indexed curve
+\begin{equation}
+\mathcal B(\phi)
+=\big(x_r(\phi),\,x'_r(\phi),\,F_r(\phi),\,K(\phi),\,D(\phi)\big),
+\qquad \phi\in[0,1],
+\label{eq:phase_prior}
+\end{equation}
+where a prime denotes differentiation with respect to phase.  For any absolutely continuous,
+non-decreasing phase $\phi(t)$, the commanded position and its physically
+consistent velocity satisfy
+\begin{equation}
+x_d(t)=x_r(\phi(t)),\qquad
+\dot x_d(t)=x'_r(\phi(t))\dot\phi(t).
+\label{eq:phase_chain_rule}
+\end{equation}
+Temporal scaling changes $\dot x_d$ without changing the image of the path.
+If the demonstration has
+duration $T_d$ and the requested dimensionless speed multiplier is
+$s_\phi>0$, the ungated nominal phase rate is
+\begin{equation}
+\dot\phi_{\rm nom}=\frac{s_\phi}{T_d},
+\qquad
+T_{\rm exec}^{\rm nom}=\frac{T_d}{s_\phi}.
+\label{eq:nominal_phase_rate}
+\end{equation}
+This defines the nominal traversal law prior to state and passivity adaptation.
+
+\subsection{State-to-phase observation}
+At controller sample $k$, let $\phi_k$ be the phase used to evaluate the prior,
+$x_k$ the measured TCP position, and $F_k$ the filtered measured interaction
+force.  The stored reference contains $N$ uniformly spaced knots
+\begin{equation}
+\Phi_N=\left\{\phi^{(j)}=\frac{j}{N-1}:j=0,\ldots,N-1\right\}.
+\end{equation}
+Rather than searching the entire curve, the implementation forms the local
+candidate set
+\begin{equation}
+\mathcal C_k
+=\left\{\phi^{(j)}\in\Phi_N:
+\max(0,\phi_k-\ell_\phi^-)\leq\phi^{(j)}
+\leq\min(1,\phi_k+\ell_\phi^+)\right\},
+\label{eq:phase_candidates}
+\end{equation}
+where $\ell_\phi^-=\ell_\phi^+=0.1$.  The backward branch permits measured
+lag to retard the reference; monotonicity is imposed by the phase dynamics
+rather than by excluding earlier candidates.
+The normalising scales used in the implementation are
+\begin{equation}
+\rho_x=\norm{x_r(1)-x_r(0)}_2+\varepsilon_x,\qquad
+\rho_F=\max_{\phi^{(j)}\in\Phi_N}\norm{F_r(\phi^{(j)})}_2+\varepsilon_F,
+\label{eq:phase_scales}
+\end{equation}
+with $\varepsilon_x,\varepsilon_F>0$.  Define the contact indicator
+\begin{equation}
+c_k=\mathbb 1_{\{\norm{F_k}_2>F_{\rm contact}\}}.
+\label{eq:contact_indicator}
+\end{equation}
+The phase-observation cost is
+\begin{equation}
+J_k(\varphi)=
+\begin{cases}
+\displaystyle
+\frac{\norm{x_r(\varphi)-x_k}_2}{\rho_x},
+&c_k=0,\\[2mm]
+\displaystyle
+\frac{1}{2}\frac{\norm{x_r(\varphi)-x_k}_2}{\rho_x}
++\frac{1}{2}
+\frac{\left|\norm{F_r(\varphi)}_2-\norm{F_k}_2\right|}{\rho_F},
+&c_k=1.
+\end{cases}
+\label{eq:phase_observation_cost}
+\end{equation}
+The observed progress is the discrete nearest point
+\begin{equation}
+\hat\phi_k\in\arg\min_{\varphi\in\mathcal C_k}J_k(\varphi),
+\label{eq:phase_estimator}
+\end{equation}
+with the first minimising knot resolving ties.  Retaining the position term
+during contact mitigates non-uniqueness of the force-magnitude map
+$\phi\mapsto\norm{F_r(\phi)}_2$.  The bounded search interval selects a local
+branch when the reference curve is not globally injective.
+
+\subsection{Sampled-data phase dynamics}
+Let $h_c$ denote the controller period and let the energy-tank gate
+$\gamma_{T,k}\in[0,1]$ be defined by \eqref{eq:tank_disc}.  The nominal
+increment available at sample $k$ is
+\begin{equation}
+\Delta\phi_k^{\rm nom}
+=h_c\gamma_{T,k}\dot\phi_{\rm nom}
+=\gamma_{T,k}\frac{s_\phi h_c}{T_d}.
+\label{eq:nominal_phase_increment}
+\end{equation}
+The raw state correction and its implemented increment limiter are
+\begin{align}
+r_k&=h_c k_\phi(\hat\phi_k-\phi_k),
+\qquad k_\phi=2.0\unit{s^{-1}},\\
+\delta\phi_k
+&=\operatorname{sat}_{[-\Delta\phi_k^{\rm nom},
+\,2\Delta\phi_k^{\rm nom}]}(r_k),
+\label{eq:phase_correction}
+\end{align}
+where
+$\operatorname{sat}_{[a,b]}(z)=\min\{b,\max\{a,z\}\}$.
+The complete recursion is therefore
+\begin{equation}
+\boxed{\quad
+\phi_{k+1}
+=\Pi_{[0,1]}\!\left(
+\phi_k+\Delta\phi_k^{\rm nom}+\delta\phi_k
+\right),\quad}
 \label{eq:phase}
 \end{equation}
-The bracketed cost compares where the robot \emph{is} to where each candidate
-phase $\varphi$ assumes it \emph{should be}; $\ell_\phi$ is the forward
-phase-search horizon. The first term is the position mismatch
-$\norm{x_{\text{ref}}(\varphi)-x}\unit{m}$ normalised by a scale
-$\rho_x\unit{m}$; the second, active only in contact
-($\mathbb{1}_{\text{contact}}$), compares force magnitudes normalised by
-$\rho_F\unit{N}$ --- force is the more informative cue once the scalpel is engaged.
-The update mixes the nominal clock rate $\dot\phi_{\text{nom}}\unit{s^{-1}}$ with a
-proportional correction of gain $k_\phi\in[0,1]$ towards the state estimate
-$\hat\phi$. Setting $k_\phi=0$ recovers a pure time clock; with $k_\phi>0$ the
-phase \emph{tracks the robot's actual progress} --- it slows or pauses if the
-robot is held back and speeds up if it runs ahead. Searching only forward
-($\varphi\ge\phi$) guarantees monotone progress, so the skill never regresses to an
-earlier stage. This provides speed-adaptability and
-robustness to disturbance execution.
+where $\Pi_{[0,1]}(z)=\min\{1,\max\{0,z\}\}$.  All terms in the recursion are
+dimensionless phase increments.
+
+\begin{proposition}[Monotonicity and bounded phase rate]
+\label{prop:phase_monotonicity}
+For $\phi_0\in[0,1]$, $\gamma_{T,k}\in[0,1]$, and
+$\dot\phi_{\rm nom}\geq0$, recursion \eqref{eq:phase} satisfies
+\begin{equation}
+0\leq\phi_k\leq1,\qquad
+0\leq\phi_{k+1}-\phi_k
+\leq3h_c\gamma_{T,k}\dot\phi_{\rm nom}.
+\label{eq:phase_increment_bound}
+\end{equation}
+\end{proposition}
+\begin{proof}
+Projection gives $0\leq\phi_{k+1}\leq1$.  From
+\eqref{eq:phase_correction},
+$-\Delta\phi_k^{\rm nom}\leq\delta\phi_k
+\leq2\Delta\phi_k^{\rm nom}$, hence the unprojected increment belongs to
+$[0,3\Delta\phi_k^{\rm nom}]$.  Projection at the upper endpoint can only
+reduce a non-negative increment, proving \eqref{eq:phase_increment_bound}.
+\end{proof}
+
+Setting $k_\phi=0$ removes state matching and gives a tank-gated clock.
+Setting additionally $\gamma_{T,k}=1$ gives uniform time parametrisation.
+For $k_\phi>0$, the bidirectional state observation retards phase when
+$\hat\phi_k<\phi_k$ and accelerates it when $\hat\phi_k>\phi_k$.  The lower
+saturation limit permits complete cancellation of the nominal increment but
+precludes reversal; the upper limit bounds the total rate by three times the
+tank-gated nominal rate.  In addition, as $T_k\downarrow T_{\min}$,
+$\gamma_{T,k}\downarrow0$, which drives both
+$\Delta\phi_k^{\rm nom}$ and its permitted correction to zero.  This
+separation prevents phase reversal while coupling task timing to the available
+energy budget.  The implemented construction is therefore a
+\emph{bidirectionally corrected, tank-gated state-dependent parametrisation}.  It
+provides temporal scaling through $s_\phi$, measured-state correction through
+\eqref{eq:phase_estimator}, monotone bounded progression through
+\eqref{eq:phase}, and energy-dependent slowing through $\gamma_{T,k}$.
+
+\subsection{Controlled phase--state desynchronisation}
+\label{sec:holdback}
+Workpiece motion changes contact geometry but does not necessarily create a
+repeatable lag along the cutting path.  A separate exogenous perturbation was
+therefore introduced to test the causal property for which state-driven
+parametrisation was designed.  Let
+\begin{equation}
+\hat t_r(\phi)=
+\frac{x'_r(\phi)}{\norm{x'_r(\phi)}_2+\varepsilon_t}
+\label{eq:path_tangent_unit}
+\end{equation}
+denote the regularised unit tangent to the reference path.  During the
+prescribed interval $[t_a,t_b]$, the MuJoCo external-force input on the scalpel
+body is augmented by
+\begin{equation}
+f_h(t,\phi)=
+-F_h\,\hat t_r(\phi)\,
+\mathbb 1_{\{t_a\leq t\leq t_b\}},
+\qquad
+F_h=120\unit{N},\quad
+(t_a,t_b)=(0.9,1.4)\unit{s}.
+\label{eq:holdback_force}
+\end{equation}
+This \emph{holdback force} acts opposite to instantaneous path progression and
+is added to, rather than substituted for, the identified material reaction.
+It enters the robot dynamics through the physical external-wrench channel; it
+does not modify $\phi$, $\hat\phi$ or $\dot\phi$ numerically.  Its causal route
+is therefore
+\[
+f_h\longrightarrow(x,\dot x,F)
+\longrightarrow\hat\phi
+\longrightarrow\dot\phi .
+\]
+The perturbation is not part of nominal cutting or of the learned controller.
+It is a validation input analogous to an impulse or step disturbance in a
+closed-loop robustness experiment.  Runtime configuration consequently
+defaults it to disabled; its enable flag, amplitude and time interval are
+independent of the switch selecting state-driven or time-driven phase.
+
+\subsection{Factorial runtime ablation}
+The evaluation crossed three binary factors: static versus vertically moving
+workpiece, nominal versus holdback-perturbed execution, and state-driven versus
+time-driven phase.  The time-driven condition sets the state-correction term to
+zero while retaining the learned variable impedance, material model,
+energy-tank gate and torque projection.  Thus the comparison does not remove a
+safety mechanism.  Five paired randomised-physics seeds were used; within each
+scenario and seed the two phase laws received identical friction, contact
+solver parameters, material mass and initial joint perturbation.
+
+The static and moving conditions use the same world-frame desired position and
+velocity trajectories. Workpiece motion is applied only to the simulated
+material joint and is not added to either reference; it is therefore an
+external geometric perturbation, matching the experimental convention used
+for the holdback force. The material surface used by the contact model remains
+live, so only the environment geometry changes.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Factorial task-parametrisation comparison. Entries are mean
+$\pm$ standard deviation over $N=5$ paired seeds; S and T denote state-driven
+and time-driven phase, respectively.}
+\label{tab:phase_factorial}
+\begin{tabular}{lccccc}
+\toprule
+Workpiece & Holdback &
+\multicolumn{2}{c}{Cut-depth RMSE [mm]} &
+\multicolumn{2}{c}{Position RMSE [mm]} \\
+& & S & T & S & T \\
+\midrule
+Static & off & $2.533\pm1.031$ & $2.598\pm1.140$
+             & $17.944\pm18.861$ & $20.917\pm24.734$ \\
+Static & on  & $2.957\pm0.888$ & $3.171\pm1.407$
+             & $76.555\pm30.224$ & $82.926\pm46.662$ \\
+Moving & off & $8.816\pm8.069$ & $8.816\pm8.286$
+             & $32.298\pm32.363$ & $28.364\pm32.250$ \\
+Moving & on  & $9.272\pm7.689$ & $9.501\pm7.853$
+             & $75.904\pm18.168$ & $63.490\pm31.489$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{task_parametrization_runtime_cork.png}
+\caption{Representative runtime phase evolution for static and moving
+workpieces, with and without the controlled holdback.  The red interval is the
+physical perturbation \eqref{eq:holdback_force}.  In nominal runs the two laws
+remain close.  Under holdback, the measured projection $\hat\phi$ falls behind
+the commanded phase and the state-driven law retards progress, whereas the
+time-driven phase continues at its clock rate.}
+\label{fig:phase_runtime_factorial}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{task_parametrization_performance_cork.png}
+\caption{Performance over the complete factorial study. Error bars show one
+standard deviation across paired randomised-physics seeds.  State-dependent
+timing trades execution time for synchronisation when measured progress lags;
+its rate can also exceed the clock rate when the state projection is ahead.}
+\label{fig:phase_performance_factorial}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{task_execution_four_case_static.png}
+\caption{Deterministic static-workpiece execution without domain randomisation.
+Rows cross state-driven/time-driven phase with holdback disabled/enabled;
+columns show the Cartesian path, axis errors, phase dynamics and interaction
+force. Every 3-D panel uses the same canonical geometric reference and identical
+axis limits; only the executed trajectory changes. Nominal cut-depth RMSE is
+$1.776$ and $1.791$\,mm for state- and time-driven execution, respectively.
+Under holdback it is $2.424$ and $2.393$\,mm. The corresponding full Cartesian
+RMSE increases to $83.208$ and $76.179$\,mm. Thus this 120\,N test demonstrates
+constraint handling and phase response under a severe disturbance, not
+high-accuracy rejection of that disturbance.}
+\label{fig:execution_four_static}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{task_execution_four_case_moving.png}
+\caption{Deterministic moving-workpiece execution under the same four
+phase/holdback conditions as Fig.~\ref{fig:execution_four_static}. Nominal
+cut-depth RMSE is $2.372$\,mm for state-driven timing and $2.384$\,mm for
+time-driven timing. Under holdback the corresponding values are $3.148$ and
+$3.442$\,mm, and full Cartesian RMSE is $72.541$ and $51.952$\,mm. Workpiece
+motion changes only the environment geometry: it does not translate the
+reference. Loss of contact can consequently occur when the material moves away
+from the fixed commanded path.}
+\label{fig:execution_four_moving}
+\end{figure}
+
+All $40$ executions completed and the torque-port power-violation fraction was
+zero.  The state-driven law has slightly lower mean cut-depth RMSE in three
+cells and is effectively equal in moving nominal execution. Full Cartesian
+RMSE, however, is higher for state-driven timing in both moving-workpiece
+cells. None of the paired cut-depth comparisons is significant
+($p\in[0.4375,0.625]$). The large seed-to-seed dispersion, including a moving
+workpiece outlier, precludes a general accuracy-improvement claim. The supported
+result is narrower: state feedback changes phase progression while preserving
+the implemented torque-port constraint and task completion. It does not reject
+a 120\,N holdback with small Cartesian error, nor does it establish invariance
+to workpiece motion.
+Because learned precision-dependent impedance, the per-material cutting model,
+force saturation, energy tank and torque projection remain active in every
+cell, completion and constraint satisfaction evaluate the integrated proposed
+architecture in both workpiece conditions.  The within-cell S--T difference,
+by contrast, isolates only the incremental effect of state-dependent timing;
+it must not be attributed to the other contributions.
 
 % ============================================================================
-\section{Stability and passivity analysis}
+\section{Conditional stability analysis and discrete torque-port energy accounting}
 % ============================================================================
 \label{sec:stab}
 The scalpel obeys the task-space dynamics $\Lambda\ddot x+C\dot x+g=f+f_{\text{ext}}$, where $\Lambda\unit{kg}$ is
@@ -955,8 +1305,8 @@ Substituting the control law \eqref{eq:imp} (with gravity/Coriolis cancelled by
 a (time-varying) mass--spring--damper in the tracking error driven by the contact
 force.
 
-\subsection{Passivity --- the controller cannot create energy}
-\begin{proposition}[Continuous-time tank passivity]
+\subsection{Ideal continuous-time passivity condition}
+\begin{proposition}[Continuous-time tank passivity under exact accounting]
 \label{prop:pass}
 At the Cartesian contact port, the input--output map
 $f_{\text{ext}}\mapsto\dot x$ is passive under the following tank dynamics: With
@@ -982,9 +1332,10 @@ which is recharged by the power dissipated through damping. When the tank
 reaches its lower bound, stiffness growth is inhibited ($\dot K\!\le\!0$) and the
 phase is frozen ($\dot\phi\!\to\!0$), so the controller cannot generate energy, instead,
 it reduces the motion velocity to avoid instant change of dynamics.
-This is the continuous-time passivity argument used to design the implementation.
+This is an ideal continuous-time design condition. The implemented
+sampled-data torque-port balance is stated separately below.
 
-\subsection{Implemented torque-port passivity}
+\subsection{Implemented discrete torque-port tank}
 The simulation controller enforces the tank constraint at the joint torque port,
 where the mechanical power supplied by the actuators is $P_\tau=\dot q^\top\tau$.
 At every control step the nominal torque
@@ -1046,51 +1397,54 @@ therefore the minimum-norm torque modification that satisfies the power bound.
 This expression is also used as a fallback if the numerical QP does not return
 a solution.
 
-Before the torque projection, the tank state and the phase gate are updated as
+The power limit is computed from $T_k$, the torque is projected, and storage is
+then settled from the delivered joint power:
 \begin{equation}
-T_{k+1}=\mathrm{clip}\!\left(
-T_k+\big(P_{\rm dis}-P_{\rm inj}\big)h_c,\,
-T_{\min},\,T_{\max}\right),
+P_k=\dot q_k^\top\tau_{{\rm safe},k},\qquad
+T_{k+1}=\mathrm{clip}\!\left(T_k-h_cP_k,\,
+T_{\min},T_{\max}\right),
 \qquad
-\gamma_T=\tanh\!\left(\frac{T_{k+1}-T_{\min}}{T_{\rm ref}}\right),
+\gamma_{T,k+1}=\tanh\!\left(\frac{T_{k+1}-T_{\min}}{T_{\rm ref}}\right),
 \label{eq:tank_disc}
 \end{equation}
 where $T_k\unit{J}$ and $T_{k+1}\unit{J}$ are the tank energies at consecutive
 samples, $T_{\min}\unit{J}$ is the protected lower bound,
 $T_{\max}\unit{J}$ is the storage ceiling, and $\mathrm{clip}(\cdot)$ enforces
-these bounds. The collected damping power is
-$P_{\rm dis}=\dot{\tilde x}^{\top}D\dot{\tilde x}\unit{W}$. The withdrawn power
-$P_{\rm inj}=P_{\rm gain}+P_{\rm ref}$ comprises the positive power
-$P_{\rm gain}$ associated with increasing $K(\phi)$ and the positive power
-$P_{\rm ref}$ associated with motion of $x_d(\phi)$. The reference energy
+these bounds. Positive commanded joint power depletes storage; negative power
+recharges it, with excess absorbed energy discarded at $T_{\max}$. The
+projection ensures $h_cP_k\le T_k-T_{\min}$ for positive $P_k$. The
+implementation still logs damping, gain-variation and reference-motion powers
+as diagnostics, but does not use them for a second tank update. The reference energy
 $T_{\rm ref}\unit{J}$ sets the transition scale of the phase gate:
-$\gamma_T\in[0,1]$ approaches zero as the usable tank energy
+$\gamma_{T,k+1}\in[0,1]$ approaches zero as the usable tank energy
 $T_{k+1}-T_{\min}$ vanishes and modulates the phase rate according to
 $\dot\phi=\gamma_T\dot\phi_{\rm nom}$. Increasing $T_{\rm ref}$ makes this
 transition more gradual over the available energy range.
 
 The resulting closed-loop sequence couples the timing, impedance and
-joint-torque layers. The available tank energy first determines $\gamma_T$ and
-hence the phase rate. The updated phase selects $x_d$, $\dot x_d$, $K(\phi)$
-and $D(\phi)$, from which the impedance law produces $f$. The task mapping,
-null-space posture term and dynamic compensation then form $\tau_{\rm nom}$.
-After collection of $P_{\rm dis}$ and withdrawal of $P_{\rm inj}$, the updated
-tank state determines $P_{\max}$, and the projection produces
+joint-torque layers.  At interval $k$, $T_k$ determines $\gamma_{T,k}$ and the
+planned increment \eqref{eq:phase}; the current phase selects
+$x_d$, $\dot x_d$, $K(\phi)$ and $D(\phi)$, from which the impedance law
+produces $f$. The current tank determines $P_{\max}$, and the task mapping,
+null-space term, dynamic compensation and projection produce
 $\tau_{\rm safe}$ satisfying
-$\dot q^\top\tau_{\rm safe}\le P_{\max}$. Phase gating therefore reduces the
-energy demand generated by reference evolution, while the torque projection
-enforces the joint-port power bound at every sample.
+$\dot q^\top\tau_{\rm safe}\le P_{\max}$. The delivered power then produces
+$T_{k+1}$ and the next phase gate through \eqref{eq:tank_disc}. The nominal
+experiments use $T_0=50$\,J, $T_{\max}=100$\,J and
+$T_{\min}=0.001$\,J.
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.97\textwidth]{passivity_adversarial_cork.png}
 \caption{Positive-power perturbation validation on cork. A known positive joint-power
-burst is injected before the torque projection. Without the tank (top row),
-$\dot q^\top\tau$ exceeds the counterfactual budget for $12.0\%$ of the samples
-and reaches a maximum margin of $+5876$\,W. With the tank projection (middle) and
-with tank plus phase gating (bottom), the implemented inequality
-$\dot q^\top\tau_{\rm safe}-P_{\max}\le0$ is satisfied for the whole run
-($0.0\%$ violations). The red shading marks the perturbation window.}
+burst is injected before the torque projection. Without projection (top row),
+$\dot q^\top\tau$ exceeds the counterfactual budget for $65.4\%$ of samples
+and reaches a maximum margin of $+20{,}239$\,W. With torque projection
+(middle and bottom), the implemented inequality
+$\dot q^\top\tau_{\rm safe}-P_{\max}\le0$ has $0.0\%$ logged violations.
+With the deliberately small $1$\,J validation tank, phase gating stops progress
+at $\phi=0.25$ after storage depletion; safety intervention therefore does not
+imply task completion.}
 \label{fig:pass_adv}
 \end{figure}
 
@@ -1100,25 +1454,27 @@ $\dot q^\top\tau_{\rm safe}-P_{\max}\le0$ is satisfied for the whole run
 \toprule
 Controller & completion & min. tank (J) & budget violation & max margin (W)\\
 \midrule
-No tank & $100\%$ & $0.001$ & $12.0\%$ & $+5876$\\
-Tank projection & $100\%$ & $0.907$ & $0.0\%$ & $0$\\
-Tank + phase gate & $100\%$ & $0.921$ & $0.0\%$ & $0$\\
+No projection & $100\%$ & $0.001$ & $65.4\%$ & $+20{,}239$\\
+Tank projection & $100\%$ & $0.001$ & $0.0\%$ & $0$\\
+Tank + phase gate & $0\%$ ($\phi_f=0.25$) & $0.001$ & $0.0\%$ & $0$\\
 \bottomrule
 \end{tabular}
-\caption{Torque-port passivity validation under a positive-power
-injection. The tanked controllers complete the cut and never exceed the
-available energy budget.}
+\caption{Torque-port storage and power validation under positive-power
+injection. Projection enforces the sampled bound. With phase gating and the
+stress-test's $1$\,J tank, depleted storage halts the task rather than violating
+the bound.}
 \label{tab:pass_adv}
 \end{table}
 
-This is the empirical passivity proof artifact used in this sudy. The
+This is an empirical validation of the implemented sampled storage and power
+accounting, not a universal passivity or completion proof. The
 reconstructed Cartesian residual $\dot V-f_{\text{ext}}^\top\dot x$ is still
 plotted as a diagnostic in Fig.~\ref{fig:stab}, but it depends on finite
 differences, force-estimator sign conventions and an approximate Cartesian
 inertia; the implemented guarantee is therefore stated and validated at the
 torque port $\dot q^\top\tau$.
 
-\subsection{Exponential stability --- the error decays at a guaranteed rate}
+\subsection{Sufficient exponential-stability conditions for idealised error dynamics}
 The stability argument is first established for nominal regulation and is then
 extended to phase-varying gains and bounded perturbations.
 
@@ -1346,7 +1702,7 @@ Corollary~\ref{cor:variable_exp} states the uniform margin required while the
 learned gains evolve with phase, and Proposition~\ref{prop:practical_exp}
 accounts for bounded workpiece motion, contact forces and compensation error.
 Figure~\ref{fig:stab} reports the corresponding empirical diagnostics. The
-cut-depth error remains small and the storage remains bounded. The fitted decay
+logged cut-depth error and storage remain bounded in the plotted episodes. The fitted decay
 of the full Cartesian error is interpreted cautiously because low-precision
 axes are intentionally assigned low stiffness and therefore have smaller
 contraction margins.
@@ -1354,10 +1710,12 @@ contraction margins.
 \paragraph{Implementation status.} The live tank state determines the
 torque-level budget in \eqref{eq:pass_qp}, while phase progression is gated by
 \eqref{eq:tank_disc}. The positive-power perturbation validation in
-Fig.~\ref{fig:pass_adv} and Table~\ref{tab:pass_adv} evaluates the implemented
-passivity constraint. Equations~\eqref{eq:Q_condition}--\eqref{eq:ISS_bound}
-separately state the nominal, uniform time-varying and perturbed stability
-conditions against which the logged trajectories are assessed.
+Fig.~\ref{fig:pass_adv} and Table~\ref{tab:pass_adv} evaluate the implemented
+storage and torque-power constraints. Equations~\eqref{eq:Q_condition}--\eqref{eq:ISS_bound}
+separately state nominal, uniform time-varying and perturbed sufficient
+conditions. The runtime does not calculate $P(\phi)$, $Q(\phi)$, $q_*$ or
+$\mu$; the plots therefore diagnose boundedness but do not verify the matrix
+conditions of the theorems.
 
 % ============================================================================
 \section{Material interaction model}
@@ -1524,57 +1882,36 @@ $(F_{\rm mat}^{\rm cut})^2/(2k_{\rm mat})$, proving continuity.
 \end{proof}
 
 \paragraph{Parameter identification.}
-For each material, let
-$\mathcal D_{\rm mat}=\{(d_j,y_j,\omega_j)\}_{j=1}^{N_{\rm mat}}$ contain the penetration
-$d_j$, measured force magnitude $y_j=\norm{F_j}$ and non-negative sample weight
-$\omega_j$. The two material parameters are obtained from the constrained nonlinear
-least-squares problem
+For each material, valid samples satisfy $d_j>10^{-4}\,\mathrm m$ and have
+force magnitude $y_j=\norm{F_j}$. The implemented estimator solves the bounded
+robust nonlinear least-squares problem
 \begin{equation}
 \hat\theta_{\rm mat}
 =\arg\min_{\substack{k>0,\;F^{{\rm cut}}>0}}
-\sum_{j=1}^{N_{\rm mat}}\omega_j
-\left[y_j-\min\!\big(kd_j,F^{{\rm cut}}\big)\right]^2 .
+\sum_{j=1}^{N_{\rm mat}}
+\rho_{\rm softL1}\!\left(
+y_j-\min\!\big(kd_j,F^{{\rm cut}}\big)\right),
 \label{eq:material_identification}
 \end{equation}
-For a fixed division into a loading set
-$\mathcal L=\{j:kd_j<F^{\rm cut}\}$ and plateau set
-$\mathcal P=\{j:kd_j\ge F^{\rm cut}\}$, the estimates have the closed forms
-\begin{equation}
-\hat k_{\rm mat}
-=\frac{\sum_{j\in\mathcal L}\omega_jd_jy_j}
-       {\sum_{j\in\mathcal L}\omega_jd_j^2},
-\qquad
-\hat F_{\rm mat}^{\rm cut}
-=\frac{\sum_{j\in\mathcal P}\omega_jy_j}
-       {\sum_{j\in\mathcal P}\omega_j}.
-\label{eq:material_closed_form}
-\end{equation}
-These expressions show separately how the loading samples determine stiffness
-and how the steady cutting samples determine the plateau. The partition is
-updated using $d_c=\hat F_{\rm mat}^{\rm cut}/\hat k_{\rm mat}$ until the branch
-assignments are consistent. A unique estimate for a fixed non-empty partition
-requires
-$\sum_{j\in\mathcal L}\omega_jd_j^2>0$ and
-$\sum_{j\in\mathcal P}\omega_j>0$.
+with numerical bounds
+$1\le k\le10^6\,\mathrm{N\,m^{-1}}$ and
+$1\le F^{\rm cut}\le500\,\mathrm N$. The initial plateau is the 75th
+percentile of valid force magnitudes and the initial stiffness makes that
+plateau occur at $0.3$ times the median valid depth. If optimization fails, the
+initial values are retained; if fewer than three valid samples exist, the code
+uses $(8000\,\mathrm{N\,m^{-1}},50\,\mathrm N)$. Thus the estimator is now the
+implemented robust fit, but its parameters are still calibrated and evaluated
+on demonstration-derived data rather than an independent test set.
 
-The demonstrated reaction direction can be estimated independently from the
-normalised force samples:
+The reaction direction used by the implementation is the negative
+instantaneous desired-force direction:
 \begin{equation}
-\hat F_d(\phi)
-=\frac{\sum_{j\in\mathcal N(\phi)}
-\omega_j\,F_j/(\norm{F_j}+\varepsilon_F)}
-{\left\|
-\sum_{j\in\mathcal N(\phi)}
-\omega_j\,F_j/(\norm{F_j}+\varepsilon_F)
-\right\|+\varepsilon_r},
+\hat r(\phi)=-\frac{F_d(\phi)}{\norm{F_d(\phi)}+\varepsilon_F},
 \label{eq:direction_identification}
 \end{equation}
-where $\mathcal N(\phi)$ is a neighbourhood of the phase and
-$\varepsilon_F,\varepsilon_r>0$ regularise small measured forces and a
-near-zero directional resultant. This separates identification of the scalar
-material strength from identification of the demonstrated force direction; the
-reaction direction applied to the blade is $-\hat F_d(\phi)$ as in
-\eqref{eq:cut}.
+with zero reaction below the numerical force threshold. Hence the force
+direction is replayed from the prior and is not independently identified or
+predicted by the material law.
 
 The geometric box contact is disabled during the cutting experiment,
 $F_{\rm react}$ from \eqref{eq:cut} is applied to the blade, and the force
@@ -1624,13 +1961,12 @@ error peaks during the large demonstrated lateral swing.}
 \label{fig:calibrated}
 \end{figure}
 
-The same behaviour holds for the other two materials
-(Fig.~\ref{fig:calibrated_others}): on \textbf{PVC} the force tracks its higher
-$\sim\!86$\,N cutting plateau and on \textbf{penoplex} its $\sim\!63$\,N plateau,
-each within $\approx2$\,N RMSE and $100\%$ contact, on both static and moving
-workpieces. The force level is thus material-specific (set by the identified
-$F^{\text{cut}}_{\text{mat}}$ of Table~\ref{tab:material}) while the same
-controller and the same identification procedure are used throughout.
+Figure~\ref{fig:calibrated_others} reports the earlier material-model replay for
+PVC and penoplex. Those plots assess consistency of a model identified from the
+same demonstrations; they are not independent evidence of force-regulation
+accuracy. Moreover, their moving-workpiece traces were generated under an
+earlier reference convention and are not used to support the fixed-world
+reference ablation of Section~\ref{sec:holdback}.
 
 \begin{figure}[h]
 \centering
@@ -1651,37 +1987,48 @@ structure} (Table~\ref{tab:variance_comparison},
 Fig.~\ref{fig:variance_comparison}): the identified
 precision attains the lowest cut-depth error --- $26$--$48\%$ below the inverted,
 permuted, and direct-force assignments --- on every stable seed ($p=0.001$).
-\item \textbf{Force tracking} (Table~\ref{tab:material}, Fig.~\ref{fig:calibrated}):
-with the identified material the measured force follows the demonstrated force to
-$\approx2$\,N RMSE with $100\%$ contact, on both static and moving workpieces and
-across three materials.
-\item \textbf{Position tracking}: cut-depth (Z) error $\approx2$\,mm; the lateral
-(Y) error peaks $\approx50$\,mm during the large $\pm150$\,mm demonstrated lateral
-swing --- the expected consequence of the deliberately low stiffness assigned to
-that low-precision axis.
+\item \textbf{Material-model replay} (Table~\ref{tab:material},
+Fig.~\ref{fig:calibrated}): the identified reaction reproduces the demonstrated
+force scale in the calibration setting. Because identification and assessment
+use the same demonstration source, this is a consistency check rather than an
+independent force-control validation.
+\item \textbf{Position tracking}: deterministic nominal cut-depth RMSE is
+$1.776$--$2.384$\,mm in the four-case cork comparison. Full Cartesian error is
+larger, and the 120\,N holdback produces $51.952$--$83.208$\,mm RMSE; no
+high-precision Cartesian tracking claim is made.
 \item \textbf{Passivity} (Fig.~\ref{fig:pass_adv}, Table~\ref{tab:pass_adv}):
 under positive joint-power perturbation, the controller without tank projection
-violates the available energy budget for $12.0\%$ of the samples
-($+5876$\,W maximum margin), while both tanked controllers satisfy
-$\dot q^\top\tau_{\rm safe}\le P_{\max}$ for the whole run.
+violates the available energy budget for $65.4\%$ of the samples
+($+20{,}239$\,W maximum margin), while both tanked controllers satisfy
+$\dot q^\top\tau_{\rm safe}\le P_{\max}$ for the whole run. With the deliberately
+small 1\,J stress-test tank, the phase-gated case halts at $\phi=0.250$ rather
+than completing.
 \item \textbf{Stability diagnostics} (Fig.~\ref{fig:stab}): nominal static and
 moving cuts remain bounded and complete the task; cut-depth error stays small.
 The exponential fit is reported as a diagnostic, while the full Cartesian error
 norm is interpreted carefully because low-precision axes are intentionally
 released.
 \item \textbf{Run monitoring}: Figure~\ref{fig:monitor} shows the monitored
-signals used to inspect runs: position, contact force, stiffness, tracking error
-and tank energy, each in its own units.
+signals for static and moving workpieces, with the validation holdback disabled
+and enabled: position, material reaction, stiffness, tracking error and tank
+energy, each in its own units.
 \end{itemize}
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.92\textwidth]{monitor_preview.png}
-\caption{Monitor snapshot reconstructed from one cork cutting episode
-($1299$ controller samples, final phase $1.000$). The panels show Cartesian
-position (mm), material reaction force per axis (N, desired vs measured),
-commanded
-stiffness (kN/m), and position tracking error (mm) together with tank energy (J).}
+\includegraphics[width=\textwidth]{monitor_preview.png}
+\caption{Runtime monitor reconstructed from four state-driven cork episodes:
+static nominal, static with $120$\,N holdback, moving nominal, and moving with
+holdback (columns from left to right). Rows show Cartesian position,
+axis-resolved material reaction, learned stiffness, and absolute tracking error
+with tank energy. Red shading identifies the validation-force interval
+$[0.9,1.4]$\,s; the plotted reaction channel remains the identified material
+reaction and does not re-label the separately applied holdback as contact
+force. The desired world-frame path is common to all columns, although its
+time-indexed samples differ when state-driven phase timing changes.
+Representative cut-depth RMSE is $1.776$, $2.424$, $2.372$ and $3.148$\,mm,
+respectively. The holdback columns exhibit large Cartesian displacement and
+must be interpreted as stress tests rather than precision-tracking results.}
 \label{fig:monitor}
 \end{figure}
 

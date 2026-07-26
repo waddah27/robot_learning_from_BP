@@ -35,10 +35,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIG_DIR = os.path.join(ROOT, "results", "figures")
 
 
-def run_episode(material="cork"):
+def run_episode(material="cork", moving=False, holdback_force=0.0):
     wp = Material().from_work_piece()
     wp.bp_data = material
-    wp.is_movable = False
+    wp.is_movable = moving
 
     robot = iiwa14().create(xml_path=ROBOT_SCENE, work_piece=wp)
     vic = ContinuousTrajectoryVIC(robot, use_behaviour_priors=True,
@@ -47,6 +47,9 @@ def run_episode(material="cork"):
     vic.use_learned_gains = True
     vic.variance_mode = "true"
     vic.use_cutting_model = True
+    vic.state_phase_enabled = True
+    vic.holdback_disturbance_enabled = holdback_force > 0.0
+    vic.holdback_force_N = holdback_force
 
     exp = straightCutting(robot)
     exp.controller = vic
@@ -57,6 +60,99 @@ def run_episode(material="cork"):
     except Exception:
         pass
     return log, vic.dt
+
+
+def plot_monitor_conditions(runs, fname="monitor_preview.png"):
+    """Four-condition monitor: static/moving × holdback off/on."""
+    fig, axes = plt.subplots(4, 4, figsize=(20, 12), squeeze=False)
+    colors = ["tab:red", "tab:green", "tab:blue"]
+    labels = ["X", "Y", "Z"]
+
+    for col, (title, (log, dt)) in enumerate(runs.items()):
+        phase = np.asarray(log["phase"], dtype=float)
+        time = np.arange(len(phase)) * dt
+        pos_des = np.asarray(log["pos_des_nom"], dtype=float) * 1e3
+        pos_act = np.asarray(log["pos_act"], dtype=float) * 1e3
+        f_react_des = -np.asarray(log["f_des"], dtype=float)
+        f_act = np.asarray(log["f_act"], dtype=float)
+        kp = np.asarray(log["kp"], dtype=float) / 1000.0
+        err = pos_des - pos_act
+        tank = np.asarray(log["tank"], dtype=float)
+        disturbed = np.asarray(log["holdback_force"], dtype=float) > 0.0
+
+        axes[0, col].set_title(title, fontsize=11)
+        for i, (color, label) in enumerate(zip(colors, labels)):
+            axes[0, col].plot(time, pos_des[:, i], ls="--", lw=0.8,
+                              color=color, alpha=0.55,
+                              label=f"{label} ref")
+            axes[0, col].plot(time, pos_act[:, i], lw=0.95,
+                              color=color, label=f"{label} actual")
+            axes[1, col].plot(time, f_react_des[:, i], ls="--", lw=0.8,
+                              color=color, alpha=0.55,
+                              label=f"R{label} ref")
+            axes[1, col].plot(time, f_act[:, i], lw=0.95,
+                              color=color, label=f"R{label} measured")
+            axes[2, col].plot(time, kp[:, i], lw=1.0, color=color,
+                              label=f"K{label}")
+            axes[3, col].plot(time, np.abs(err[:, i]), lw=1.0,
+                              color=color, label=f"|e_{label}|")
+
+        tank_axis = axes[3, col].twinx()
+        tank_axis.plot(time, tank, color="darkorange", lw=0.85,
+                       alpha=0.7, label="tank")
+        tank_axis.set_ylabel("T (J)", color="darkorange", fontsize=8)
+        tank_axis.tick_params(axis="y", labelsize=7, colors="darkorange")
+
+        if np.any(disturbed):
+            t0, t1 = time[disturbed][0], time[disturbed][-1]
+            for row in range(4):
+                axes[row, col].axvspan(t0, t1, color="tab:red", alpha=0.08)
+
+        for row in range(4):
+            axes[row, col].grid(alpha=0.23)
+            axes[row, col].tick_params(labelsize=8)
+        axes[3, col].set_xlabel("runtime (s)")
+
+        if col == 0:
+            axes[0, col].set_ylabel("position (mm)")
+            axes[1, col].set_ylabel("reaction force (N)")
+            axes[2, col].set_ylabel("stiffness (kN/m)")
+            axes[3, col].set_ylabel("|tracking error| (mm)")
+            for row in range(4):
+                axes[row, col].legend(fontsize=6, ncol=2,
+                                      loc="upper left")
+
+        metric = summarize(log)
+        axes[3, col].text(
+            0.98, 0.94,
+            f"Z RMSE={metric['z_rmse_mm']:.2f} mm\n"
+            f"$\\phi_f$={metric['phase_final']:.3f}",
+            transform=axes[3, col].transAxes, ha="right", va="top",
+            fontsize=7.5,
+            bbox={"facecolor": "white", "alpha": 0.7, "edgecolor": "none"},
+        )
+
+    row_titles = ["Cartesian position", "Material reaction",
+                  "Learned stiffness", "Tracking error and tank"]
+    for row, title in enumerate(row_titles):
+        axes[row, 0].annotate(
+            title, xy=(-0.29, 0.5), xycoords="axes fraction",
+            rotation=90, ha="center", va="center", fontsize=10,
+            fontweight="bold",
+        )
+
+    fig.suptitle(
+        "Runtime monitor: static/moving workpiece with holdback disabled/enabled\n"
+        "The geometric path is common; runtime reference traces differ when "
+        "state correction changes phase timing",
+        fontsize=15,
+    )
+    fig.tight_layout(rect=[0.025, 0, 1, 0.965])
+    os.makedirs(FIG_DIR, exist_ok=True)
+    out = os.path.join(FIG_DIR, fname)
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+    return out
 
 
 def plot_monitor(log, dt, fname="monitor_preview.png"):
@@ -150,17 +246,25 @@ def summarize(log):
 
 
 def main():
-    log, dt = run_episode()
-    out = plot_monitor(log, dt)
-    m = summarize(log)
-    print(
-        f"saved figure: {out}\n"
-        f"steps={m['steps']} phase={m['phase_final']:.3f} "
-        f"z_rmse={m['z_rmse_mm']:.2f}mm "
-        f"force_mag_rmse={m['force_mag_rmse_N']:.2f}N "
-        f"force_vector_rmse={m['force_vector_rmse_N']:.2f}N "
-        f"tank_min={m['tank_min_J']:.3f}J"
-    )
+    conditions = [
+        ("Static — nominal", False, 0.0),
+        ("Static — 120 N holdback", False, 120.0),
+        ("Moving — nominal", True, 0.0),
+        ("Moving — 120 N holdback", True, 120.0),
+    ]
+    runs = {}
+    for title, moving, holdback in conditions:
+        log, dt = run_episode(moving=moving, holdback_force=holdback)
+        runs[title] = (log, dt)
+        m = summarize(log)
+        print(
+            f"{title}: steps={m['steps']} phase={m['phase_final']:.3f} "
+            f"z_rmse={m['z_rmse_mm']:.2f}mm "
+            f"tank_min={m['tank_min_J']:.3f}J",
+            flush=True,
+        )
+    out = plot_monitor_conditions(runs)
+    print(f"saved figure: {out}")
 
 
 if __name__ == "__main__":

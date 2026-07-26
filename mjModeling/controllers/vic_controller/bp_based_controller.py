@@ -21,9 +21,12 @@ class BpVariableImpedanceControl(BasicVariableImpedanceControl):
         self.dt = self.model.opt.timestep
 
         # Passivity Tank State
-        self.tank_energy = 20.0
+        # The discrete torque-port tank now pays the actual projected actuator
+        # work.  Its initial storage must therefore cover a complete nominal
+        # simulated cut, including model-compensation torque.
+        self.tank_energy = 50.0
         self.tank_initial = self.tank_energy
-        self.tank_max = 50.0
+        self.tank_max = 100.0
         self.tank_min = 0.001
         self.tank_ref = 5.0
         self.passivity_enabled = True

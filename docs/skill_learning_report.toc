@@ -1,21 +1,27 @@
 \contentsline {section}{Nomenclature}{2}{section*.2}%
-\contentsline {section}{\numberline {1}Problem statement}{3}{section.1}%
+\contentsline {section}{\numberline {1}Problem statement}{4}{section.1}%
 \contentsline {section}{\numberline {2}Patterns in the demonstration that represent a reliable skill}{4}{section.2}%
-\contentsline {section}{\numberline {3}Variability-driven variable impedance control}{6}{section.3}%
-\contentsline {subsection}{\numberline {3.1}The impedance control law}{6}{subsection.3.1}%
+\contentsline {section}{\numberline {3}Variability-driven variable impedance control}{7}{section.3}%
+\contentsline {subsection}{\numberline {3.1}The impedance control law}{7}{subsection.3.1}%
 \contentsline {subsection}{\numberline {3.2}Gains learned from demonstration precision}{7}{subsection.3.2}%
-\contentsline {subsection}{\numberline {3.3}The online quadratic program (QP) for the gains}{8}{subsection.3.3}%
-\contentsline {paragraph}{highlighting the contribution of the learned variance structure.}{9}{section*.3}%
-\contentsline {section}{\numberline {4}State-driven task parametrization}{12}{section.4}%
-\contentsline {section}{\numberline {5}Stability and passivity analysis}{13}{section.5}%
-\contentsline {subsection}{\numberline {5.1}Passivity --- the controller cannot create energy}{13}{subsection.5.1}%
-\contentsline {subsection}{\numberline {5.2}Implemented torque-port passivity}{13}{subsection.5.2}%
-\contentsline {subsection}{\numberline {5.3}Exponential stability --- the error decays at a guaranteed rate}{14}{subsection.5.3}%
-\contentsline {paragraph}{Time-varying gains and moving-reference perturbations.}{16}{section*.4}%
-\contentsline {paragraph}{Experimental interpretation.}{16}{section*.5}%
-\contentsline {paragraph}{Implementation status.}{17}{section*.6}%
-\contentsline {section}{\numberline {6}Material interaction model}{17}{section.6}%
-\contentsline {paragraph}{Parameter identification.}{18}{section*.7}%
-\contentsline {section}{\numberline {7}Results}{19}{section.7}%
-\contentsline {section}{\numberline {8}Novelty and contributions}{20}{section.8}%
-\contentsline {section}{\numberline {9}Assumptions, scope and limitations}{20}{section.9}%
+\contentsline {subsection}{\numberline {3.3}The online quadratic program (QP) for the gains}{9}{subsection.3.3}%
+\contentsline {paragraph}{Controlled comparison of learned variance structure.}{10}{section*.3}%
+\contentsline {section}{\numberline {4}State-driven task parametrization}{13}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Theoretical motivation}{13}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Phase-domain skill representation}{14}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}State-to-phase observation}{14}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Sampled-data phase dynamics}{15}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}Controlled phase--state desynchronisation}{15}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}Factorial runtime ablation}{16}{subsection.4.6}%
+\contentsline {section}{\numberline {5}Conditional stability analysis and discrete torque-port energy accounting}{16}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Ideal continuous-time passivity condition}{17}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Implemented discrete torque-port tank}{17}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Sufficient exponential-stability conditions for idealised error dynamics}{18}{subsection.5.3}%
+\contentsline {paragraph}{Time-varying gains and moving-reference perturbations.}{19}{section*.4}%
+\contentsline {paragraph}{Experimental interpretation.}{20}{section*.5}%
+\contentsline {paragraph}{Implementation status.}{20}{section*.6}%
+\contentsline {section}{\numberline {6}Material interaction model}{21}{section.6}%
+\contentsline {paragraph}{Parameter identification.}{22}{section*.7}%
+\contentsline {section}{\numberline {7}Results}{23}{section.7}%
+\contentsline {section}{\numberline {8}Novelty and contributions}{24}{section.8}%
+\contentsline {section}{\numberline {9}Assumptions, scope and limitations}{24}{section.9}%

@@ -31,6 +31,21 @@ note that this setup runs cutting experiment in different scenarios to prove mul
 selection which scenario to observe is very easy .. go to `mjModeling/conf/configs.py` and modify `CONTINUOUS_TRAJ` in `paramVIC` and `MOBILE` in `workPiece` ..
 
 To test phase variable effect on task parametrisation (run faster or slower) simply adjust `paramVIC.PHASE_SPEED`.
+
+Task timing and its validation disturbance can be switched independently in
+`mjModeling/conf/configs.py`:
+
+```python
+paramVIC.STATE_DRIVEN_PHASE = True   # False: matched time-driven phase
+paramVIC.HOLDBACK_DISTURBANCE = False
+paramVIC.HOLDBACK_FORCE_N = 120.0
+paramVIC.HOLDBACK_START_S = 0.9
+paramVIC.HOLDBACK_END_S = 1.4
+```
+
+The holdback is disabled for nominal execution. When enabled, it applies a
+bounded external force opposite the local cutting-path tangent; it is intended
+only for controlled phase-synchronization validation.
 you can also play with other configurations but not all cases and configs are guaranteed to give appropriate behaviour as my research is not about choosing the best vic controller but how to use skill patterns learnt from human to teach a robot
 ```python
 class paramVIC:

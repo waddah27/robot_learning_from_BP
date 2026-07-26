@@ -34,11 +34,25 @@ class paramVIC:
     VIC_KP_MIN = 100.0
     VIC_KP_MAX = 2000.0
     VIC_M = 1 # mass
-    VIC_KI = 200
+    VIC_KI = 800
+    VIC_INTEGRAL_LIMIT = 0.05
+    VIC_CONTROL_WRENCH_LIMIT = 150.0
     VIC_LAMBDA_SQ = 1e-4
     ADAPTIVE = True
     CONTINUOUS_TRAJ = True
     PHASE_SPEED = 1.0
+    # Task-parametrization runtime switches.  STATE_DRIVEN_PHASE=False gives
+    # the matched time-driven ablation while retaining the passivity tank gate.
+    STATE_DRIVEN_PHASE = True
+    PHASE_CORRECTION_RATE = 2.0       # s^-1
+    PHASE_SEARCH_BACKWARD = 0.1       # normalized phase
+    PHASE_SEARCH_FORWARD = 0.1        # normalized phase
+    # Optional validation disturbance: an external force opposing the local
+    # path tangent. Disabled in ordinary task execution.
+    HOLDBACK_DISTURBANCE = False
+    HOLDBACK_FORCE_N = 120.0
+    HOLDBACK_START_S = 0.9
+    HOLDBACK_END_S = 1.4
     # Disable using variable gains for other motion phases than cutting
     DISABLE_PTP_VIC = True
     USE_LEARNT_GAINS = True
@@ -54,7 +68,7 @@ class workPiece:
     POS = np.array([0.5, 0.0, HIGHT])
     SIZE = np.array([0.3, 0.3, 0.02])
     SURFACE: float = SIZE[2] + POS[2]
-    MOBILE: bool = True
+    MOBILE: bool = False
     MOT_AMPL = 0.05 # amplitude of motion sine/cos wave
 
 
@@ -90,4 +104,3 @@ SCALPEL_GEOM = "scalpel_geom"
 # get robot state dict keys
 FORCE_HISTORY = "force_history"
 TCP_POS = "tcp_pos"
-

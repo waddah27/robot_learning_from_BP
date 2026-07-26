@@ -44,10 +44,29 @@ class CuttingForceModel:
         m = d > 1e-4
         if m.sum() < 3:
             return 8000.0, 50.0
-        f_cut = float(np.percentile(mag[m], 75))          # cutting-force level
-        d_typ = float(np.median(d[m]))                    # typical penetration
-        k = f_cut / max(0.3 * d_typ, 1e-3)                # reach F_cut at 30% of it
-        return k, max(f_cut, 1.0)
+        d_fit = d[m]
+        y_fit = mag[m]
+        f0 = max(float(np.percentile(y_fit, 75)), 1.0)
+        d_typ = float(np.median(d_fit))
+        k0 = f0 / max(0.3 * d_typ, 1e-3)
+        try:
+            from scipy.optimize import least_squares
+
+            def residual(theta):
+                k_mat, f_cut = theta
+                return np.minimum(k_mat * d_fit, f_cut) - y_fit
+
+            fit = least_squares(
+                residual,
+                x0=np.array([k0, f0]),
+                bounds=(np.array([1.0, 1.0]), np.array([1e6, 500.0])),
+                loss="soft_l1",
+            )
+            if fit.success and np.all(np.isfinite(fit.x)):
+                return float(fit.x[0]), float(fit.x[1])
+        except Exception:
+            pass
+        return float(k0), float(f0)
 
     def set_material(self, geom_center, geom_halfsize):
         cc = np.asarray(geom_center); h = np.asarray(geom_halfsize)

@@ -19,6 +19,7 @@ budget. The Cartesian residual is intentionally not used as the proof because it
 depends on finite-difference velocities, force-estimator conventions, and an
 approximate Cartesian storage model.
 """
+import json
 import os
 import sys
 import warnings
@@ -212,7 +213,16 @@ def main():
             flush=True,
         )
     out = plot(results)
+    result_path = os.path.join(
+        _ROOT, "results", "passivity_adversarial_cork.json"
+    )
+    with open(result_path, "w") as handle:
+        json.dump(
+            {case["name"]: metrics for case, _, _, metrics in results},
+            handle, indent=2
+        )
     print("saved figure:", out)
+    print("saved metrics:", result_path)
 
 
 if __name__ == "__main__":
