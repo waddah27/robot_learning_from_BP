@@ -41,6 +41,7 @@ paramVIC.HOLDBACK_DISTURBANCE = False
 paramVIC.HOLDBACK_FORCE_N = 120.0
 paramVIC.HOLDBACK_START_S = 0.9
 paramVIC.HOLDBACK_END_S = 1.4
+paramVIC.GMR.STRAIGHT_CUT_REFERENCE = True  # enforce the stated straight-cut geometry
 ```
 
 The holdback is disabled for nominal execution. When enabled, it applies a

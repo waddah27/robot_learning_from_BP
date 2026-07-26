@@ -994,6 +994,33 @@ Let the learned behaviour prior be the phase-indexed curve
 \qquad \phi\in[0,1],
 \label{eq:phase_prior}
 \end{equation}
+The demonstrations in this study encode a nominally straight cut. Direct use
+of the GMR position mean introduced a small transverse curvature: for cork,
+the 300-sample mean has a $7.066$\,mm RMS orthogonal distance from its
+three-dimensional principal line (maximum $13.010$\,mm), although its path
+length is only $2.25\%$ greater than its endpoint distance. Trimming symmetric
+fractions from the record did not reveal a distinct approach or withdrawal
+segment; the curvature persists over the central cutting samples. The force
+magnitude is already $42.586$\,N at the first sample, remains non-zero
+throughout, and reaches the cutting plateau toward the end. Hence there is no
+force-based evidence that the stored prior contains an initial free-space
+approach. The curvature is therefore not treated as part of the intended task
+geometry.
+
+The implemented straight-cut constraint preserves the demonstrated endpoints
+$p_0$ and $p_{N-1}$ and replaces only the positional GMR mean by
+\begin{equation}
+x_r\!\left(\phi^{(j)}\right)
+=(1-\phi^{(j)})p_0+\phi^{(j)}p_{N-1},
+\qquad \phi^{(j)}=\frac{j}{N-1}.
+\label{eq:straight_cut_reference}
+\end{equation}
+Consequently $x'_r(\phi)=p_{N-1}-p_0$ is constant and the reference image is
+exactly a line segment. The phase-indexed force, precision, stiffness and
+damping profiles retain their learned variation. This constraint is applied
+before workspace mapping and before both state-driven and time-driven
+execution; hence every ablation cell uses the same straight reference.
+
 where a prime denotes differentiation with respect to phase.  For any absolutely continuous,
 non-decreasing phase $\phi(t)$, the commanded position and its physically
 consistent velocity satisfy
@@ -1208,14 +1235,14 @@ Workpiece & Holdback &
 \multicolumn{2}{c}{Position RMSE [mm]} \\
 & & S & T & S & T \\
 \midrule
-Static & off & $2.533\pm1.031$ & $2.598\pm1.140$
-             & $17.944\pm18.861$ & $20.917\pm24.734$ \\
-Static & on  & $2.957\pm0.888$ & $3.171\pm1.407$
-             & $76.555\pm30.224$ & $82.926\pm46.662$ \\
-Moving & off & $8.816\pm8.069$ & $8.816\pm8.286$
-             & $32.298\pm32.363$ & $28.364\pm32.250$ \\
-Moving & on  & $9.272\pm7.689$ & $9.501\pm7.853$
-             & $75.904\pm18.168$ & $63.490\pm31.489$ \\
+Static & off & $2.515\pm1.070$ & $2.550\pm1.097$
+             & $13.411\pm12.002$ & $12.829\pm11.493$ \\
+Static & on  & $3.337\pm0.843$ & $3.808\pm1.171$
+             & $37.687\pm21.854$ & $48.349\pm43.207$ \\
+Moving & off & $9.855\pm9.077$ & $9.655\pm8.904$
+             & $25.115\pm24.013$ & $22.574\pm22.707$ \\
+Moving & on  & $11.672\pm7.333$ & $12.422\pm6.878$
+             & $82.328\pm17.756$ & $92.977\pm26.861$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1250,9 +1277,9 @@ Rows cross state-driven/time-driven phase with holdback disabled/enabled;
 columns show the Cartesian path, axis errors, phase dynamics and interaction
 force. Every 3-D panel uses the same canonical geometric reference and identical
 axis limits; only the executed trajectory changes. Nominal cut-depth RMSE is
-$1.776$ and $1.791$\,mm for state- and time-driven execution, respectively.
-Under holdback it is $2.424$ and $2.393$\,mm. The corresponding full Cartesian
-RMSE increases to $83.208$ and $76.179$\,mm. Thus this 120\,N test demonstrates
+$1.795$ and $1.800$\,mm for state- and time-driven execution, respectively.
+Under holdback it is $3.083$ and $3.402$\,mm. The corresponding full Cartesian
+RMSE increases to $28.204$ and $28.174$\,mm. Thus this 120\,N test demonstrates
 constraint handling and phase response under a severe disturbance, not
 high-accuracy rejection of that disturbance.}
 \label{fig:execution_four_static}
@@ -1263,9 +1290,9 @@ high-accuracy rejection of that disturbance.}
 \includegraphics[width=\textwidth]{task_execution_four_case_moving.png}
 \caption{Deterministic moving-workpiece execution under the same four
 phase/holdback conditions as Fig.~\ref{fig:execution_four_static}. Nominal
-cut-depth RMSE is $2.372$\,mm for state-driven timing and $2.384$\,mm for
-time-driven timing. Under holdback the corresponding values are $3.148$ and
-$3.442$\,mm, and full Cartesian RMSE is $72.541$ and $51.952$\,mm. Workpiece
+cut-depth RMSE is $2.450$\,mm for state-driven timing and $2.477$\,mm for
+time-driven timing. Under holdback the corresponding values are $5.700$ and
+$6.931$\,mm, and full Cartesian RMSE is $93.953$ and $108.965$\,mm. Workpiece
 motion changes only the environment geometry: it does not translate the
 reference. Loss of contact can consequently occur when the material moves away
 from the fixed commanded path.}
@@ -1273,11 +1300,11 @@ from the fixed commanded path.}
 \end{figure}
 
 All $40$ executions completed and the torque-port power-violation fraction was
-zero.  The state-driven law has slightly lower mean cut-depth RMSE in three
-cells and is effectively equal in moving nominal execution. Full Cartesian
-RMSE, however, is higher for state-driven timing in both moving-workpiece
-cells. None of the paired cut-depth comparisons is significant
-($p\in[0.4375,0.625]$). The large seed-to-seed dispersion, including a moving
+zero.  The state-driven law has lower mean cut-depth RMSE in three cells but
+higher error in moving nominal execution. Full Cartesian RMSE is lower in the
+two perturbed cells and higher in both nominal cells. None of the paired
+cut-depth comparisons is significant ($p\in[0.0625,0.625]$). The large
+seed-to-seed dispersion, including a moving
 workpiece outlier, precludes a general accuracy-improvement claim. The supported
 result is narrower: state feedback changes phase progression while preserving
 the implemented torque-port constraint and task completion. It does not reject
@@ -1993,8 +2020,8 @@ force scale in the calibration setting. Because identification and assessment
 use the same demonstration source, this is a consistency check rather than an
 independent force-control validation.
 \item \textbf{Position tracking}: deterministic nominal cut-depth RMSE is
-$1.776$--$2.384$\,mm in the four-case cork comparison. Full Cartesian error is
-larger, and the 120\,N holdback produces $51.952$--$83.208$\,mm RMSE; no
+$1.795$--$2.477$\,mm in the four-case cork comparison. Full Cartesian error is
+larger, and the 120\,N holdback produces $28.174$--$108.965$\,mm RMSE; no
 high-precision Cartesian tracking claim is made.
 \item \textbf{Passivity} (Fig.~\ref{fig:pass_adv}, Table~\ref{tab:pass_adv}):
 under positive joint-power perturbation, the controller without tank projection
@@ -2026,7 +2053,7 @@ $[0.9,1.4]$\,s; the plotted reaction channel remains the identified material
 reaction and does not re-label the separately applied holdback as contact
 force. The desired world-frame path is common to all columns, although its
 time-indexed samples differ when state-driven phase timing changes.
-Representative cut-depth RMSE is $1.776$, $2.424$, $2.372$ and $3.148$\,mm,
+Representative cut-depth RMSE is $1.795$, $3.083$, $2.450$ and $5.700$\,mm,
 respectively. The holdback columns exhibit large Cartesian displacement and
 must be interpreted as stress tests rather than precision-tracking results.}
 \label{fig:monitor}

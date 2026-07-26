@@ -11,17 +11,17 @@
 \contentsline {subsection}{\numberline {4.2}Phase-domain skill representation}{14}{subsection.4.2}%
 \contentsline {subsection}{\numberline {4.3}State-to-phase observation}{14}{subsection.4.3}%
 \contentsline {subsection}{\numberline {4.4}Sampled-data phase dynamics}{15}{subsection.4.4}%
-\contentsline {subsection}{\numberline {4.5}Controlled phase--state desynchronisation}{15}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.5}Controlled phase--state desynchronisation}{16}{subsection.4.5}%
 \contentsline {subsection}{\numberline {4.6}Factorial runtime ablation}{16}{subsection.4.6}%
-\contentsline {section}{\numberline {5}Conditional stability analysis and discrete torque-port energy accounting}{16}{section.5}%
+\contentsline {section}{\numberline {5}Conditional stability analysis and discrete torque-port energy accounting}{17}{section.5}%
 \contentsline {subsection}{\numberline {5.1}Ideal continuous-time passivity condition}{17}{subsection.5.1}%
 \contentsline {subsection}{\numberline {5.2}Implemented discrete torque-port tank}{17}{subsection.5.2}%
 \contentsline {subsection}{\numberline {5.3}Sufficient exponential-stability conditions for idealised error dynamics}{18}{subsection.5.3}%
-\contentsline {paragraph}{Time-varying gains and moving-reference perturbations.}{19}{section*.4}%
-\contentsline {paragraph}{Experimental interpretation.}{20}{section*.5}%
-\contentsline {paragraph}{Implementation status.}{20}{section*.6}%
+\contentsline {paragraph}{Time-varying gains and moving-reference perturbations.}{20}{section*.4}%
+\contentsline {paragraph}{Experimental interpretation.}{21}{section*.5}%
+\contentsline {paragraph}{Implementation status.}{21}{section*.6}%
 \contentsline {section}{\numberline {6}Material interaction model}{21}{section.6}%
-\contentsline {paragraph}{Parameter identification.}{22}{section*.7}%
+\contentsline {paragraph}{Parameter identification.}{23}{section*.7}%
 \contentsline {section}{\numberline {7}Results}{23}{section.7}%
 \contentsline {section}{\numberline {8}Novelty and contributions}{24}{section.8}%
 \contentsline {section}{\numberline {9}Assumptions, scope and limitations}{24}{section.9}%

@@ -136,9 +136,21 @@ class ContinuousTrajectoryVIC(BpVariableImpedanceControl):
     # ---------- Trajectory interpolation ----------
     def _init_trajectory_interpolators(self):
         """Create continuous functions of phase from discrete GMR data."""
-        self.traj_pos = self.traj_loader.pos[:, 0:3]
+        self.traj_pos = self.traj_loader.pos[:, 0:3].copy()
         self.traj_vel = self.traj_loader.vel[:, 0:3]
         self.traj_force = self.traj_loader.force[:, 0:3]
+
+        # This data set contains straight cutting demonstrations.  The GMR mean
+        # is not exactly collinear, and the subsequent coordinate-wise mapping
+        # can amplify its small transverse deviation.  When the straight-cut
+        # convention is selected, retain the demonstrated start/end points and
+        # phase ordering while removing only transverse geometric curvature.
+        if getattr(paramVIC.GMR, "STRAIGHT_CUT_REFERENCE", False):
+            alpha = np.linspace(0.0, 1.0, len(self.traj_pos))[:, None]
+            self.traj_pos = (
+                (1.0 - alpha) * self.traj_pos[0]
+                + alpha * self.traj_pos[-1]
+            )
         self.pos_gmr_min = np.min(self.traj_pos, axis=0)
         self.pos_gmr_max = np.max(self.traj_pos, axis=0)
         self.pos_gmr_range = np.maximum(self.pos_gmr_max - self.pos_gmr_min, 1e-6)
