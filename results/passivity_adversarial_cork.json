@@ -4,10 +4,10 @@
     "phase_final": 1.0,
     "tank_min": 0.001,
     "gamma_min": 1.0,
-    "violation_frac": 0.8153026026967701,
-    "max_margin": 11418.569680332332,
+    "violation_frac": 0.6979665071770335,
+    "max_margin": 24585.559426069885,
     "max_adversarial_power": 7000.000000000003,
-    "tank_balance_clip_max_abs": 18.292492695705082
+    "tank_balance_clip_max_abs": 24.585559426069885
   },
   "tank_only": {
     "completion": 1.0,
@@ -15,18 +15,18 @@
     "tank_min": 0.001,
     "gamma_min": 1.0,
     "violation_frac": 0.0,
-    "max_margin": 1.8152312395523632e-09,
+    "max_margin": 6.583290561911555e-08,
     "max_adversarial_power": 7000.000000000003,
-    "tank_balance_clip_max_abs": 1.8152312395540838e-12
+    "tank_balance_clip_max_abs": 6.583290561911407e-11
   },
   "tank_phase": {
     "completion": 0.0,
-    "phase_final": 0.019777862970479086,
+    "phase_final": 0.023656178147994245,
     "tank_min": 0.001,
     "gamma_min": 0.0,
     "violation_frac": 0.0,
-    "max_margin": 4.562123179230326e-08,
+    "max_margin": 7.016857911379404e-08,
     "max_adversarial_power": 0.0,
-    "tank_balance_clip_max_abs": 4.562123183567135e-11
+    "tank_balance_clip_max_abs": 7.016857911769717e-11
   }
 }

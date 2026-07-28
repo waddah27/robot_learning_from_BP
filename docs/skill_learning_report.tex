@@ -851,10 +851,10 @@ permuting the learned structure degrades it. Bars denote mean$\pm$std.}
 \toprule
 Gain assignment & depth RMSE (mm) & identified reduction & Wilcoxon $p$ \\
 \midrule
-\textbf{Identified precision} & $\mathbf{29.85 \pm 47.41}$ & --- & --- \\
-Permuted precision & $31.53 \pm 47.77$ & $5.4\%$ & $0.001$ \\
-Inverted precision & $44.49 \pm 48.03$ & $32.9\%$ & $0.001$ \\
-Direct force-tracking & $48.28 \pm 51.32$ & $38.2\%$ & $0.002$ \\
+\textbf{Identified precision} & $\mathbf{29.39 \pm 46.72}$ & --- & --- \\
+Permuted precision & $31.25 \pm 47.54$ & $6.0\%$ & $0.001$ \\
+Inverted precision & $44.39 \pm 47.65$ & $33.8\%$ & $0.001$ \\
+Direct force-tracking & $47.84 \pm 51.73$ & $38.6\%$ & $0.002$ \\
 \bottomrule
 \end{tabular}
 \caption{The identified precision has lower mean cut-depth error than all three
@@ -884,7 +884,7 @@ R_c=100\,
 \frac{\bar E_c-\bar E_{\rm true}}{\bar E_c}\quad[\%],
 \label{eq:relative_reduction}
 \end{equation}
-which gives $5.4\%$, $32.9\%$ and $38.2\%$ for the permuted, inverted and
+which gives $6.0\%$, $33.8\%$ and $38.6\%$ for the permuted, inverted and
 direct-force conditions. This denominator explains why these percentages are
 reductions relative to each comparator rather than percentage increases
 relative to the identified mean.
@@ -1026,15 +1026,34 @@ and interpolates every pose, wrench and variability channel on a common
 uniform grid in $\bar s_i$. Thus equal phase denotes equal spatial progress
 rather than equal sample number.
 
-Separate, standardized Gaussian mixtures are learned per material. The
-straight-cut position block uses one Gaussian component, for which Gaussian
-conditioning gives an affine conditional mean, while the wrench, orientation
-and twist block retains 15 components to represent nonlinear phase profiles.
-This is a structured GMR model at training time, not a controller-side path
-projection. The saved position priors for all three materials have zero
-orthogonal residual to numerical precision and path-length/chord ratio one.
-The controller consumes these saved priors directly; no downstream
-straightening operation remains.
+A single structured GMM/GMR is learned from all materials. Material identity is
+not represented by the ordinal scalar $1,2,3$. Instead, with cork as reference,
+the categorical contrast is
+\[
+c(\mathrm{cork})=(0,0),\quad
+c(\mathrm{penoplex})=(1,0),\quad
+c(\mathrm{PVC})=(0,1),
+\]
+and the conditioning vector is
+\begin{equation}
+u(\phi,m)=
+\begin{bmatrix}\phi&c_1(m)&c_2(m)&\phi c_1(m)&\phi c_2(m)\end{bmatrix}^{\!\top}.
+\label{eq:material_condition}
+\end{equation}
+The interaction terms permit material-dependent affine endpoints and cutting
+directions without imposing an artificial ordinal distance between materials.
+All variables are standardized before estimation.
+
+The shared model has an affine one-component positional block, for which
+Gaussian conditioning gives an affine conditional mean, and a 15-component
+wrench--orientation--twist block for nonlinear phase profiles. Both blocks are
+trained jointly across the complete material data set and conditioned on the
+same $u(\phi,m)$; they form one material-conditioned structured prior rather
+than three material-specific models. This is a training-time GMR formulation,
+not a controller-side projection. The saved conditioned position priors for all
+three materials have zero orthogonal residual to numerical precision and
+path-length/chord ratio one. The controller consumes them directly; no
+downstream straightening operation remains.
 
 where a prime denotes differentiation with respect to phase.  For any absolutely continuous,
 non-decreasing phase $\phi(t)$, the commanded position and its physically
@@ -1250,14 +1269,14 @@ Workpiece & Holdback &
 \multicolumn{2}{c}{Position RMSE [mm]} \\
 & & S & T & S & T \\
 \midrule
-Static & off & $2.481\pm0.995$ & $2.538\pm1.066$
-             & $12.121\pm10.283$ & $12.206\pm10.793$ \\
-Static & on  & $3.171\pm0.751$ & $3.713\pm1.130$
-             & $34.856\pm17.628$ & $48.332\pm41.266$ \\
-Moving & off & $9.672\pm8.913$ & $9.635\pm8.972$
-             & $23.377\pm21.556$ & $22.564\pm22.810$ \\
-Moving & on  & $10.983\pm7.531$ & $12.210\pm7.090$
-             & $80.513\pm17.316$ & $98.163\pm29.455$ \\
+Static & off & $2.485\pm1.029$ & $2.538\pm1.075$
+             & $12.250\pm10.461$ & $12.533\pm11.229$ \\
+Static & on  & $3.165\pm0.795$ & $3.694\pm1.153$
+             & $36.422\pm21.713$ & $48.449\pm42.406$ \\
+Moving & off & $9.557\pm8.805$ & $9.631\pm8.981$
+             & $21.602\pm19.391$ & $22.573\pm22.839$ \\
+Moving & on  & $10.821\pm7.495$ & $12.209\pm7.085$
+             & $73.324\pm15.578$ & $96.417\pm28.339$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1292,9 +1311,9 @@ Rows cross state-driven/time-driven phase with holdback disabled/enabled;
 columns show the Cartesian path, axis errors, phase dynamics and interaction
 force. Every 3-D panel uses the same canonical geometric reference and identical
 axis limits; only the executed trajectory changes. Nominal cut-depth RMSE is
-$1.803$ and $1.800$\,mm for state- and time-driven execution, respectively.
-Under holdback it is $2.893$ and $3.288$\,mm. The corresponding full Cartesian
-RMSE increases to $27.137$ and $29.276$\,mm. Thus this 120\,N test demonstrates
+$1.781$ and $1.798$\,mm for state- and time-driven execution, respectively.
+Under holdback it is $2.831$ and $3.248$\,mm. The corresponding full Cartesian
+RMSE increases to $26.533$ and $28.669$\,mm. Thus this 120\,N test demonstrates
 constraint handling and phase response under a severe disturbance, not
 high-accuracy rejection of that disturbance.}
 \label{fig:execution_four_static}
@@ -1305,9 +1324,9 @@ high-accuracy rejection of that disturbance.}
 \includegraphics[width=\textwidth]{task_execution_four_case_moving.png}
 \caption{Deterministic moving-workpiece execution under the same four
 phase/holdback conditions as Fig.~\ref{fig:execution_four_static}. Nominal
-cut-depth RMSE is $2.394$\,mm for state-driven timing and $2.391$\,mm for
-time-driven timing. Under holdback the corresponding values are $4.869$ and
-$6.536$\,mm, and full Cartesian RMSE is $93.649$ and $117.148$\,mm. Workpiece
+cut-depth RMSE is $2.369$\,mm for state-driven timing and $2.370$\,mm for
+time-driven timing. Under holdback the corresponding values are $4.733$ and
+$6.530$\,mm, and full Cartesian RMSE is $84.593$ and $114.292$\,mm. Workpiece
 motion changes only the environment geometry: it does not translate the
 reference. Loss of contact can consequently occur when the material moves away
 from the fixed commanded path.}
@@ -1480,12 +1499,12 @@ $T_{\min}=0.001$\,J.
 \includegraphics[width=0.97\textwidth]{passivity_adversarial_cork.png}
 \caption{Positive-power perturbation validation on cork. A known positive joint-power
 burst is injected before the torque projection. Without projection (top row),
-$\dot q^\top\tau$ exceeds the counterfactual budget for $81.5\%$ of samples
-and reaches a maximum margin of $+20{,}239$\,W. With torque projection
+$\dot q^\top\tau$ exceeds the counterfactual budget for $69.8\%$ of samples
+and reaches a maximum margin of $+24{,}586$\,W. With torque projection
 (middle and bottom), the implemented inequality
 $\dot q^\top\tau_{\rm safe}-P_{\max}\le0$ has $0.0\%$ logged violations.
 With the deliberately small $1$\,J validation tank, phase gating stops progress
-at $\phi=0.25$ after storage depletion; safety intervention therefore does not
+at $\phi=0.024$ after storage depletion; safety intervention therefore does not
 imply task completion.}
 \label{fig:pass_adv}
 \end{figure}
@@ -1496,9 +1515,9 @@ imply task completion.}
 \toprule
 Controller & completion & min. tank (J) & budget violation & max margin (W)\\
 \midrule
-No projection & $100\%$ & $0.001$ & $81.5\%$ & $+11{,}419$\\
+No projection & $100\%$ & $0.001$ & $69.8\%$ & $+24{,}586$\\
 Tank projection & $100\%$ & $0.001$ & $0.0\%$ & $0$\\
-Tank + phase gate & $0\%$ ($\phi_f=0.020$) & $0.001$ & $0.0\%$ & $0$\\
+Tank + phase gate & $0\%$ ($\phi_f=0.024$) & $0.001$ & $0.0\%$ & $0$\\
 \bottomrule
 \end{tabular}
 \caption{Torque-port storage and power validation under positive-power
@@ -2027,7 +2046,7 @@ Table~\ref{tab:material}.}
 \item \textbf{The task performance is attributable to the learned variance
 structure} (Table~\ref{tab:variance_comparison},
 Fig.~\ref{fig:variance_comparison}): the identified
-precision has the lowest mean cut-depth error: $5.4\%$, $32.9\%$ and $38.2\%$
+precision has the lowest mean cut-depth error: $6.0\%$, $33.8\%$ and $38.6\%$
 below the permuted, inverted and direct-force comparators, respectively.
 Paired significance is $p=0.001$, $0.001$ and $0.002$; absolute error remains
 highly dispersed.
@@ -2037,15 +2056,15 @@ force scale in the calibration setting. Because identification and assessment
 use the same demonstration source, this is a consistency check rather than an
 independent force-control validation.
 \item \textbf{Position tracking}: deterministic nominal cut-depth RMSE is
-$1.800$--$2.394$\,mm in the four-case cork comparison. Full Cartesian error is
-larger, and the 120\,N holdback produces $27.137$--$117.148$\,mm RMSE; no
+$1.781$--$2.370$\,mm in the four-case cork comparison. Full Cartesian error is
+larger, and the 120\,N holdback produces $26.533$--$114.292$\,mm RMSE; no
 high-precision Cartesian tracking claim is made.
 \item \textbf{Passivity} (Fig.~\ref{fig:pass_adv}, Table~\ref{tab:pass_adv}):
 under positive joint-power perturbation, the controller without tank projection
-violates the available energy budget for $81.5\%$ of the samples
-($+11{,}419$\,W maximum margin), while both tanked controllers satisfy
+violates the available energy budget for $69.8\%$ of the samples
+($+24{,}586$\,W maximum margin), while both tanked controllers satisfy
 $\dot q^\top\tau_{\rm safe}\le P_{\max}$ for the whole run. With the deliberately
-small 1\,J stress-test tank, the phase-gated case halts at $\phi=0.020$ rather
+small 1\,J stress-test tank, the phase-gated case halts at $\phi=0.024$ rather
 than completing.
 \item \textbf{Stability diagnostics} (Fig.~\ref{fig:stab}): nominal static and
 moving cuts remain bounded and complete the task; cut-depth error stays small.
@@ -2070,7 +2089,7 @@ $[0.9,1.4]$\,s; the plotted reaction channel remains the identified material
 reaction and does not re-label the separately applied holdback as contact
 force. The desired world-frame path is common to all columns, although its
 time-indexed samples differ when state-driven phase timing changes.
-Representative cut-depth RMSE is $1.803$, $2.893$, $2.394$ and $4.869$\,mm,
+Representative cut-depth RMSE is $1.781$, $2.831$, $2.369$ and $4.733$\,mm,
 respectively. The holdback columns exhibit large Cartesian displacement and
 must be interpreted as stress tests rather than precision-tracking results.}
 \label{fig:monitor}

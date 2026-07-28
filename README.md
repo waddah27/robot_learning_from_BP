@@ -52,7 +52,9 @@ python variability_control/variance_gains.py
 
 The first command replaces the legacy notebook workflow, which aligned trials
 by sample index. It registers each trial by monotone spatial cutting progress,
-fits standardized material-specific GMMs, and writes the runtime `.npy` priors.
+fits one standardized GMM/GMR shared by all materials and conditioned on
+categorical material contrasts, and writes its conditioned runtime `.npy`
+priors.
 
 The holdback is disabled for nominal execution. When enabled, it applies a
 bounded external force opposite the local cutting-path tangent; it is intended

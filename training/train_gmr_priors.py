@@ -1,11 +1,10 @@
 """Train phase-conditioned material priors from registered cutting trials.
 
 The original notebook truncated every trial to the global minimum number of
-samples and treated sample index as task phase.  Different pauses and local
+samples and treated sample index as task phase. Different pauses and local
 backtracking therefore placed different physical progress states at the same
-phase.  This implementation registers each trial by monotone spatial progress
-along its demonstrated cut before fitting a separate, standardized GMM for
-each material.
+phase. This implementation registers each trial by monotone spatial progress
+and fits one shared, standardized, categorical material-conditioned model.
 """
 
 from __future__ import annotations
@@ -30,9 +29,11 @@ SIGNALS = [
     " Fx", " Fy", " Fz", " Tx", " Ty", " Tz",
 ]
 MATERIALS = {
-    "crck": ("corck_parallel_iter*.csv", "predicted_pose_twist_wrench_crck.npy"),
-    "peno": ("peno_parallel_iter*.csv", "predicted_pose_twist_wrench_peno.npy"),
-    "pvc": ("pcv_parallel_iter*.csv", "predicted_pose_twist_wrench_pvc.npy"),
+    # Two categorical contrasts avoid treating material identity as the
+    # ordered continuous variable 1, 2, 3 used by the legacy notebook.
+    "crck": ("corck_parallel_iter*.csv", "predicted_pose_twist_wrench_crck.npy", (0.0, 0.0)),
+    "peno": ("peno_parallel_iter*.csv", "predicted_pose_twist_wrench_peno.npy", (1.0, 0.0)),
+    "pvc": ("pcv_parallel_iter*.csv", "predicted_pose_twist_wrench_pvc.npy", (0.0, 1.0)),
 }
 
 
@@ -75,23 +76,42 @@ def load_and_register(path: Path, phase: np.ndarray) -> np.ndarray:
     return np.column_stack([registered, linear_velocity, angular_velocity])
 
 
-def _conditional_mean(model: GaussianMixture, value: float) -> np.ndarray:
-    delta = value - model.means_[:, 0]
-    variance = model.covariances_[:, 0, 0]
-    conditional_means = (
-        model.means_[:, 1:]
-        + model.covariances_[:, 1:, 0] * (delta / variance)[:, None]
-    )
-    log_responsibility = (
-        np.log(model.weights_ + 1e-300)
-        - 0.5 * (np.log(2.0 * np.pi * variance) + delta**2 / variance)
-    )
+def _conditional_mean(
+    model: GaussianMixture, conditioned: np.ndarray, n_inputs: int
+) -> np.ndarray:
+    means_x = model.means_[:, :n_inputs]
+    means_y = model.means_[:, n_inputs:]
+    delta = conditioned[None, :] - means_x
+    conditional_means = []
+    log_responsibility = []
+    for component in range(model.n_components):
+        covariance_xx = model.covariances_[component, :n_inputs, :n_inputs]
+        covariance_yx = model.covariances_[component, n_inputs:, :n_inputs]
+        inverse_xx = np.linalg.inv(covariance_xx)
+        conditional_means.append(
+            means_y[component] + covariance_yx @ inverse_xx @ delta[component]
+        )
+        sign, logdet = np.linalg.slogdet(covariance_xx)
+        if sign <= 0:
+            raise ValueError("non-positive conditional covariance")
+        mahalanobis = delta[component] @ inverse_xx @ delta[component]
+        log_responsibility.append(
+            np.log(model.weights_[component] + 1e-300)
+            - 0.5 * (n_inputs * np.log(2.0 * np.pi) + logdet + mahalanobis)
+        )
+    conditional_means = np.asarray(conditional_means)
+    log_responsibility = np.asarray(log_responsibility)
     responsibility = np.exp(log_responsibility - np.max(log_responsibility))
     responsibility /= responsibility.sum()
     return responsibility @ conditional_means
 
 
-def _fit_regression(training: np.ndarray, phase: np.ndarray, components: int) -> np.ndarray:
+def _fit_regression(
+    training: np.ndarray,
+    queries: np.ndarray,
+    n_inputs: int,
+    components: int,
+) -> np.ndarray:
     scaler = StandardScaler().fit(training)
     standardized = scaler.transform(training)
     model = GaussianMixture(
@@ -103,29 +123,62 @@ def _fit_regression(training: np.ndarray, phase: np.ndarray, components: int) ->
         random_state=42,
     ).fit(standardized)
     result = []
-    for value in phase:
-        conditioned_value = (value - scaler.mean_[0]) / scaler.scale_[0]
-        mean_standardized = _conditional_mean(model, conditioned_value)
-        result.append(mean_standardized * scaler.scale_[1:] + scaler.mean_[1:])
+    for query in queries:
+        conditioned = (
+            query - scaler.mean_[:n_inputs]
+        ) / scaler.scale_[:n_inputs]
+        mean_standardized = _conditional_mean(model, conditioned, n_inputs)
+        result.append(
+            mean_standardized * scaler.scale_[n_inputs:]
+            + scaler.mean_[n_inputs:]
+        )
     return np.asarray(result)
 
 
-def fit_material(files: list[Path], phase: np.ndarray, components: int) -> np.ndarray:
-    trials = np.stack([load_and_register(path, phase) for path in files])
-    phase_column = np.tile(phase, len(trials))
-    flattened = trials.reshape(-1, trials.shape[-1])
+def fit_shared_model(
+    trials_by_material: dict[str, np.ndarray],
+    phase: np.ndarray,
+    components: int,
+) -> dict[str, np.ndarray]:
+    """Fit one material-conditioned structured GMM/GMR to all trials."""
+    geometry_rows = []
+    behavior_rows = []
+    for material, trials in trials_by_material.items():
+        contrast = np.asarray(MATERIALS[material][2], dtype=float)
+        n_trials = len(trials)
+        phase_column = np.tile(phase, n_trials)
+        contrast_columns = np.tile(contrast, (n_trials * len(phase), 1))
+        inputs = np.column_stack([
+            phase_column,
+            contrast_columns,
+            phase_column[:, None] * contrast_columns,
+        ])
+        flattened = trials.reshape(-1, trials.shape[-1])
+        geometry_rows.append(np.column_stack([inputs, flattened[:, :3]]))
+        behavior_rows.append(np.column_stack([inputs, flattened[:, 3:]]))
 
-    # A single Gaussian is the appropriate phase-position model for a straight
-    # cut: its conditional mean is affine in phase.  Interaction/orientation
-    # channels retain a multi-component mixture to express nonlinear profiles.
-    geometry_training = np.column_stack([phase_column, flattened[:, :3]])
-    behavior_training = np.column_stack([
-        phase_column,
-        flattened[:, 3:],
-    ])
-    geometry = _fit_regression(geometry_training, phase, components=1)
-    behavior = _fit_regression(behavior_training, phase, components=components)
-    return np.column_stack([geometry, behavior])
+    geometry_training = np.vstack(geometry_rows)
+    behavior_training = np.vstack(behavior_rows)
+    outputs = {}
+    for material in trials_by_material:
+        contrast = np.asarray(MATERIALS[material][2], dtype=float)
+        contrast_columns = np.tile(contrast, (len(phase), 1))
+        queries = np.column_stack([
+            phase,
+            contrast_columns,
+            phase[:, None] * contrast_columns,
+        ])
+        # The shared model is structured: an affine one-component positional
+        # block and a nonlinear multi-component interaction block, both
+        # conditioned on the same phase and categorical material variables.
+        geometry = _fit_regression(
+            geometry_training, queries, n_inputs=5, components=1
+        )
+        behavior = _fit_regression(
+            behavior_training, queries, n_inputs=5, components=components
+        )
+        outputs[material] = np.column_stack([geometry, behavior])
+    return outputs
 
 
 def straightness(position: np.ndarray) -> tuple[float, float, float]:
@@ -150,16 +203,25 @@ def main() -> None:
 
     phase = np.linspace(0.0, 1.0, N_PHASE)
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    for material, (pattern, filename) in MATERIALS.items():
+    trials_by_material = {}
+    files_by_material = {}
+    for material, (pattern, _, _) in MATERIALS.items():
         files = sorted(DATA_DIR.glob(pattern))
         if not files:
             raise FileNotFoundError(f"no demonstrations match {pattern}")
-        prior = fit_material(files, phase, args.components)
+        files_by_material[material] = files
+        trials_by_material[material] = np.stack([
+            load_and_register(path, phase) for path in files
+        ])
+
+    priors = fit_shared_model(trials_by_material, phase, args.components)
+    for material, (_, filename, _) in MATERIALS.items():
+        prior = priors[material]
         rms, maximum, ratio = straightness(prior[:, :3])
         output = args.output_dir / filename
         np.save(output, prior)
         print(
-            f"{material}: {len(files)} trials -> {output}; "
+            f"{material}: {len(files_by_material[material])} trials -> {output}; "
             f"orthogonal RMS={1e3*rms:.6f} mm, "
             f"max={1e3*maximum:.6f} mm, length/chord={ratio:.9f}"
         )

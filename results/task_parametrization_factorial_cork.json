@@ -9,16 +9,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.012,
-          "position_rmse_mm": 4.375325518074627,
-          "depth_rmse_mm": 1.8031104893537655,
-          "force_peak_N": 58.246320338930595,
-          "force_rms_N": 58.17636370898042,
-          "phase_observation_rmse": 0.02150117633308947,
-          "negative_correction_fraction": 0.8907702523240372,
-          "retarded_phase_fraction": 0.8911022576361222,
-          "mean_phase_rate": 0.33200531208499334,
-          "tank_min_J": 32.34876489650082,
+          "duration_s": 3.087,
+          "position_rmse_mm": 4.439073851637002,
+          "depth_rmse_mm": 1.7813480696651955,
+          "force_peak_N": 58.226466444959094,
+          "force_rms_N": 58.15824751132948,
+          "phase_observation_rmse": 0.0064585219891215824,
+          "negative_correction_fraction": 0.9170715905409783,
+          "retarded_phase_fraction": 0.9173955296404276,
+          "mean_phase_rate": 0.3239390994493035,
+          "tank_min_J": 32.267446334807914,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 0.9131313124783997,
@@ -29,16 +29,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.012,
-          "position_rmse_mm": 4.3792578264416875,
-          "depth_rmse_mm": 1.804069133502302,
-          "force_peak_N": 58.24632036586524,
-          "force_rms_N": 58.17636335542316,
-          "phase_observation_rmse": 0.021501254578487217,
-          "negative_correction_fraction": 0.8907702523240372,
-          "retarded_phase_fraction": 0.8911022576361222,
-          "mean_phase_rate": 0.33200531208499334,
-          "tank_min_J": 32.322786711117374,
+          "duration_s": 3.087,
+          "position_rmse_mm": 4.443399554242078,
+          "depth_rmse_mm": 1.782324515186619,
+          "force_peak_N": 58.22646645435467,
+          "force_rms_N": 58.1582471837103,
+          "phase_observation_rmse": 0.0064770886739387735,
+          "negative_correction_fraction": 0.9160997732426304,
+          "retarded_phase_fraction": 0.9164237123420796,
+          "mean_phase_rate": 0.32393909944930355,
+          "tank_min_J": 32.241437437435835,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.134874814610633,
@@ -49,16 +49,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.148,
-          "position_rmse_mm": 30.01266780972418,
-          "depth_rmse_mm": 4.366412610173688,
-          "force_peak_N": 58.2463410707939,
-          "force_rms_N": 58.17941539452728,
-          "phase_observation_rmse": 0.03647725711054908,
-          "negative_correction_fraction": 0.45266836086404066,
-          "retarded_phase_fraction": 0.4548919949174079,
-          "mean_phase_rate": 0.3176620076238882,
-          "tank_min_J": 12.520218018145503,
+          "duration_s": 3.178,
+          "position_rmse_mm": 30.65637505430043,
+          "depth_rmse_mm": 4.429868716348055,
+          "force_peak_N": 58.22648863118106,
+          "force_rms_N": 58.160233547761415,
+          "phase_observation_rmse": 0.026526021372903247,
+          "negative_correction_fraction": 0.4905601006922593,
+          "retarded_phase_fraction": 0.4933920704845815,
+          "mean_phase_rate": 0.3146633102580239,
+          "tank_min_J": 12.399315756213479,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0558397902011534,
@@ -69,16 +69,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 2.516,
-          "position_rmse_mm": 17.464870542259696,
-          "depth_rmse_mm": 2.62734521136424,
-          "force_peak_N": 58.24630702222026,
-          "force_rms_N": 58.119833883358424,
-          "phase_observation_rmse": 0.03756670599999023,
-          "negative_correction_fraction": 0.025834658187599363,
-          "retarded_phase_fraction": 0.026629570747217807,
-          "mean_phase_rate": 0.397456279809221,
-          "tank_min_J": 43.98679807916076,
+          "duration_s": 2.57,
+          "position_rmse_mm": 17.278002625649666,
+          "depth_rmse_mm": 2.6524661288035647,
+          "force_peak_N": 58.22645328127987,
+          "force_rms_N": 58.11760250797693,
+          "phase_observation_rmse": 0.03038428526608042,
+          "negative_correction_fraction": 0.013618677042801557,
+          "retarded_phase_fraction": 0.014396887159533073,
+          "mean_phase_rate": 0.38910505836575876,
+          "tank_min_J": 44.05390348114983,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0291348105049247,
@@ -89,16 +89,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.012,
-          "position_rmse_mm": 4.370847161120636,
-          "depth_rmse_mm": 1.8019536825570803,
-          "force_peak_N": 58.24632034952163,
-          "force_rms_N": 58.176364197252994,
-          "phase_observation_rmse": 0.021494227114401146,
-          "negative_correction_fraction": 0.8907702523240372,
-          "retarded_phase_fraction": 0.8911022576361222,
-          "mean_phase_rate": 0.33200531208499334,
-          "tank_min_J": 32.38384990392165,
+          "duration_s": 3.087,
+          "position_rmse_mm": 4.433280564524565,
+          "depth_rmse_mm": 1.7800403069624933,
+          "force_peak_N": 58.2264664500621,
+          "force_rms_N": 58.15824798636079,
+          "phase_observation_rmse": 0.006440510570923591,
+          "negative_correction_fraction": 0.9177194687398769,
+          "retarded_phase_fraction": 0.9180434078393263,
+          "mean_phase_rate": 0.32393909944930355,
+          "tank_min_J": 32.302939299466416,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0425377925825472,
@@ -112,15 +112,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 4.409697582706328,
-          "depth_rmse_mm": 1.8005127180960432,
-          "force_peak_N": 58.246316723804746,
-          "force_rms_N": 58.17610960096081,
-          "phase_observation_rmse": 0.0003332773030428889,
+          "position_rmse_mm": 4.520514798436826,
+          "depth_rmse_mm": 1.7978551081823402,
+          "force_peak_N": 58.226464288125015,
+          "force_rms_N": 58.1562899709549,
+          "phase_observation_rmse": 0.000333277303168777,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 1.0,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 32.26042531909237,
+          "tank_min_J": 32.23522223125715,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 0.9131313124783997,
@@ -132,15 +132,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 4.413509553885649,
-          "depth_rmse_mm": 1.8014405073045994,
-          "force_peak_N": 58.24631673707638,
-          "force_rms_N": 58.17610924943391,
-          "phase_observation_rmse": 0.00033327729791810765,
+          "position_rmse_mm": 4.52494275731761,
+          "depth_rmse_mm": 1.7988502779896998,
+          "force_peak_N": 58.22646429393912,
+          "force_rms_N": 58.156289644230625,
+          "phase_observation_rmse": 0.00033327729803205004,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 1.0,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 32.234315841382184,
+          "tank_min_J": 32.20904491316505,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.134874814610633,
@@ -152,15 +152,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.003,
-          "position_rmse_mm": 31.85329962899512,
-          "depth_rmse_mm": 4.540002021999779,
-          "force_peak_N": 58.24634093184338,
-          "force_rms_N": 58.1761791529795,
-          "phase_observation_rmse": 0.0003330044033242175,
+          "position_rmse_mm": 33.17991668590755,
+          "depth_rmse_mm": 4.561239660845693,
+          "force_peak_N": 58.22648848552162,
+          "force_rms_N": 58.15635678537531,
+          "phase_observation_rmse": 0.0003330121714953242,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 1.0,
           "mean_phase_rate": 0.333000333000333,
-          "tank_min_J": 12.735836046470714,
+          "tank_min_J": 12.917831896658498,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0558397902011534,
@@ -172,15 +172,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 15.949189606161022,
-          "depth_rmse_mm": 2.747366108791011,
-          "force_peak_N": 58.24631432470941,
-          "force_rms_N": 58.06299715378752,
-          "phase_observation_rmse": 0.0003332777893379417,
+          "position_rmse_mm": 15.92303217006688,
+          "depth_rmse_mm": 2.736262304939439,
+          "force_peak_N": 58.22646039197432,
+          "force_rms_N": 58.053732688003535,
+          "phase_observation_rmse": 0.00033327778942085484,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 1.0,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 43.369696116991754,
+          "tank_min_J": 43.514154542263036,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0291348105049247,
@@ -192,15 +192,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 4.4047659312099245,
-          "depth_rmse_mm": 1.799270014976101,
-          "force_peak_N": 58.24631673405907,
-          "force_rms_N": 58.17611009776987,
-          "phase_observation_rmse": 0.00033327730996429586,
+          "position_rmse_mm": 4.51454385451178,
+          "depth_rmse_mm": 1.7965028122058835,
+          "force_peak_N": 58.226464285843086,
+          "force_rms_N": 58.15629045288116,
+          "phase_observation_rmse": 0.00033327731005243575,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 1.0,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 32.29630864048481,
+          "tank_min_J": 32.27092886517395,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0425377925825472,
@@ -215,16 +215,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.09,
-          "position_rmse_mm": 27.13085827372422,
-          "depth_rmse_mm": 2.892619832248686,
-          "force_peak_N": 58.24634077599057,
-          "force_rms_N": 58.17754666324976,
-          "phase_observation_rmse": 0.04962432440894164,
-          "negative_correction_fraction": 0.5466019417475728,
-          "retarded_phase_fraction": 0.5469255663430421,
-          "mean_phase_rate": 0.32362459546925565,
-          "tank_min_J": 38.55539957257574,
+          "duration_s": 3.116,
+          "position_rmse_mm": 26.529620638164772,
+          "depth_rmse_mm": 2.831616301510704,
+          "force_peak_N": 58.22648865079131,
+          "force_rms_N": 58.15829671152615,
+          "phase_observation_rmse": 0.04577037557417352,
+          "negative_correction_fraction": 0.5526315789473685,
+          "retarded_phase_fraction": 0.5532734274711169,
+          "mean_phase_rate": 0.32092426187419765,
+          "tank_min_J": 38.81307387562449,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 0.9131313124783997,
@@ -235,16 +235,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.09,
-          "position_rmse_mm": 27.13977651282169,
-          "depth_rmse_mm": 2.8932037978732303,
-          "force_peak_N": 58.24634077581418,
-          "force_rms_N": 58.17754622248484,
-          "phase_observation_rmse": 0.04962662652197002,
-          "negative_correction_fraction": 0.5466019417475728,
-          "retarded_phase_fraction": 0.5469255663430421,
-          "mean_phase_rate": 0.32362459546925565,
-          "tank_min_J": 38.52880957197857,
+          "duration_s": 3.116,
+          "position_rmse_mm": 26.538109873458357,
+          "depth_rmse_mm": 2.832320512329965,
+          "force_peak_N": 58.226488649225026,
+          "force_rms_N": 58.15829626644875,
+          "phase_observation_rmse": 0.04577396773027488,
+          "negative_correction_fraction": 0.5516688061617459,
+          "retarded_phase_fraction": 0.5523106546854942,
+          "mean_phase_rate": 0.3209242618741977,
+          "tank_min_J": 38.78602808564677,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.134874814610633,
@@ -255,16 +255,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.9290000000000003,
-          "position_rmse_mm": 69.96031851371254,
-          "depth_rmse_mm": 4.646171196966321,
-          "force_peak_N": 58.24634118150341,
-          "force_rms_N": 58.192693349508296,
-          "phase_observation_rmse": 0.06592350833154102,
-          "negative_correction_fraction": 0.6296767625349962,
-          "retarded_phase_fraction": 0.6329854924917282,
-          "mean_phase_rate": 0.2545176889793841,
-          "tank_min_J": 11.443607131605027,
+          "duration_s": 4.066,
+          "position_rmse_mm": 79.74882930126313,
+          "depth_rmse_mm": 4.742749567342279,
+          "force_peak_N": 58.22648881265905,
+          "force_rms_N": 58.17467613316161,
+          "phase_observation_rmse": 0.06373733550887577,
+          "negative_correction_fraction": 0.6982292179045745,
+          "retarded_phase_fraction": 0.7011805213969503,
+          "mean_phase_rate": 0.24594195769798327,
+          "tank_min_J": 11.070528512683607,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0558397902011534,
@@ -275,16 +275,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 2.602,
-          "position_rmse_mm": 22.908523321652954,
-          "depth_rmse_mm": 2.5305334576912952,
-          "force_peak_N": 58.246340929861745,
-          "force_rms_N": 58.1038641739491,
-          "phase_observation_rmse": 0.048930914790949555,
-          "negative_correction_fraction": 0.2355880092236741,
-          "retarded_phase_fraction": 0.2363566487317448,
-          "mean_phase_rate": 0.3843197540353574,
-          "tank_min_J": 42.00467283261042,
+          "duration_s": 2.65,
+          "position_rmse_mm": 22.760494821454092,
+          "depth_rmse_mm": 2.5868176735964283,
+          "force_peak_N": 58.22648872263578,
+          "force_rms_N": 58.12500253326831,
+          "phase_observation_rmse": 0.04381808867509429,
+          "negative_correction_fraction": 0.22,
+          "retarded_phase_fraction": 0.22075471698113208,
+          "mean_phase_rate": 0.37735849056603776,
+          "tank_min_J": 42.305889293439826,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0291348105049247,
@@ -295,16 +295,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.09,
-          "position_rmse_mm": 27.141811331489393,
-          "depth_rmse_mm": 2.8922499505823493,
-          "force_peak_N": 58.24634077850395,
-          "force_rms_N": 58.177546919262575,
-          "phase_observation_rmse": 0.049623541906697544,
-          "negative_correction_fraction": 0.5466019417475728,
-          "retarded_phase_fraction": 0.5469255663430421,
-          "mean_phase_rate": 0.32362459546925565,
-          "tank_min_J": 38.5908115686025,
+          "duration_s": 3.116,
+          "position_rmse_mm": 26.533645352881077,
+          "depth_rmse_mm": 2.830616376107893,
+          "force_peak_N": 58.22648865081993,
+          "force_rms_N": 58.15829702677841,
+          "phase_observation_rmse": 0.04577348751839299,
+          "negative_correction_fraction": 0.5532734274711169,
+          "retarded_phase_fraction": 0.5539152759948652,
+          "mean_phase_rate": 0.3209242618741977,
+          "tank_min_J": 38.84958868189478,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0425377925825472,
@@ -318,15 +318,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 29.268271441079037,
-          "depth_rmse_mm": 3.287875187634933,
-          "force_peak_N": 58.2463407353204,
-          "force_rms_N": 58.17551129478469,
-          "phase_observation_rmse": 0.0003332777672910591,
+          "position_rmse_mm": 28.66142377718538,
+          "depth_rmse_mm": 3.2481825024829916,
+          "force_peak_N": 58.226488134209966,
+          "force_rms_N": 58.155687346471744,
+          "phase_observation_rmse": 0.0003332777665758511,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 1.0,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 38.69024972384116,
+          "tank_min_J": 38.73774991210386,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 0.9131313124783997,
@@ -338,15 +338,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 29.27423796892195,
-          "depth_rmse_mm": 3.288345119654923,
-          "force_peak_N": 58.24634073575578,
-          "force_rms_N": 58.175510877540326,
-          "phase_observation_rmse": 0.00033327776703675436,
+          "position_rmse_mm": 28.66820949069605,
+          "depth_rmse_mm": 3.248708166176992,
+          "force_peak_N": 58.226488134849205,
+          "force_rms_N": 58.15568694422568,
+          "phase_observation_rmse": 0.0003332777663146967,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 1.0,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 38.663484436328005,
+          "tank_min_J": 38.71088325368137,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.134874814610633,
@@ -357,16 +357,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.045,
-          "position_rmse_mm": 130.72494056500628,
-          "depth_rmse_mm": 5.936656222451942,
-          "force_peak_N": 58.24633945281865,
-          "force_rms_N": 58.17704567799832,
-          "phase_observation_rmse": 0.00032870388774316485,
+          "duration_s": 3.047,
+          "position_rmse_mm": 133.15149884609693,
+          "depth_rmse_mm": 5.96756765543229,
+          "force_peak_N": 58.22648796738768,
+          "force_rms_N": 58.157265981102235,
+          "phase_observation_rmse": 0.00032853979929827154,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 1.0,
-          "mean_phase_rate": 0.3284072249589491,
-          "tank_min_J": 6.120199099170697,
+          "mean_phase_rate": 0.32819166393173616,
+          "tank_min_J": 5.7843165635111164,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0558397902011534,
@@ -378,15 +378,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 23.108731436343355,
-          "depth_rmse_mm": 2.7634506225865425,
-          "force_peak_N": 58.24634110126924,
-          "force_rms_N": 58.12505129629487,
-          "phase_observation_rmse": 0.00033327778354355614,
+          "position_rmse_mm": 23.09127611405793,
+          "depth_rmse_mm": 2.756284496030412,
+          "force_peak_N": 58.2264886162451,
+          "force_rms_N": 58.11417844019795,
+          "phase_observation_rmse": 0.0003332777839366159,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 1.0,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 40.321890761983,
+          "tank_min_J": 40.48123192612658,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0291348105049247,
@@ -398,15 +398,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 29.282160785503358,
-          "depth_rmse_mm": 3.2877393548428926,
-          "force_peak_N": 58.24634073454197,
-          "force_rms_N": 58.175511543398045,
-          "phase_observation_rmse": 0.0003332777676607849,
+          "position_rmse_mm": 28.674099707565073,
+          "depth_rmse_mm": 3.247862993737288,
+          "force_peak_N": 58.226488133491976,
+          "force_rms_N": 58.15568757789523,
+          "phase_observation_rmse": 0.0003332777669580131,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 1.0,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 38.726831164836995,
+          "tank_min_J": 38.77406675828001,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0425377925825472,
@@ -421,16 +421,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 2.966,
-          "position_rmse_mm": 5.844044510242457,
-          "depth_rmse_mm": 2.3938045005934887,
-          "force_peak_N": 58.24631884589103,
-          "force_rms_N": 49.75773603150176,
-          "phase_observation_rmse": 0.022667283509566916,
-          "negative_correction_fraction": 0.5289952798381659,
-          "retarded_phase_fraction": 0.5293324342548887,
-          "mean_phase_rate": 0.33715441672285906,
-          "tank_min_J": 49.99142136469264,
+          "duration_s": 3.0460000000000003,
+          "position_rmse_mm": 5.883732013845712,
+          "depth_rmse_mm": 2.368842170699763,
+          "force_peak_N": 58.22646185706584,
+          "force_rms_N": 50.06505377323007,
+          "phase_observation_rmse": 0.009432965825876842,
+          "negative_correction_fraction": 0.5699277741300066,
+          "retarded_phase_fraction": 0.5702560735390676,
+          "mean_phase_rate": 0.3282994090610637,
+          "tank_min_J": 49.99187860786866,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 0.9131313124783997,
@@ -441,16 +441,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 2.967,
-          "position_rmse_mm": 5.8477079077310306,
-          "depth_rmse_mm": 2.395082583369556,
-          "force_peak_N": 58.24631890886637,
-          "force_rms_N": 49.79134404856459,
-          "phase_observation_rmse": 0.022665399253121388,
-          "negative_correction_fraction": 0.5305021907650825,
-          "retarded_phase_fraction": 0.5308392315470172,
-          "mean_phase_rate": 0.33704078193461406,
-          "tank_min_J": 49.99440323722662,
+          "duration_s": 3.047,
+          "position_rmse_mm": 5.8872823720589516,
+          "depth_rmse_mm": 2.3699725958853013,
+          "force_peak_N": 58.22646191048071,
+          "force_rms_N": 50.097433532263295,
+          "phase_observation_rmse": 0.009434519073813324,
+          "negative_correction_fraction": 0.569740728585494,
+          "retarded_phase_fraction": 0.5700689202494257,
+          "mean_phase_rate": 0.32819166393173616,
+          "tank_min_J": 49.99485647169774,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.134874814610633,
@@ -461,16 +461,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.3810000000000002,
-          "position_rmse_mm": 52.662125977975045,
-          "depth_rmse_mm": 20.677608242358037,
-          "force_peak_N": 58.24634084769579,
-          "force_rms_N": 46.24596773322727,
-          "phase_observation_rmse": 0.051900531042110384,
-          "negative_correction_fraction": 0.5746820467317362,
-          "retarded_phase_fraction": 0.5755693581780539,
-          "mean_phase_rate": 0.29577048210588586,
-          "tank_min_J": 25.10523549568135,
+          "duration_s": 3.404,
+          "position_rmse_mm": 48.86017236427648,
+          "depth_rmse_mm": 20.489734263874897,
+          "force_peak_N": 58.22648620595117,
+          "force_rms_N": 46.13555380479035,
+          "phase_observation_rmse": 0.04551439204318674,
+          "negative_correction_fraction": 0.6521739130434783,
+          "retarded_phase_fraction": 0.6527614571092832,
+          "mean_phase_rate": 0.2937720329024677,
+          "tank_min_J": 25.219408043431326,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0558397902011534,
@@ -481,16 +481,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 2.623,
-          "position_rmse_mm": 46.69179493618723,
-          "depth_rmse_mm": 20.49849506318163,
-          "force_peak_N": 58.24629435283304,
-          "force_rms_N": 47.74112898826391,
-          "phase_observation_rmse": 0.05540244804081304,
-          "negative_correction_fraction": 0.410217308425467,
-          "retarded_phase_fraction": 0.4109797941288601,
-          "mean_phase_rate": 0.3812428516965307,
-          "tank_min_J": 49.99293560959738,
+          "duration_s": 2.6510000000000002,
+          "position_rmse_mm": 41.49866837238882,
+          "depth_rmse_mm": 20.19053415090304,
+          "force_peak_N": 58.22645186024128,
+          "force_rms_N": 47.90461109020488,
+          "phase_observation_rmse": 0.05439547355067677,
+          "negative_correction_fraction": 0.3934364390795926,
+          "retarded_phase_fraction": 0.3941908713692946,
+          "mean_phase_rate": 0.3772161448509997,
+          "tank_min_J": 49.9932574867932,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0291348105049247,
@@ -501,16 +501,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 2.966,
-          "position_rmse_mm": 5.840389174395327,
-          "depth_rmse_mm": 2.3927506194165953,
-          "force_peak_N": 58.24631887822667,
-          "force_rms_N": 49.75015828448582,
-          "phase_observation_rmse": 0.0226618818320789,
-          "negative_correction_fraction": 0.528658125421443,
-          "retarded_phase_fraction": 0.5289952798381659,
-          "mean_phase_rate": 0.33715441672285906,
-          "tank_min_J": 49.99101431080302,
+          "duration_s": 3.0460000000000003,
+          "position_rmse_mm": 5.879496541985125,
+          "depth_rmse_mm": 2.367792192670056,
+          "force_peak_N": 58.226461838718656,
+          "force_rms_N": 50.0578165309491,
+          "phase_observation_rmse": 0.009417942692765153,
+          "negative_correction_fraction": 0.5705843729481287,
+          "retarded_phase_fraction": 0.5709126723571898,
+          "mean_phase_rate": 0.3282994090610637,
+          "tank_min_J": 49.99146857561783,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0425377925825472,
@@ -524,15 +524,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 5.986979055205663,
-          "depth_rmse_mm": 2.3911007712972,
-          "force_peak_N": 58.24631455482439,
-          "force_rms_N": 49.931927096127374,
-          "phase_observation_rmse": 0.0003332777916311871,
+          "position_rmse_mm": 5.967719228328095,
+          "depth_rmse_mm": 2.381492548343823,
+          "force_peak_N": 58.226458845555314,
+          "force_rms_N": 49.924898369387556,
+          "phase_observation_rmse": 0.000333277791631181,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 0.061312895701432855,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 49.991804693557526,
+          "tank_min_J": 49.99181781574749,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 0.9131313124783997,
@@ -544,15 +544,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 5.9902663278851485,
-          "depth_rmse_mm": 2.392097512878859,
-          "force_peak_N": 58.24631458818342,
-          "force_rms_N": 49.961924288211776,
-          "phase_observation_rmse": 0.0003332777916332546,
+          "position_rmse_mm": 5.97155634167861,
+          "depth_rmse_mm": 2.382430658019829,
+          "force_peak_N": 58.226458953167565,
+          "force_rms_N": 49.95481172505203,
+          "phase_observation_rmse": 0.0003332777916332501,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 0.06697767410863045,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 49.994785599720146,
+          "tank_min_J": 49.99479885837405,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.134874814610633,
@@ -564,15 +564,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 63.86639725568954,
-          "depth_rmse_mm": 22.614156005548782,
-          "force_peak_N": 58.24633426794256,
-          "force_rms_N": 48.593800252143424,
-          "phase_observation_rmse": 0.0003332746756795764,
+          "position_rmse_mm": 63.91471137701685,
+          "depth_rmse_mm": 22.64189240134041,
+          "force_peak_N": 58.22647954403705,
+          "force_rms_N": 48.57564925705348,
+          "phase_observation_rmse": 0.00033327478075470524,
           "negative_correction_fraction": 0.0,
-          "retarded_phase_fraction": 0.7400866377874042,
+          "retarded_phase_fraction": 0.7390869710096635,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 23.472748484545768,
+          "tank_min_J": 23.56072962292658,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0558397902011534,
@@ -584,15 +584,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 30.994979694223172,
-          "depth_rmse_mm": 18.387581869544942,
-          "force_peak_N": 58.246314349746555,
-          "force_rms_N": 49.24758755089626,
-          "phase_observation_rmse": 0.00033327779163465273,
+          "position_rmse_mm": 31.04705113415214,
+          "depth_rmse_mm": 18.367871983662354,
+          "force_peak_N": 58.22645626092557,
+          "force_rms_N": 49.23581432225306,
+          "phase_observation_rmse": 0.00033327779163464443,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 0.17660779740086638,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 49.99323410431956,
+          "tank_min_J": 49.99321300623714,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0291348105049247,
@@ -604,15 +604,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 5.983236989883631,
-          "depth_rmse_mm": 2.3901021326317795,
-          "force_peak_N": 58.24631453327768,
-          "force_rms_N": 49.92461519555808,
-          "phase_observation_rmse": 0.00033327779162956294,
+          "position_rmse_mm": 5.963094894005686,
+          "depth_rmse_mm": 2.380437621944762,
+          "force_peak_N": 58.226458854307275,
+          "force_rms_N": 49.917438323577144,
+          "phase_observation_rmse": 0.0003332777916295553,
           "negative_correction_fraction": 0.0,
           "retarded_phase_fraction": 0.06431189603465512,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 49.99139495153251,
+          "tank_min_J": 49.991408067269894,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0425377925825472,
@@ -627,16 +627,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.0420000000000003,
-          "position_rmse_mm": 93.59283438832637,
-          "depth_rmse_mm": 4.86745383967569,
-          "force_peak_N": 58.24634080251892,
-          "force_rms_N": 50.90009384137776,
-          "phase_observation_rmse": 0.0678400990990656,
-          "negative_correction_fraction": 0.49638395792241946,
-          "retarded_phase_fraction": 0.49671268902038135,
-          "mean_phase_rate": 0.32873109796186717,
-          "tank_min_J": 49.99142136469264,
+          "duration_s": 3.121,
+          "position_rmse_mm": 84.54531133574758,
+          "depth_rmse_mm": 4.731264792379604,
+          "force_peak_N": 58.2264874058705,
+          "force_rms_N": 50.74885294710604,
+          "phase_observation_rmse": 0.06275875927091006,
+          "negative_correction_fraction": 0.5350849086831144,
+          "retarded_phase_fraction": 0.5357257289330343,
+          "mean_phase_rate": 0.32041012495994875,
+          "tank_min_J": 49.99187860786866,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 0.9131313124783997,
@@ -647,16 +647,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.04,
-          "position_rmse_mm": 93.31311664087549,
-          "depth_rmse_mm": 4.804130004742562,
-          "force_peak_N": 58.24634084232103,
-          "force_rms_N": 50.99730363976442,
-          "phase_observation_rmse": 0.06782556324313045,
-          "negative_correction_fraction": 0.49046052631578946,
-          "retarded_phase_fraction": 0.4911184210526316,
-          "mean_phase_rate": 0.32894736842105265,
-          "tank_min_J": 49.99440323722662,
+          "duration_s": 3.118,
+          "position_rmse_mm": 84.29972767856243,
+          "depth_rmse_mm": 4.672023778915597,
+          "force_peak_N": 58.22648766809443,
+          "force_rms_N": 50.86261783306323,
+          "phase_observation_rmse": 0.06273133062295047,
+          "negative_correction_fraction": 0.5291853752405388,
+          "retarded_phase_fraction": 0.5298268120590122,
+          "mean_phase_rate": 0.3207184092366902,
+          "tank_min_J": 49.99485647169774,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.134874814610633,
@@ -667,16 +667,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.447,
-          "position_rmse_mm": 71.61328886593166,
-          "depth_rmse_mm": 20.14337831630876,
-          "force_peak_N": 58.24634095375551,
-          "force_rms_N": 46.066568981622744,
-          "phase_observation_rmse": 0.05899974499595232,
-          "negative_correction_fraction": 0.594139831737743,
-          "retarded_phase_fraction": 0.5947200464171744,
-          "mean_phase_rate": 0.2901073397156948,
-          "tank_min_J": 24.671560031264825,
+          "duration_s": 3.464,
+          "position_rmse_mm": 68.32712548666755,
+          "depth_rmse_mm": 20.026855773244908,
+          "force_peak_N": 58.2264884296908,
+          "force_rms_N": 45.992134923636264,
+          "phase_observation_rmse": 0.05363041949758155,
+          "negative_correction_fraction": 0.6654157043879908,
+          "retarded_phase_fraction": 0.6659930715935335,
+          "mean_phase_rate": 0.28868360277136257,
+          "tank_min_J": 24.682383856329857,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0558397902011534,
@@ -687,16 +687,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 2.703,
-          "position_rmse_mm": 50.33215390653257,
-          "depth_rmse_mm": 20.27143861688493,
-          "force_peak_N": 58.24629435283304,
-          "force_rms_N": 47.797350586222436,
-          "phase_observation_rmse": 0.06160636349854651,
-          "negative_correction_fraction": 0.32852386237513875,
-          "retarded_phase_fraction": 0.32926378098409176,
-          "mean_phase_rate": 0.3699593044765076,
-          "tank_min_J": 49.99293560959738,
+          "duration_s": 2.733,
+          "position_rmse_mm": 44.79821186932631,
+          "depth_rmse_mm": 19.97468600940909,
+          "force_peak_N": 58.22645186024128,
+          "force_rms_N": 47.907787058605656,
+          "phase_observation_rmse": 0.06075310282507678,
+          "negative_correction_fraction": 0.3278448591291621,
+          "retarded_phase_fraction": 0.3285766556897183,
+          "mean_phase_rate": 0.3658982802780827,
+          "tank_min_J": 49.9932574867932,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0291348105049247,
@@ -707,16 +707,16 @@
         {
           "completion": 1.0,
           "phase_final": 1.0,
-          "duration_s": 3.0420000000000003,
-          "position_rmse_mm": 93.71169244925103,
-          "depth_rmse_mm": 4.830986998615168,
-          "force_peak_N": 58.246340827894095,
-          "force_rms_N": 50.89139759794471,
-          "phase_observation_rmse": 0.06784124533043662,
-          "negative_correction_fraction": 0.4930966469428008,
-          "retarded_phase_fraction": 0.49375410913872453,
-          "mean_phase_rate": 0.32873109796186717,
-          "tank_min_J": 49.99101431080302,
+          "duration_s": 3.12,
+          "position_rmse_mm": 84.64850448851462,
+          "depth_rmse_mm": 4.7003860240306485,
+          "force_peak_N": 58.22648738708756,
+          "force_rms_N": 50.74384188894156,
+          "phase_observation_rmse": 0.06276672589963067,
+          "negative_correction_fraction": 0.5346153846153846,
+          "retarded_phase_fraction": 0.5352564102564102,
+          "mean_phase_rate": 0.3205128205128205,
+          "tank_min_J": 49.99146857561783,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0425377925825472,
@@ -730,15 +730,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 117.08083874803418,
-          "depth_rmse_mm": 6.539789513016257,
-          "force_peak_N": 58.24632936722361,
-          "force_rms_N": 50.77831207084597,
-          "phase_observation_rmse": 0.00033327779163090876,
+          "position_rmse_mm": 114.1821141996709,
+          "depth_rmse_mm": 6.537703741066556,
+          "force_peak_N": 58.22647834023107,
+          "force_rms_N": 50.789738957883955,
+          "phase_observation_rmse": 0.0003332777916309684,
           "negative_correction_fraction": 0.0,
-          "retarded_phase_fraction": 0.10596467844051982,
+          "retarded_phase_fraction": 0.10329890036654449,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 49.991804693557526,
+          "tank_min_J": 49.99181781574749,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 0.9131313124783997,
@@ -750,15 +750,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 116.70278727256337,
-          "depth_rmse_mm": 6.525515223700341,
-          "force_peak_N": 58.24633127463586,
-          "force_rms_N": 50.83844432380317,
-          "phase_observation_rmse": 0.00033327779163269623,
+          "position_rmse_mm": 113.79851360186538,
+          "depth_rmse_mm": 6.537069055224788,
+          "force_peak_N": 58.226480386407715,
+          "force_rms_N": 50.84961270182444,
+          "phase_observation_rmse": 0.000333277791632843,
           "negative_correction_fraction": 0.0,
-          "retarded_phase_fraction": 0.10896367877374209,
+          "retarded_phase_fraction": 0.10629790069976675,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 49.994785599720146,
+          "tank_min_J": 49.99479885837405,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.134874814610633,
@@ -770,15 +770,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 98.82561136898633,
-          "depth_rmse_mm": 22.811417932770816,
-          "force_peak_N": 58.246338308488426,
-          "force_rms_N": 48.75237324021404,
-          "phase_observation_rmse": 0.00033326498474591545,
+          "position_rmse_mm": 98.77243822323375,
+          "depth_rmse_mm": 22.81433234425804,
+          "force_peak_N": 58.22648564689529,
+          "force_rms_N": 48.736019641759306,
+          "phase_observation_rmse": 0.00033326485310629877,
           "negative_correction_fraction": 0.0,
-          "retarded_phase_fraction": 0.6914361879373542,
+          "retarded_phase_fraction": 0.6917694101966011,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 19.252925807602487,
+          "tank_min_J": 19.223024132062132,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0558397902011534,
@@ -790,15 +790,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 40.96287223163601,
-          "depth_rmse_mm": 18.6761492784244,
-          "force_peak_N": 58.246314349746555,
-          "force_rms_N": 48.615492183993894,
-          "phase_observation_rmse": 0.0003332777916357488,
+          "position_rmse_mm": 40.998972034117436,
+          "depth_rmse_mm": 18.65663287136124,
+          "force_peak_N": 58.22645817115303,
+          "force_rms_N": 48.603507452485275,
+          "phase_observation_rmse": 0.00033327779163574224,
           "negative_correction_fraction": 0.0,
-          "retarded_phase_fraction": 0.10396534488503832,
+          "retarded_phase_fraction": 0.10429856714428523,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 49.99323410431956,
+          "tank_min_J": 49.99321300623714,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0291348105049247,
@@ -810,15 +810,15 @@
           "completion": 1.0,
           "phase_final": 1.0,
           "duration_s": 3.001,
-          "position_rmse_mm": 117.24355506849106,
-          "depth_rmse_mm": 6.496746173033551,
-          "force_peak_N": 58.24632862091852,
-          "force_rms_N": 50.776675315597025,
-          "phase_observation_rmse": 0.0003332777916292296,
+          "position_rmse_mm": 114.3321758522377,
+          "depth_rmse_mm": 6.49876697723448,
+          "force_peak_N": 58.22647778289218,
+          "force_rms_N": 50.787875997684544,
+          "phase_observation_rmse": 0.00033327779162930344,
           "negative_correction_fraction": 0.0,
-          "retarded_phase_fraction": 0.11162945684771743,
+          "retarded_phase_fraction": 0.10896367877374209,
           "mean_phase_rate": 0.3332222592469177,
-          "tank_min_J": 49.99139495153251,
+          "tank_min_J": 49.991408067269894,
           "power_violation_fraction": 0.0,
           "domain_randomization": {
             "friction_mul": 1.0425377925825472,
@@ -838,53 +838,53 @@
           "n": 5
         },
         "duration_s": {
-          "mean": 2.9400000000000004,
-          "std": 0.21844541652321298,
+          "mean": 3.0018000000000002,
+          "std": 0.2187577655764477,
           "n": 5
         },
         "position_rmse_mm": {
-          "mean": 12.120593771524167,
-          "std": 10.282642098688786,
+          "mean": 12.250026330070748,
+          "std": 10.460689590915836,
           "n": 5
         },
         "depth_rmse_mm": {
-          "mean": 2.4805782253902153,
-          "std": 0.9954968839646262,
+          "mean": 2.4852095473931852,
+          "std": 1.029213879949584,
           "n": 5
         },
         "force_peak_N": {
-          "mean": 58.24632182946633,
-          "std": 1.0918216743428385e-05,
+          "mean": 58.22646825236736,
+          "std": 1.1394537173480327e-05,
           "n": 5
         },
         "force_rms_N": {
-          "mean": 58.16566810790846,
-          "std": 0.02294756875331509,
+          "mean": 58.150515747427775,
+          "std": 0.01647458511412433,
           "n": 5
         },
         "phase_observation_rmse": {
-          "mean": 0.027708124227303434,
-          "std": 0.007612532777221928,
+          "mean": 0.015257285574593524,
+          "std": 0.010844871099934613,
           "n": 5
         },
         "negative_correction_fraction": {
-          "mean": 0.6301627552047503,
-          "std": 0.34654451706269535,
+          "mean": 0.6510139220517093,
+          "std": 0.35894488915336603,
           "n": 5
         },
         "retarded_phase_fraction": {
-          "mean": 0.6309656677145984,
-          "std": 0.3461898879511232,
+          "mean": 0.6519303214931896,
+          "std": 0.3585604446087721,
           "n": 5
         },
         "mean_phase_rate": {
-          "mean": 0.34222684473761783,
-          "std": 0.02816792825203339,
+          "mean": 0.3351171333943387,
+          "std": 0.02723196743623348,
           "n": 5
         },
         "tank_min_J": {
-          "mean": 30.712483521769222,
-          "std": 10.151156680942544,
+          "mean": 30.653008461814693,
+          "std": 10.204244927824323,
           "n": 5
         },
         "power_violation_fraction": {
@@ -905,28 +905,28 @@
           "n": 5
         },
         "position_rmse_mm": {
-          "mean": 12.20609246059161,
-          "std": 10.792519101925857,
+          "mean": 12.532590053248128,
+          "std": 11.228642168784958,
           "n": 5
         },
         "depth_rmse_mm": {
-          "mean": 2.5377182742335065,
-          "std": 1.0662059120805567,
+          "mean": 2.538142032832611,
+          "std": 1.0748750083475316,
           "n": 5
         },
         "force_peak_N": {
-          "mean": 58.2463210902986,
-          "std": 9.964474209744109e-06,
+          "mean": 58.22646834908063,
+          "std": 1.018073896268311e-05,
           "n": 5
         },
         "force_rms_N": {
-          "mean": 58.15350105098632,
-          "std": 0.0452519566066244,
+          "mean": 58.13579190828911,
+          "std": 0.04102961829122461,
           "n": 5
         },
         "phase_observation_rmse": {
-          "mean": 0.0003332228207174903,
-          "std": 1.0920885871009051e-07,
+          "mean": 0.00033322437443388843,
+          "std": 1.0610163608368299e-07,
           "n": 5
         },
         "negative_correction_fraction": {
@@ -945,8 +945,8 @@
           "n": 5
         },
         "tank_min_J": {
-          "mean": 30.57931639288437,
-          "std": 9.904512276072275,
+          "mean": 30.629436489703533,
+          "std": 9.874057974230269,
           "n": 5
         },
         "power_violation_fraction": {
@@ -963,62 +963,62 @@
           "wilcoxon_p": 1.0
         },
         "duration_s": {
-          "mean": -0.0613999999999999,
-          "std": 0.21806567817976308,
+          "mean": 0.0004000000000001336,
+          "std": 0.21843681008474744,
           "n": 5,
           "wilcoxon_p": 0.5625
         },
         "position_rmse_mm": {
-          "mean": -0.08549868906744322,
-          "std": 1.0632186198170772,
+          "mean": -0.2825637231773811,
+          "std": 1.2509901404695598,
           "n": 5,
           "wilcoxon_p": 0.4375
         },
         "depth_rmse_mm": {
-          "mean": -0.05714004884329156,
-          "std": 0.0751455041517015,
+          "mean": -0.05293248543942575,
+          "std": 0.04709029911763121,
           "n": 5,
-          "wilcoxon_p": 0.8125
+          "wilcoxon_p": 0.0625
         },
         "force_peak_N": {
-          "mean": 7.391677286250342e-07,
-          "std": 4.240816511696174e-06,
+          "mean": -9.671327205751368e-08,
+          "std": 3.5927593144299676e-06,
           "n": 5,
           "wilcoxon_p": 0.625
         },
         "force_rms_N": {
-          "mean": 0.01216705692213509,
-          "std": 0.022364679404033465,
+          "mean": 0.014723839138677874,
+          "std": 0.02458423013877294,
           "n": 5,
           "wilcoxon_p": 0.0625
         },
         "phase_observation_rmse": {
-          "mean": 0.02737490140658594,
-          "std": 0.007612595524561363,
+          "mean": 0.014924061200159636,
+          "std": 0.010844926063786169,
           "n": 5,
           "wilcoxon_p": 0.0625
         },
         "negative_correction_fraction": {
-          "mean": 0.6301627552047503,
-          "std": 0.34654451706269535,
+          "mean": 0.6510139220517093,
+          "std": 0.35894488915336603,
           "n": 5,
           "wilcoxon_p": 0.0625
         },
         "retarded_phase_fraction": {
-          "mean": -0.3690343322854015,
-          "std": 0.34618988795112327,
+          "mean": -0.34806967850681036,
+          "std": 0.3585604446087721,
           "n": 5,
           "wilcoxon_p": 0.0625
         },
         "mean_phase_rate": {
-          "mean": 0.009048970740017103,
-          "std": 0.028129333966051932,
+          "mean": 0.0019392593967379134,
+          "std": 0.02719875428343601,
           "n": 5,
           "wilcoxon_p": 0.5625
         },
         "tank_min_J": {
-          "mean": 0.13316712888485363,
-          "std": 0.26904757694765824,
+          "mean": 0.0235719721111586,
+          "std": 0.33481996713674356,
           "n": 5,
           "wilcoxon_p": 0.4375
         },
@@ -1038,53 +1038,53 @@
           "n": 5
         },
         "duration_s": {
-          "mean": 3.1602,
-          "std": 0.4283514444938877,
+          "mean": 3.2128,
+          "std": 0.4632072538292119,
           "n": 5
         },
         "position_rmse_mm": {
-          "mean": 34.85625759068016,
-          "std": 17.62828411030733,
+          "mean": 36.42213999744429,
+          "std": 21.712581016753596,
           "n": 5
         },
         "depth_rmse_mm": {
-          "mean": 3.1709556470723763,
-          "std": 0.7508255829556763,
+          "mean": 3.1648240861774535,
+          "std": 0.7946346437134296,
           "n": 5
         },
         "force_peak_N": {
-          "mean": 58.24634088833477,
-          "std": 1.5812479440588055e-07,
+          "mean": 58.226488697226216,
+          "std": 6.41626727462254e-08,
           "n": 5
         },
         "force_rms_N": {
-          "mean": 58.16583946569091,
-          "std": 0.031538037228106594,
+          "mean": 58.154913734236644,
+          "std": 0.016245399856994407,
           "n": 5
         },
         "phase_observation_rmse": {
-          "mean": 0.052745783192019946,
-          "std": 0.0065943414330893796,
+          "mean": 0.04897465100136229,
+          "std": 0.007420056481629578,
           "n": 5
         },
         "negative_correction_fraction": {
-          "mean": 0.5010141194002777,
-          "std": 0.13655756613311476,
+          "mean": 0.5151606060969611,
+          "std": 0.15800215799293166,
           "n": 5
         },
         "retarded_phase_fraction": {
-          "mean": 0.5020237680505198,
-          "std": 0.13695145565159816,
+          "mean": 0.5162869193059118,
+          "std": 0.1584970228295774,
           "n": 5
         },
         "mean_phase_rate": {
-          "mean": 0.3219422458845017,
-          "std": 0.041098698999694566,
+          "mean": 0.3172146467773228,
+          "std": 0.04180517165801963,
           "n": 5
         },
         "tank_min_J": {
-          "mean": 33.82466013547445,
-          "std": 11.269864757959912,
+          "mean": 33.96502168985789,
+          "std": 11.526774029050905,
           "n": 5
         },
         "power_violation_fraction": {
@@ -1100,33 +1100,33 @@
           "n": 5
         },
         "duration_s": {
-          "mean": 3.0098,
-          "std": 0.017600000000000015,
+          "mean": 3.0101999999999998,
+          "std": 0.018400000000000107,
           "n": 5
         },
         "position_rmse_mm": {
-          "mean": 48.331668439370794,
-          "std": 41.26579781303868,
+          "mean": 48.449301587120274,
+          "std": 42.40613634491208,
           "n": 5
         },
         "depth_rmse_mm": {
-          "mean": 3.7128133014342466,
-          "std": 1.1303274155148604,
+          "mean": 3.6937211627719946,
+          "std": 1.1527789162003839,
           "n": 5
         },
         "force_peak_N": {
-          "mean": 58.2463405519412,
-          "std": 5.675544799306405e-07,
+          "mean": 58.226488197236776,
+          "std": 2.19238029342793e-07,
           "n": 5
         },
         "force_rms_N": {
-          "mean": 58.16572613800325,
-          "std": 0.020346101904237322,
+          "mean": 58.14770125797857,
+          "std": 0.016772556993220014,
           "n": 5
         },
         "phase_observation_rmse": {
-          "mean": 0.0003323629946550638,
-          "std": 1.8295534559602949e-06,
+          "mean": 0.00033233017661668963,
+          "std": 1.8951886592209497e-06,
           "n": 5
         },
         "negative_correction_fraction": {
@@ -1140,13 +1140,13 @@
           "n": 5
         },
         "mean_phase_rate": {
-          "mean": 0.3322592523893239,
-          "std": 0.0019260137151874356,
+          "mean": 0.33221614018388135,
+          "std": 0.0020122381260726076,
           "n": 5
         },
         "tank_min_J": {
-          "mean": 32.50453103723197,
-          "std": 13.207247452849938,
+          "mean": 32.49764968274059,
+          "std": 13.373677769121837,
           "n": 5
         },
         "power_violation_fraction": {
@@ -1163,64 +1163,64 @@
           "wilcoxon_p": 1.0
         },
         "duration_s": {
-          "mean": 0.15040000000000003,
-          "std": 0.4126303915127921,
+          "mean": 0.20260000000000006,
+          "std": 0.44631898906499584,
           "n": 5,
           "wilcoxon_p": 0.5
         },
         "position_rmse_mm": {
-          "mean": -13.475410848690638,
-          "std": 23.656506272742693,
+          "mean": -12.027161589675988,
+          "std": 20.699540599272968,
           "n": 5,
           "wilcoxon_p": 0.0625
         },
         "depth_rmse_mm": {
-          "mean": -0.5418576543618703,
-          "std": 0.3795599419791226,
+          "mean": -0.5288970765945409,
+          "std": 0.360898485078275,
           "n": 5,
           "wilcoxon_p": 0.0625
         },
         "force_peak_N": {
-          "mean": 3.363935633160509e-07,
-          "std": 7.010163718249041e-07,
+          "mean": 4.999894329671406e-07,
+          "std": 2.344877293046706e-07,
           "n": 5,
-          "wilcoxon_p": 0.4375
+          "wilcoxon_p": 0.0625
         },
         "force_rms_N": {
-          "mean": 0.0001133276876629452,
-          "std": 0.011883666689170328,
+          "mean": 0.007212476258078482,
+          "std": 0.006010023104522989,
           "n": 5,
-          "wilcoxon_p": 0.625
+          "wilcoxon_p": 0.0625
         },
         "phase_observation_rmse": {
-          "mean": 0.05241342019736489,
-          "std": 0.006596169467150718,
+          "mean": 0.0486423208247456,
+          "std": 0.00742194178532325,
           "n": 5,
           "wilcoxon_p": 0.0625
         },
         "negative_correction_fraction": {
-          "mean": 0.5010141194002777,
-          "std": 0.13655756613311476,
+          "mean": 0.5151606060969611,
+          "std": 0.15800215799293166,
           "n": 5,
           "wilcoxon_p": 0.0625
         },
         "retarded_phase_fraction": {
-          "mean": -0.49797623194948015,
-          "std": 0.13695145565159816,
+          "mean": -0.48371308069408825,
+          "std": 0.15849702282957737,
           "n": 5,
           "wilcoxon_p": 0.0625
         },
         "mean_phase_rate": {
-          "mean": -0.010317006504822267,
-          "std": 0.03953418731881172,
+          "mean": -0.015001493406558552,
+          "std": 0.04010366388896833,
           "n": 5,
-          "wilcoxon_p": 0.5
+          "wilcoxon_p": 0.375
         },
         "tank_min_J": {
-          "mean": 1.3201290982424783,
-          "std": 2.121864633280012,
+          "mean": 1.4673720071173082,
+          "std": 2.0260568723264,
           "n": 5,
-          "wilcoxon_p": 0.8125
+          "wilcoxon_p": 0.0625
         },
         "power_violation_fraction": {
           "mean": 0.0,
@@ -1238,53 +1238,53 @@
           "n": 5
         },
         "duration_s": {
-          "mean": 2.9806000000000004,
-          "std": 0.24033693016263646,
+          "mean": 3.0387999999999997,
+          "std": 0.23829846831232457,
           "n": 5
         },
         "position_rmse_mm": {
-          "mean": 23.377212501306214,
-          "std": 21.556491342271656,
+          "mean": 21.601870332911016,
+          "std": 19.39122887531953,
           "n": 5
         },
         "depth_rmse_mm": {
-          "mean": 9.67154820178386,
-          "std": 8.91346773682961,
+          "mean": 9.557375074806613,
+          "std": 8.804594381377482,
           "n": 5
         },
         "force_peak_N": {
-          "mean": 58.246318366702575,
-          "std": 1.471629169375085e-05,
+          "mean": 58.22646473449153,
+          "std": 1.1414114198344928e-05,
           "n": 5
         },
         "force_rms_N": {
-          "mean": 48.65726701720867,
-          "std": 1.438419077429587,
+          "mean": 48.85209374628753,
+          "std": 1.5970737791519587,
           "n": 5
         },
         "phase_observation_rmse": {
-          "mean": 0.03505950873553813,
-          "std": 0.01522062784946317,
+          "mean": 0.02563905863726377,
+          "std": 0.020051480872137817,
           "n": 5
         },
         "negative_correction_fraction": {
-          "mean": 0.5146109902363789,
-          "std": 0.055069651676772635,
+          "mean": 0.55117264555734,
+          "std": 0.08503565203279033,
           "n": 5
         },
         "retarded_phase_fraction": {
-          "mean": 0.5151432195893971,
-          "std": 0.055028929856469275,
+          "mean": 0.5516379989248522,
+          "std": 0.08493926815061545,
           "n": 5
         },
         "mean_phase_rate": {
-          "mean": 0.33767258983654974,
-          "std": 0.02703734653695117,
+          "mean": 0.33115573196146614,
+          "std": 0.02662406975349811,
           "n": 5
         },
         "tank_min_J": {
-          "mean": 45.0150020036002,
-          "std": 9.954883325985225,
+          "mean": 45.03817383708175,
+          "std": 9.909382967899019,
           "n": 5
         },
         "power_violation_fraction": {
@@ -1305,28 +1305,28 @@
           "n": 5
         },
         "position_rmse_mm": {
-          "mean": 22.56437186457743,
-          "std": 22.809548045569713,
+          "mean": 22.57282659503628,
+          "std": 22.83934706041771,
           "n": 5
         },
         "depth_rmse_mm": {
-          "mean": 9.635007658380314,
-          "std": 8.97205035185726,
+          "mean": 9.630825042662236,
+          "std": 8.980913356449829,
           "n": 5
         },
         "force_peak_N": {
-          "mean": 58.24631845879492,
-          "std": 7.9050076838744e-06,
+          "mean": 58.226462491598554,
+          "std": 8.586628644524822e-06,
           "n": 5
         },
         "force_rms_N": {
-          "mean": 49.53197087658738,
-          "std": 0.5403762525198254,
+          "mean": 49.52172239946465,
+          "std": 0.5447028802317447,
           "n": 5
         },
         "phase_observation_rmse": {
-          "mean": 0.00033327716844164674,
-          "std": 1.246381035170877e-09,
+          "mean": 0.00033327718945666725,
+          "std": 1.2043509809888925e-09,
           "n": 5
         },
         "negative_correction_fraction": {
@@ -1335,8 +1335,8 @@
           "n": 5
         },
         "retarded_phase_fraction": {
-          "mean": 0.22185938020659784,
-          "std": 0.2627515642525617,
+          "mean": 0.22165944685104969,
+          "std": 0.26235724228895496,
           "n": 5
         },
         "mean_phase_rate": {
@@ -1345,8 +1345,8 @@
           "n": 5
         },
         "tank_min_J": {
-          "mean": 44.6887935667351,
-          "std": 10.608022607985129,
+          "mean": 44.70639347411103,
+          "std": 10.572831992441063,
           "n": 5
         },
         "power_violation_fraction": {
@@ -1363,64 +1363,64 @@
           "wilcoxon_p": 1.0
         },
         "duration_s": {
-          "mean": -0.020399999999999707,
-          "std": 0.24033693016263646,
+          "mean": 0.03780000000000028,
+          "std": 0.23829846831232457,
           "n": 5,
-          "wilcoxon_p": 0.625
+          "wilcoxon_p": 0.375
         },
         "position_rmse_mm": {
-          "mean": 0.8128406367287863,
-          "std": 8.587005447617642,
+          "mean": -0.9709562621252589,
+          "std": 8.138584792266272,
           "n": 5,
-          "wilcoxon_p": 0.625
+          "wilcoxon_p": 0.4375
         },
         "depth_rmse_mm": {
-          "mean": 0.03654054340354866,
-          "std": 1.28058728159447,
+          "mean": -0.07344996785562401,
+          "std": 1.2591570734350663,
           "n": 5,
           "wilcoxon_p": 0.4375
         },
         "force_peak_N": {
-          "mean": -9.209233979845521e-08,
-          "std": 9.99087016797135e-06,
+          "mean": 2.2428929767670524e-06,
+          "std": 3.6143017424743393e-06,
           "n": 5,
-          "wilcoxon_p": 0.625
+          "wilcoxon_p": 0.4375
         },
         "force_rms_N": {
-          "mean": -0.8747038593787153,
-          "std": 0.8995639042027862,
+          "mean": -0.6696286531771165,
+          "std": 1.0529810780460553,
           "n": 5,
-          "wilcoxon_p": 0.0625
+          "wilcoxon_p": 0.8125
         },
         "phase_observation_rmse": {
-          "mean": 0.03472623156709648,
-          "std": 0.015220628538997777,
+          "mean": 0.025305781447807096,
+          "std": 0.020051481469022255,
           "n": 5,
           "wilcoxon_p": 0.0625
         },
         "negative_correction_fraction": {
-          "mean": 0.5146109902363789,
-          "std": 0.055069651676772635,
+          "mean": 0.55117264555734,
+          "std": 0.08503565203279033,
           "n": 5,
           "wilcoxon_p": 0.0625
         },
         "retarded_phase_fraction": {
-          "mean": 0.29328383938279934,
-          "std": 0.24578836263940002,
+          "mean": 0.3299785520738025,
+          "std": 0.23627677459524563,
           "n": 5,
           "wilcoxon_p": 0.125
         },
         "mean_phase_rate": {
-          "mean": 0.004450330589632079,
-          "std": 0.02703734653695117,
+          "mean": -0.0020665272854514917,
+          "std": 0.026624069753498115,
           "n": 5,
-          "wilcoxon_p": 0.4375
+          "wilcoxon_p": 0.5625
         },
         "tank_min_J": {
-          "mean": 0.32620843686509887,
-          "std": 0.6531392879386578,
+          "mean": 0.3317803629707193,
+          "std": 0.6634490287939179,
           "n": 5,
-          "wilcoxon_p": 0.625
+          "wilcoxon_p": 0.0625
         },
         "power_violation_fraction": {
           "mean": 0.0,
@@ -1438,53 +1438,53 @@
           "n": 5
         },
         "duration_s": {
-          "mean": 3.0547999999999997,
-          "std": 0.23585198748367592,
+          "mean": 3.1112,
+          "std": 0.23139697491540373,
           "n": 5
         },
         "position_rmse_mm": {
-          "mean": 80.51261725018341,
-          "std": 17.315997600316997,
+          "mean": 73.32377617176371,
+          "std": 15.577664595219057,
           "n": 5
         },
         "depth_rmse_mm": {
-          "mean": 10.983477555245422,
-          "std": 7.5314437516826995,
+          "mean": 10.82104327559597,
+          "std": 7.4952577937853295,
           "n": 5
         },
         "force_peak_N": {
-          "mean": 58.246331555864515,
-          "std": 1.860158773294887e-05,
+          "mean": 58.22648055019691,
+          "std": 1.4349967086824014e-05,
           "n": 5
         },
         "force_rms_N": {
-          "mean": 49.33054292938641,
-          "std": 2.0338167724831795,
+          "mean": 49.25104693027055,
+          "std": 1.9745315888706612,
           "n": 5
         },
         "phase_observation_rmse": {
-          "mean": 0.0648226032334263,
-          "std": 0.003781140735672602,
+          "mean": 0.06052806762322991,
+          "std": 0.003534689079927563,
           "n": 5
         },
         "negative_correction_fraction": {
-          "mean": 0.48052096505877834,
-          "std": 0.08546454619905866,
+          "mean": 0.5184292464112381,
+          "std": 0.10824280481150428,
           "n": 5
         },
         "retarded_phase_fraction": {
-          "mean": 0.4811138093226007,
-          "std": 0.08540257923075914,
+          "mean": 0.5190757357063418,
+          "std": 0.10819355361337839,
           "n": 5
         },
         "mean_phase_rate": {
-          "mean": 0.3292952417073979,
-          "std": 0.0252587220403409,
+          "mean": 0.3232446475517809,
+          "std": 0.02464011963600566,
           "n": 5
         },
         "tank_min_J": {
-          "mean": 44.92826691071689,
-          "std": 10.128353510518235,
+          "mean": 44.93076899966145,
+          "std": 10.124192641231598,
           "n": 5
         },
         "power_violation_fraction": {
@@ -1505,28 +1505,28 @@
           "n": 5
         },
         "position_rmse_mm": {
-          "mean": 98.1631329379422,
-          "std": 29.45494724892699,
+          "mean": 96.41684278222503,
+          "std": 28.338580543714627,
           "n": 5
         },
         "depth_rmse_mm": {
-          "mean": 12.209923624189072,
-          "std": 7.089528504449453,
+          "mean": 12.208900997829023,
+          "std": 7.085001154554452,
           "n": 5
         },
         "force_peak_N": {
-          "mean": 58.24632838420259,
-          "std": 7.808128774104141e-06,
+          "mean": 58.226476065515854,
+          "std": 9.368082729629305e-06,
           "n": 5
         },
         "force_rms_N": {
-          "mean": 49.95225942689082,
-          "std": 1.0367277098941723,
+          "mean": 49.953350950327504,
+          "std": 1.0491172541269336,
           "n": 5
         },
         "phase_observation_rmse": {
-          "mean": 0.00033327523025489974,
-          "std": 5.1227544921592916e-09,
+          "mean": 0.0003332752039270312,
+          "std": 5.175410366199638e-09,
           "n": 5
         },
         "negative_correction_fraction": {
@@ -1535,8 +1535,8 @@
           "n": 5
         },
         "retarded_phase_fraction": {
-          "mean": 0.22439186937687436,
-          "std": 0.2335367087715292,
+          "mean": 0.22292569143618796,
+          "std": 0.23442985231519214,
           "n": 5
         },
         "mean_phase_rate": {
@@ -1545,8 +1545,8 @@
           "n": 5
         },
         "tank_min_J": {
-          "mean": 43.84482903134644,
-          "std": 12.295951669580042,
+          "mean": 43.838852375938146,
+          "std": 12.30791417936297,
           "n": 5
         },
         "power_violation_fraction": {
@@ -1563,64 +1563,64 @@
           "wilcoxon_p": 1.0
         },
         "duration_s": {
-          "mean": 0.0538000000000002,
-          "std": 0.23585198748367592,
+          "mean": 0.11020000000000012,
+          "std": 0.23139697491540373,
           "n": 5,
           "wilcoxon_p": 0.4375
         },
         "position_rmse_mm": {
-          "mean": -17.650515687758766,
-          "std": 13.587509074778925,
+          "mean": -23.093066610461335,
+          "std": 13.450215345117417,
           "n": 5,
           "wilcoxon_p": 0.125
         },
         "depth_rmse_mm": {
-          "mean": -1.2264460689436516,
-          "std": 1.461311806002602,
+          "mean": -1.3878577222330513,
+          "std": 1.4037331679288714,
           "n": 5,
           "wilcoxon_p": 0.125
         },
         "force_peak_N": {
-          "mean": 3.1716619261601407e-06,
-          "std": 1.206560087553439e-05,
+          "mean": 4.484681056737827e-06,
+          "std": 5.906929582932873e-06,
           "n": 5,
-          "wilcoxon_p": 0.625
+          "wilcoxon_p": 0.1875
         },
         "force_rms_N": {
-          "mean": -0.6217164975044056,
-          "std": 1.095761968412305,
+          "mean": -0.7023040200569539,
+          "std": 1.053618083739743,
           "n": 5,
-          "wilcoxon_p": 0.8125
+          "wilcoxon_p": 0.125
         },
         "phase_observation_rmse": {
-          "mean": 0.06448932800317139,
-          "std": 0.003781136791220967,
+          "mean": 0.06019479241930288,
+          "std": 0.003534684030239363,
           "n": 5,
           "wilcoxon_p": 0.0625
         },
         "negative_correction_fraction": {
-          "mean": 0.48052096505877834,
-          "std": 0.08546454619905866,
+          "mean": 0.5184292464112381,
+          "std": 0.10824280481150428,
           "n": 5,
           "wilcoxon_p": 0.0625
         },
         "retarded_phase_fraction": {
-          "mean": 0.25672193994572634,
-          "std": 0.18725817995411156,
+          "mean": 0.29615004427015373,
+          "std": 0.1791848379542628,
           "n": 5,
           "wilcoxon_p": 0.125
         },
         "mean_phase_rate": {
-          "mean": -0.003927017539519795,
-          "std": 0.0252587220403409,
+          "mean": -0.009977611695136734,
+          "std": 0.02464011963600566,
           "n": 5,
           "wilcoxon_p": 0.4375
         },
         "tank_min_J": {
-          "mean": 1.0834378793704502,
-          "std": 2.1675981723880287,
+          "mean": 1.0919166237233149,
+          "std": 2.1837215502803784,
           "n": 5,
-          "wilcoxon_p": 0.625
+          "wilcoxon_p": 0.0625
         },
         "power_violation_fraction": {
           "mean": 0.0,
