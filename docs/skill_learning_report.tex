@@ -44,15 +44,20 @@ from encoded human behaviour priors. The experimental setup represents a robot w
 its end effector learned to perform an adaptive cutting skill on variant types of materials.
 unlike replaying a single trajectory, the method learns the pattern of the skill and
 reproduces it under a variable-impedance controller with an implemented
-energy-tank mechanism at the joint torque port. The contribution comprises three elements. First, a \emph{variable impedance
+energy-tank mechanism at the joint torque port. The framework combines four
+elements. First, a \emph{shared material-conditioned GMM/GMR} trained after
+spatial-progress registration. Second, a \emph{variable impedance
 controller} whose stiffness matrix is learned from the consistency of
 the demonstrations: a quadratic program (QP) solved at each control step maps the
 demonstration precision onto the controller gains, so the manipulator is stiff
 only along directions that the demonstrations regulated and compliant elsewhere.
-Second, a \emph{state-corrected task parametrisation} that indexes the motion by a
+The phase-domain pose, wrench and twist prior is shared across cork, penoplex
+and PVC; categorical material contrasts condition the common model without
+treating material identity as an ordinal scalar.
+Third, a \emph{state-corrected task parametrisation} that indexes the motion by a
 progress (phase) variable whose evolution is corrected by the manipulator's
 measured state. Its incremental effect is evaluated rather than assumed.
-Third, sufficient stability conditions are derived for idealised error models,
+Fourth, sufficient stability conditions are derived for idealised error models,
 and the implemented torque projection is coupled to a discrete tank that is
 settled from delivered joint power. A positive-power perturbation experiment
 tests the resulting storage and power inequalities. These are simulation-level
@@ -998,6 +1003,9 @@ Let the learned behaviour prior be the phase-indexed curve
 \qquad \phi\in[0,1],
 \label{eq:phase_prior}
 \end{equation}
+where a prime denotes differentiation with respect to phase.
+
+\subsubsection{Root correction of demonstration registration}
 The demonstrations in this study encode a nominally straight cut. Direct use
 of the GMR position mean introduced a small transverse curvature: for cork,
 the 300-sample mean has a $7.066$\,mm RMS orthogonal distance from its
@@ -1042,20 +1050,103 @@ u(\phi,m)=
 \end{equation}
 The interaction terms permit material-dependent affine endpoints and cutting
 directions without imposing an artificial ordinal distance between materials.
-All variables are standardized before estimation.
+For fixed $m$, the products $\phi c_j(m)$ remain affine functions of phase,
+but allow their coefficients to differ between materials.
 
-The shared model has an affine one-component positional block, for which
-Gaussian conditioning gives an affine conditional mean, and a 15-component
-wrench--orientation--twist block for nonlinear phase profiles. Both blocks are
-trained jointly across the complete material data set and conditioned on the
-same $u(\phi,m)$; they form one material-conditioned structured prior rather
-than three material-specific models. This is a training-time GMR formulation,
-not a controller-side projection. The saved conditioned position priors for all
-three materials have zero orthogonal residual to numerical precision and
-path-length/chord ratio one. The controller consumes them directly; no
-downstream straightening operation remains.
+\subsubsection{Shared structured GMM/GMR}
+Let $b$ collect orientation, wrench and twist, and define the two random vectors
+\begin{equation}
+v^{x}=\begin{bmatrix}u^\top&x^\top\end{bmatrix}^{\!\top},
+\qquad
+v^{b}=\begin{bmatrix}u^\top&b^\top\end{bmatrix}^{\!\top}.
+\label{eq:gmr_blocks}
+\end{equation}
+Both blocks use all $N_{\rm demo}=35+26+35=96$ demonstrations. They are parts
+of one structured material-conditioned prior; no block is fitted separately
+for cork, penoplex or PVC. Before estimation, each scalar training variable is
+standardised using statistics of the complete multi-material training set:
+\begin{equation}
+\tilde v_j=\frac{v_j-\mu_j^{\rm data}}{\sigma_j^{\rm data}}.
+\label{eq:gmr_standardisation}
+\end{equation}
+This prevents variables measured in metres, degrees, newtons and
+newton-metres from dominating the likelihood solely through their units.
 
-where a prime denotes differentiation with respect to phase.  For any absolutely continuous,
+For block $r\in\{x,b\}$, the joint density is
+\begin{equation}
+p_r(\tilde u,\tilde y_r)
+=\sum_{q=1}^{K_r}\pi_{r,q}\,
+\mathcal N\!\left(
+\begin{bmatrix}\tilde u\\\tilde y_r\end{bmatrix};
+\begin{bmatrix}\mu^u_{r,q}\\\mu^y_{r,q}\end{bmatrix},
+\begin{bmatrix}
+\Sigma^{uu}_{r,q}&\Sigma^{uy}_{r,q}\\
+\Sigma^{yu}_{r,q}&\Sigma^{yy}_{r,q}
+\end{bmatrix}\right),
+\label{eq:shared_gmm}
+\end{equation}
+where $y_x=x$ and $y_b=b$. Full-covariance mixtures are estimated by
+expectation--maximisation with covariance regularisation
+$10^{-5}I$, three initialisations, random seed 42 and at most 1000 EM
+iterations. The positional block uses $K_x=1$; the nonlinear interaction block
+uses $K_b=15$.
+
+Runtime priors are generated by Gaussian mixture regression, not by component
+classification. For a requested $\tilde u$, component $q$ gives
+\begin{align}
+\mu^{y|u}_{r,q}(\tilde u)
+&=\mu^y_{r,q}
++\Sigma^{yu}_{r,q}(\Sigma^{uu}_{r,q})^{-1}
+(\tilde u-\mu^u_{r,q}),\\
+h_{r,q}(\tilde u)
+&=\frac{\pi_{r,q}\,
+\mathcal N(\tilde u;\mu^u_{r,q},\Sigma^{uu}_{r,q})}
+{\sum_{j=1}^{K_r}\pi_{r,j}\,
+\mathcal N(\tilde u;\mu^u_{r,j},\Sigma^{uu}_{r,j})},\\
+\hat{\tilde y}_r(\tilde u)
+&=\sum_{q=1}^{K_r}h_{r,q}(\tilde u)
+\mu^{y|u}_{r,q}(\tilde u).
+\label{eq:shared_gmr}
+\end{align}
+The final prediction is returned to physical units by inverting
+\eqref{eq:gmr_standardisation}. Equation~\eqref{eq:shared_gmr} is implemented
+directly because the external GMR package used by the legacy notebook is
+incompatible with the installed numerical-library version; the equation is
+the standard analytical GMR conditional mean.
+
+For $K_x=1$, $h_{x,1}=1$. Since $u(\phi,m)$ is affine in $\phi$ for fixed
+material, \eqref{eq:shared_gmr} makes $\hat x(\phi,m)$ affine in $\phi$.
+Straightness is therefore a property of the trained conditional position
+model, rather than a controller-side correction. The 15-component block
+retains the capacity to represent nonlinear force, orientation and twist
+profiles.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Position prior & orthogonal RMS [mm] & maximum [mm] & length/chord\\
+\midrule
+Legacy cork GMR & $7.066$ & $13.010$ & $1.022524$\\
+Legacy penoplex GMR & $0.762$ & $2.122$ & $1.000204$\\
+Legacy PVC GMR & $0.405$ & $1.270$ & $1.000099$\\
+Corrected shared GMR, each material & $<10^{-6}$ & $<10^{-6}$ & $1.000000$\\
+\bottomrule
+\end{tabular}
+\caption{Straightness audit of the saved conditional position priors. Distance
+is measured orthogonally to the three-dimensional principal line. The
+corrected values are evaluated before controller loading or workspace mapping.}
+\label{tab:gmr_straightness}
+\end{table}
+
+The conditioned priors are exported per material only as runtime data arrays;
+these files are evaluations of the same shared model, not independently fitted
+models. The controller consumes them directly and contains no downstream
+straightening operation. The demonstrated result concerns categorical
+conditioning on the three materials included in training; interpolation or
+zero-shot prediction for an unseen material is not claimed.
+
+For any absolutely continuous,
 non-decreasing phase $\phi(t)$, the commanded position and its physically
 consistent velocity satisfy
 \begin{equation}
@@ -2099,6 +2190,15 @@ must be interpreted as stress tests rather than precision-tracking results.}
 \section{Novelty and contributions}
 % ============================================================================
 \begin{enumerate}[leftmargin=1.7em]
+\item \textbf{One progress-registered material-conditioned GMM/GMR.}
+All 96 demonstrations train one structured probabilistic prior conditioned on
+phase and categorical material contrasts
+\eqref{eq:material_condition}. Spatial-progress registration
+\eqref{eq:progress_registration} removes the sample-time misregistration that
+curved the legacy GMR mean, while phase--material interactions retain
+material-specific affine geometry and nonlinear interaction profiles. The
+straightness audit in Table~\ref{tab:gmr_straightness} is performed on the
+saved learned prior before robot execution.
 \item \textbf{Gains learned from demonstration precision, via an online QP.}
 Stiffness \emph{is} the demonstration precision \eqref{eq:precision}, computed each
 step by the QP \eqref{eq:qp} that blends force-consistency with precision-stiffness

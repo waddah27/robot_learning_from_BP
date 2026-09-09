@@ -9,19 +9,21 @@
 \contentsline {section}{\numberline {4}State-driven task parametrization}{13}{section.4}%
 \contentsline {subsection}{\numberline {4.1}Theoretical motivation}{13}{subsection.4.1}%
 \contentsline {subsection}{\numberline {4.2}Phase-domain skill representation}{14}{subsection.4.2}%
-\contentsline {subsection}{\numberline {4.3}State-to-phase observation}{15}{subsection.4.3}%
-\contentsline {subsection}{\numberline {4.4}Sampled-data phase dynamics}{15}{subsection.4.4}%
-\contentsline {subsection}{\numberline {4.5}Controlled phase--state desynchronisation}{16}{subsection.4.5}%
-\contentsline {subsection}{\numberline {4.6}Factorial runtime ablation}{16}{subsection.4.6}%
-\contentsline {section}{\numberline {5}Conditional stability analysis and discrete torque-port energy accounting}{17}{section.5}%
-\contentsline {subsection}{\numberline {5.1}Ideal continuous-time passivity condition}{17}{subsection.5.1}%
-\contentsline {subsection}{\numberline {5.2}Implemented discrete torque-port tank}{18}{subsection.5.2}%
-\contentsline {subsection}{\numberline {5.3}Sufficient exponential-stability conditions for idealised error dynamics}{19}{subsection.5.3}%
-\contentsline {paragraph}{Time-varying gains and moving-reference perturbations.}{20}{section*.4}%
-\contentsline {paragraph}{Experimental interpretation.}{21}{section*.5}%
-\contentsline {paragraph}{Implementation status.}{21}{section*.6}%
-\contentsline {section}{\numberline {6}Material interaction model}{21}{section.6}%
-\contentsline {paragraph}{Parameter identification.}{23}{section*.7}%
-\contentsline {section}{\numberline {7}Results}{23}{section.7}%
-\contentsline {section}{\numberline {8}Novelty and contributions}{24}{section.8}%
-\contentsline {section}{\numberline {9}Assumptions, scope and limitations}{25}{section.9}%
+\contentsline {subsubsection}{\numberline {4.2.1}Root correction of demonstration registration}{14}{subsubsection.4.2.1}%
+\contentsline {subsubsection}{\numberline {4.2.2}Shared structured GMM/GMR}{14}{subsubsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.3}State-to-phase observation}{16}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Sampled-data phase dynamics}{16}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}Controlled phase--state desynchronisation}{17}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}Factorial runtime ablation}{17}{subsection.4.6}%
+\contentsline {section}{\numberline {5}Conditional stability analysis and discrete torque-port energy accounting}{18}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Ideal continuous-time passivity condition}{18}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Implemented discrete torque-port tank}{19}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Sufficient exponential-stability conditions for idealised error dynamics}{20}{subsection.5.3}%
+\contentsline {paragraph}{Time-varying gains and moving-reference perturbations.}{21}{section*.4}%
+\contentsline {paragraph}{Experimental interpretation.}{22}{section*.5}%
+\contentsline {paragraph}{Implementation status.}{22}{section*.6}%
+\contentsline {section}{\numberline {6}Material interaction model}{22}{section.6}%
+\contentsline {paragraph}{Parameter identification.}{24}{section*.7}%
+\contentsline {section}{\numberline {7}Results}{24}{section.7}%
+\contentsline {section}{\numberline {8}Novelty and contributions}{25}{section.8}%
+\contentsline {section}{\numberline {9}Assumptions, scope and limitations}{26}{section.9}%
